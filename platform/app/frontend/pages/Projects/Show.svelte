@@ -12,6 +12,7 @@
   import ProjectBanner from '@/components/ProjectBanner.svelte'
   import SlackConnect, { type SlackStatus } from '@/components/SlackConnect.svelte'
   import SolarNotebook from '@/components/icons/SolarNotebook.svelte'
+  import Skeleton from '@/components/Skeleton.svelte'
   import InviteModal from '@/components/team/InviteModal.svelte'
   import ProjectTeam from '@/components/team/ProjectTeam.svelte'
   import { projects, project as projectRoute } from '@/routes'
@@ -157,15 +158,15 @@
   <div class="mt-6 space-y-5">
     {#if !journals || !pagy || !slack || !can || !team}
       <div class="glass px-5 py-5 md:px-6" aria-busy="true">
-        <div class="skeleton h-6 w-40"></div>
-        <div class="mt-2 skeleton h-4 w-72 max-w-full"></div>
+        <Skeleton class="skeleton h-6 w-40" />
+        <Skeleton class="mt-2 skeleton h-4 w-72 max-w-full" />
       </div>
       <ul class="space-y-5" aria-busy="true">
         {#each { length: 2 }, i (i)}
           <li class="glass px-5 py-5 md:px-6">
-            <div class="skeleton h-4 w-32"></div>
-            <div class="mt-3 skeleton h-4 w-full"></div>
-            <div class="mt-2 skeleton h-4 w-3/4"></div>
+            <Skeleton class="skeleton h-4 w-32" />
+            <Skeleton class="mt-3 skeleton h-4 w-full" />
+            <Skeleton class="mt-2 skeleton h-4 w-3/4" />
           </li>
         {/each}
       </ul>

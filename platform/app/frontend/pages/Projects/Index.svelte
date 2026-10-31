@@ -6,6 +6,7 @@
   import CreateProjectModal from '@/components/CreateProjectModal.svelte'
   import PageTitle from '@/components/PageTitle.svelte'
   import ProjectCard from '@/components/ProjectCard.svelte'
+  import Skeleton from '@/components/Skeleton.svelte'
   import InviteCards from '@/components/team/InviteCards.svelte'
   import type { SlackStatus } from '@/components/SlackConnect.svelte'
   import { connectSlack, projects } from '@/routes'
@@ -65,11 +66,11 @@
   <div class="grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" aria-busy="true">
     {#each { length: 3 }, i (i)}
       <div class="glass">
-        <div class="h-36 animate-pulse rounded-t-[4px] bg-white/10 md:h-44"></div>
+        <Skeleton class="h-36 rounded-t-[4px] md:h-44" />
         <div class="space-y-3 px-5 pt-4 pb-5">
-          <div class="skeleton h-6 w-40"></div>
-          <div class="skeleton h-4 w-full"></div>
-          <div class="skeleton h-5 w-28"></div>
+          <Skeleton class="skeleton h-6 w-40" />
+          <Skeleton class="skeleton h-4 w-full" />
+          <Skeleton class="skeleton h-5 w-28" />
         </div>
       </div>
     {/each}

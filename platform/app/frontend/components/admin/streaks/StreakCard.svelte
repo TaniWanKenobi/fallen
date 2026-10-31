@@ -6,6 +6,7 @@
   import Snowflake from '@lucide/svelte/icons/snowflake'
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert'
   import X from '@lucide/svelte/icons/x'
+  import Morph from '@/components/admin/Morph.svelte'
   import StreakDialog from '@/components/admin/streaks/StreakDialog.svelte'
   import StreakLog from '@/components/admin/streaks/StreakLog.svelte'
   import { Badge } from '@/components/admin/ui/badge'
@@ -344,8 +345,8 @@
             class="sticky bottom-3 mt-4 flex flex-wrap items-center gap-3 rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur"
           >
             <span class="text-sm">
-              <span class="font-medium">{rangeLabel(selection.from, selection.to)}</span>
-              <span class="text-muted-foreground">· {plural(selectedDays, 'day')}</span>
+              <Morph text={rangeLabel(selection.from, selection.to)} class="font-medium" />
+              <Morph text="· {plural(selectedDays, 'day')}" class="text-muted-foreground" />
             </span>
             {#if selectedDays > streak.rules.max_excuse_days}
               <span class="text-xs text-destructive">At most {streak.rules.max_excuse_days} at a time</span>
@@ -355,7 +356,7 @@
               <Button
                 size="sm"
                 disabled={selectedDays > streak.rules.max_excuse_days}
-                onclick={() => open('excuse')}>Excuse {plural(selectedDays, 'day')}…</Button
+                onclick={() => open('excuse')}><Morph text="Excuse {plural(selectedDays, 'day')}…" /></Button
               >
             </div>
           </div>

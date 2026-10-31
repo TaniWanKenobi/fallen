@@ -3,6 +3,7 @@
   import type { SlackStatus } from '@/components/SlackConnect.svelte'
   import HoldButton from '@/components/HoldButton.svelte'
   import SettingRow from '@/components/settings/SettingRow.svelte'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { connectSlack, disconnectSlack, settings } from '@/routes'
 
   let { slack }: { slack?: SlackStatus } = $props()
@@ -10,8 +11,8 @@
 
 {#if !slack}
   <div class="space-y-3 px-5 py-4 md:px-6" aria-busy="true">
-    <div class="h-5 w-48 animate-pulse rounded bg-white/10"></div>
-    <div class="h-4 w-2/3 animate-pulse rounded bg-white/10"></div>
+    <Skeleton class="h-5 w-48 rounded" />
+    <Skeleton class="h-4 w-2/3 rounded" />
   </div>
 {:else if slack.connected}
   <SettingRow title="Connected" description="Journals you write here post to your project's thread as you.">

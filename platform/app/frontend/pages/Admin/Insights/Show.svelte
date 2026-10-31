@@ -15,7 +15,7 @@
   import TimeSeriesChart from '@/components/admin/TimeSeriesChart.svelte'
   import * as Card from '@/components/admin/ui/card'
   import { Label } from '@/components/admin/ui/label'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { Switch } from '@/components/admin/ui/switch'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
   import { formatCount, formatMs } from '@/lib/format'
@@ -228,7 +228,7 @@
       </Card.Header>
       <Card.Content>
         <Deferred data="series">
-          {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+          {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
           <TimeSeriesChart
             points={series ?? []}
             hourly={range === '1h' || range === '24h'}
@@ -250,7 +250,7 @@
       </Card.Header>
       <Card.Content>
         <Deferred data="series">
-          {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+          {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
           <TimeSeriesChart
             kind="line"
             points={series ?? []}
@@ -277,7 +277,7 @@
           <Deferred data="breakdown">
             {#snippet fallback()}
               <div class="space-y-2">
-                {#each { length: 8 }, i (i)}<Skeleton class="h-9 w-full" />{/each}
+                {#each { length: 8 }, i (i)}<Skeleton class="h-9 w-full rounded-md" />{/each}
               </div>
             {/snippet}
             <BreakdownTable rows={breakdown ?? []} {kind} href={(row) => url({ name: row })} />
@@ -295,7 +295,7 @@
           </Card.Header>
           <Card.Content>
             <Deferred data="statuses">
-              {#snippet fallback()}<Skeleton class="h-12 w-full" />{/snippet}
+              {#snippet fallback()}<Skeleton class="h-12 w-full rounded-md" />{/snippet}
               <div class="flex h-2.5 overflow-hidden rounded-full bg-muted">
                 {#each statuses ?? [] as row (row.status)}
                   <span
@@ -329,7 +329,7 @@
           <Deferred data="slowest">
             {#snippet fallback()}
               <div class="space-y-3">
-                {#each { length: 5 }, i (i)}<Skeleton class="h-8 w-full" />{/each}
+                {#each { length: 5 }, i (i)}<Skeleton class="h-8 w-full rounded-md" />{/each}
               </div>
             {/snippet}
             <SlowestList rows={(slowest ?? []).slice(0, name ? 25 : 10)} {kind} showName={!name} />

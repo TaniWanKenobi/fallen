@@ -6,11 +6,11 @@
   import { Deferred, Link } from '@inertiajs/svelte'
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right'
   import ActivityChart from '@/components/admin/ActivityChart.svelte'
-  import NumberPopIn from '@/components/admin/NumberPopIn.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import { Badge } from '@/components/admin/ui/badge'
   import { buttonVariants } from '@/components/admin/ui/button'
   import * as Card from '@/components/admin/ui/card'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { formatMinutes } from '@/lib/format'
   import { adminInsights, adminJobs, adminProjects, adminUsers } from '@/routes'
 
@@ -59,9 +59,9 @@
         </Card.Description>
         <Card.Title class="text-3xl tabular-nums">
           {#if tile.value === undefined}
-            <Skeleton class="h-9 w-16" />
+            <Skeleton class="h-9 w-16 rounded-md" />
           {:else}
-            <NumberPopIn value={tile.value} />
+            <Morph text={tile.value} />
           {/if}
         </Card.Title>
       </Card.Header>
@@ -85,7 +85,7 @@
       </Card.Header>
       <Card.Content>
         <Deferred data="activity">
-          {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+          {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
           {#if chart.key === 'minutes'}
             <ActivityChart
               points={(activity ?? []).map((point) => ({ date: point.date, value: point.minutes }))}

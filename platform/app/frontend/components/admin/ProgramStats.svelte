@@ -5,7 +5,7 @@
   import StatTile from '@/components/admin/StatTile.svelte'
   import TimeSeriesChart from '@/components/admin/TimeSeriesChart.svelte'
   import * as Card from '@/components/admin/ui/card'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
   import { formatCount } from '@/lib/format'
 
@@ -170,7 +170,7 @@
     {@render titled('Hours', hourSeries)}
     <Card.Content>
       <Deferred data="daily">
-        {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+        {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
         <TimeSeriesChart {points} format={hours} series={hourSeries} />
       </Deferred>
     </Card.Content>
@@ -179,7 +179,7 @@
     {@render titled('People', peopleSeries)}
     <Card.Content>
       <Deferred data="daily">
-        {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+        {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
         <TimeSeriesChart
           kind="line"
           {points}
@@ -198,7 +198,7 @@
       <Deferred data="funnel">
         {#snippet fallback()}
           <div class="space-y-3">
-            {#each { length: 9 }, i (i)}<Skeleton class="h-8 w-full" />{/each}
+            {#each { length: 9 }, i (i)}<Skeleton class="h-8 w-full rounded-md" />{/each}
           </div>
         {/snippet}
         <FunnelChart steps={funnel ?? []} />
@@ -209,7 +209,7 @@
     {@render titled('Signups')}
     <Card.Content>
       <Deferred data="daily">
-        {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+        {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
         <TimeSeriesChart
           {points}
           format={(value) => formatCount(Math.round(value))}
@@ -226,7 +226,7 @@
     <Deferred data="sources">
       {#snippet fallback()}
         <div class="space-y-2">
-          {#each { length: 5 }, i (i)}<Skeleton class="h-6 w-full" />{/each}
+          {#each { length: 5 }, i (i)}<Skeleton class="h-6 w-full rounded-md" />{/each}
         </div>
       {/snippet}
       <table class="w-full text-sm">
@@ -272,7 +272,7 @@
     </div>
     <div class="mt-4">
       <Deferred data="writing">
-        {#snippet fallback()}<Skeleton class="h-[220px] w-full" />{/snippet}
+        {#snippet fallback()}<Skeleton class="h-[220px] w-full rounded-md" />{/snippet}
         <TimeSeriesChart
           points={aiPoints}
           format={(value) => formatCount(Math.round(value))}

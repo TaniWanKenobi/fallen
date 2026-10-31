@@ -9,6 +9,7 @@
   import DataTable from '@/components/admin/DataTable.svelte'
   import DataTableSkeleton from '@/components/admin/DataTableSkeleton.svelte'
   import LinkTabs from '@/components/admin/LinkTabs.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import TransferCell from '@/components/admin/TransferCell.svelte'
   import UserCell from '@/components/admin/UserCell.svelte'
   import { Button } from '@/components/admin/ui/button'
@@ -122,7 +123,7 @@
         class={[
           'rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums',
           value === 'pending' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-        ]}>{count}</span
+        ]}><Morph text={count} /></span
       >
     {/if}
   {/snippet}

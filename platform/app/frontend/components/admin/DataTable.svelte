@@ -4,6 +4,7 @@
   import ArrowUp from '@lucide/svelte/icons/arrow-up'
   import { getCoreRowModel, getSortedRowModel, type ColumnDef, type SortingState } from '@tanstack/table-core'
   import { Button } from '@/components/admin/ui/button'
+  import Morph from '@/components/admin/Morph.svelte'
   import { createSvelteTable, FlexRender } from '@/components/admin/ui/data-table'
   import * as Table from '@/components/admin/ui/table'
   import type { Pagy } from '@/types'
@@ -111,10 +112,14 @@
         {#if pagy.count === 0}
           No {noun}
         {:else if pagy.pages <= 1}
-          {pagy.count} {pagy.count === 1 ? singular : noun}
+          <Morph text="{pagy.count} {pagy.count === 1 ? singular : noun}" />
         {:else}
-          Showing {(pagy.page - 1) * pagy.limit + 1}–{Math.min(pagy.page * pagy.limit, pagy.count)} of {pagy.count}
-          {noun}
+          <Morph
+            text="Showing {(pagy.page - 1) * pagy.limit + 1}–{Math.min(
+              pagy.page * pagy.limit,
+              pagy.count,
+            )} of {pagy.count} {noun}"
+          />
         {/if}
       </span>
       {#if pagy.pages > 1}
@@ -127,7 +132,7 @@
           >
             Previous
           </Button>
-          <span>{pagy.page} / {pagy.pages}</span>
+          <Morph text="{pagy.page} / {pagy.pages}" class="tabular-nums" />
           <Button
             variant="outline"
             size="sm"

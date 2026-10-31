@@ -16,7 +16,7 @@
   import * as Card from '@/components/admin/ui/card'
   import { Checkbox } from '@/components/admin/ui/checkbox'
   import { Label } from '@/components/admin/ui/label'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { projectColumns, trialLabel } from '@/lib/adminColumns'
   import { formatDate, formatDateTime } from '@/lib/format'
   import { adminUsers, impersonateAdminUser } from '@/routes'

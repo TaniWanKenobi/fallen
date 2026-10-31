@@ -7,7 +7,7 @@
   import ArrowLeft from '@lucide/svelte/icons/arrow-left'
   import BadgeCheck from '@lucide/svelte/icons/badge-check'
   import ExternalLink from '@lucide/svelte/icons/external-link'
-  import NumberPopIn from '@/components/admin/NumberPopIn.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import Pagination from '@/components/Pagination.svelte'
   import UserCell from '@/components/admin/UserCell.svelte'
   import { Badge } from '@/components/admin/ui/badge'
@@ -143,7 +143,7 @@
     <Card.Root class="t-card-lift">
       <Card.Header class="pb-0">
         <Card.Description>{stat.label}</Card.Description>
-        <Card.Title class="text-3xl tabular-nums"><NumberPopIn value={stat.value} /></Card.Title>
+        <Card.Title class="text-3xl tabular-nums"><Morph text={stat.value} /></Card.Title>
       </Card.Header>
     </Card.Root>
   {/each}

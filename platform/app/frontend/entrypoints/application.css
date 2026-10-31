@@ -84,6 +84,9 @@
     @media (prefers-reduced-motion: no-preference) {
       scroll-behavior: smooth;
     }
+    /* <Skeleton>'s shimmer on the night sky; skeleton-ink and the admin theme set their own */
+    --skullet-base: rgb(255 255 255 / 0.1);
+    --skullet-highlight: rgb(255 255 255 / 0.14);
   }
 }
 
@@ -125,34 +128,16 @@
   @apply font-outfit text-xs text-sky-ice/55;
 }
 
-/* Placeholder bars for instant visits: the page renders before its props arrive. */
+/* Placeholder bars for instant visits: the page renders before its props arrive. Put them on a <Skeleton>, which
+   draws skullet's shimmer; skeleton-ink recolours it for cream paper. */
 @utility skeleton {
-  @apply animate-pulse rounded-sm bg-white/10;
+  @apply rounded-sm;
 }
 
 @utility skeleton-ink {
-  @apply animate-pulse rounded-sm bg-ink/10;
-}
-
-/* A band of light passing over something still loading (the pet's timer). Put it on an overlay inside a
-   `relative overflow-hidden` box. Held still for anyone who prefers less motion. */
-@keyframes sweep {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-@utility sweep {
-  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.32) 50%, transparent 80%);
-  animation: sweep 1.3s ease-in-out infinite;
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-    background: rgb(255 255 255 / 0.06);
-  }
+  @apply rounded-sm;
+  --skullet-base: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --skullet-highlight: rgb(255 255 255 / 0.55);
 }
 
 @utility btn-sky {

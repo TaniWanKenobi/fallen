@@ -6,7 +6,7 @@
   import { Deferred, Link, router, usePoll } from '@inertiajs/svelte'
   import Trophy from '@lucide/svelte/icons/trophy'
   import LinkTabs from '@/components/admin/LinkTabs.svelte'
-  import NumberPopIn from '@/components/admin/NumberPopIn.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import TimeSeriesChart from '@/components/admin/TimeSeriesChart.svelte'
   import UserCell from '@/components/admin/UserCell.svelte'
   import * as AlertDialog from '@/components/admin/ui/alert-dialog'
@@ -15,7 +15,7 @@
   import { Label } from '@/components/admin/ui/label'
   import * as Card from '@/components/admin/ui/card'
   import * as Dialog from '@/components/admin/ui/dialog'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { Switch } from '@/components/admin/ui/switch'
   import * as Table from '@/components/admin/ui/table'
   import { formatCount, formatMinutes } from '@/lib/format'
@@ -264,8 +264,8 @@
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : ''}"
             >
-              {#if xp}<NumberPopIn value={`${formatCount(xp[pet] ?? 0)} XP`} />{:else}<Skeleton
-                  class="h-9 w-28"
+              {#if xp}<Morph text={`${formatCount(xp[pet] ?? 0)} XP`} />{:else}<Skeleton
+                  class="h-9 w-28 rounded-md"
                 />{/if}
             </p>
           </div>
@@ -291,7 +291,7 @@
           format={(value) => `${formatCount(value)} XP`}
         />
       {:else}
-        <Skeleton class="h-[220px] w-full" />
+        <Skeleton class="h-[220px] w-full rounded-md" />
       {/if}
     </Card.Content>
   </Card.Root>
@@ -370,7 +370,7 @@
 
 {#snippet loading()}
   <div class="space-y-3">
-    {#each { length: 5 }, i (i)}<Skeleton class="h-9 w-full" />{/each}
+    {#each { length: 5 }, i (i)}<Skeleton class="h-9 w-full rounded-md" />{/each}
   </div>
 {/snippet}
 
@@ -462,9 +462,10 @@
           >
             Previous
           </Button>
-          <span class="text-muted-foreground"
-            >Page {pagy.page} of {pagy.pages} · {formatCount(pagy.count)} people</span
-          >
+          <Morph
+            text="Page {pagy.page} of {pagy.pages} · {formatCount(pagy.count)} people"
+            class="text-muted-foreground"
+          />
           <Button
             variant="outline"
             size="sm"

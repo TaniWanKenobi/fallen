@@ -9,6 +9,7 @@
   import DataTable from '@/components/admin/DataTable.svelte'
   import DataTableSkeleton from '@/components/admin/DataTableSkeleton.svelte'
   import LinkTabs from '@/components/admin/LinkTabs.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import UserCell from '@/components/admin/UserCell.svelte'
   import IncidentDialog from '@/components/admin/streaks/IncidentDialog.svelte'
   import RestoreLink from '@/components/admin/streaks/RestoreLink.svelte'
@@ -143,7 +144,7 @@
         class={[
           'rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums',
           value === 'broken' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-        ]}>{count}</span
+        ]}><Morph text={count} /></span
       >
     {/if}
   {/snippet}

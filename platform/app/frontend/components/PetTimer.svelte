@@ -1,6 +1,7 @@
 <script lang="ts">
   import SolarPause from '@/components/icons/SolarPause.svelte'
   import SolarPlay from '@/components/icons/SolarPlay.svelte'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { askGoal, formatTracked, resumeHuddle, shownSeconds, stopTimer, timer } from '@/lib/timer.svelte'
 
   // The pill above the desktop pet: the button for what can be done now, and the time put in since the last
@@ -10,7 +11,7 @@
   //   anything about yet asks what they got done first.
   // - Pause in the huddle: asks whether to stay without counting or leave. Pause on the site timer stops it.
   // - Resume: back to counting in the huddle.
-  // Until the first answer arrives it shows no time at all, just a light sweeping over it.
+  // Until the first answer arrives it shows no time at all, just a shimmering bar in its place.
   let now = $state(Date.now())
   $effect(() => {
     if (timer.running !== 'huddle' && timer.running !== 'timer') return
@@ -77,11 +78,8 @@
     {:else}
       <!-- the width of "00:00", so the pill does not jump when the time arrives -->
       <span class="relative block h-[1.25em] w-[5ch]">
-        <span class="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full bg-white/10"></span>
+        <Skeleton class="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 rounded-full" />
       </span>
     {/if}
   </span>
-  {#if !timer.loaded}
-    <span class="pointer-events-none absolute inset-0 sweep" aria-hidden="true"></span>
-  {/if}
 </div>

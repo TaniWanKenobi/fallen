@@ -8,6 +8,7 @@
   import PageTitle from '@/components/PageTitle.svelte'
   import ProjectCard from '@/components/ProjectCard.svelte'
   import SettingRow from '@/components/settings/SettingRow.svelte'
+  import Skeleton from '@/components/Skeleton.svelte'
   import InviteCards from '@/components/team/InviteCards.svelte'
   import WriteJournalButton from '@/components/WriteJournalButton.svelte'
   import XpCard, { type Standing } from '@/components/XpCard.svelte'
@@ -58,9 +59,9 @@
   <div class="space-y-6" aria-busy="true">
     {#each { length: 2 }, i (i)}
       <div class="glass space-y-3 px-5 py-5 md:px-6">
-        <div class="skeleton h-7 w-48"></div>
-        <div class="skeleton h-4 w-full"></div>
-        <div class="skeleton h-4 w-2/3"></div>
+        <Skeleton class="skeleton h-7 w-48" />
+        <Skeleton class="skeleton h-4 w-full" />
+        <Skeleton class="skeleton h-4 w-2/3" />
       </div>
     {/each}
   </div>

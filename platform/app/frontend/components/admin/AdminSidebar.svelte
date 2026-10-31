@@ -7,6 +7,7 @@
   import Search from '@lucide/svelte/icons/search'
   import Sun from '@lucide/svelte/icons/sun'
   import { Kbd } from '@/components/admin/ui/kbd'
+  import Morph from '@/components/admin/Morph.svelte'
   import Wordmark from '@/components/Wordmark.svelte'
   import { adminDark, toggleAdminDark } from '@/lib/adminDark.svelte'
   import { adminNav, isActive } from '@/lib/adminNav'
@@ -120,16 +121,14 @@
             {#if !collapsed}
               <span class="flex-1">{item.label}</span>
               {#if stat != null && !(item.alert && stat === 0)}
-                {#key stat}
-                  <span
-                    class={[
-                      't-nav-badge rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium',
-                      item.alert ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground',
-                    ]}
-                  >
-                    {stat}
-                  </span>
-                {/key}
+                <span
+                  class={[
+                    't-nav-badge rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums',
+                    item.alert ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground',
+                  ]}
+                >
+                  <Morph text={stat} />
+                </span>
               {/if}
             {/if}
           {/snippet}

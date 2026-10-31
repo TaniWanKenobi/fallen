@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
-  import NumberPopIn from '@/components/admin/NumberPopIn.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import * as Card from '@/components/admin/ui/card'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
 
   // A number on a card. `value` undefined shows a skeleton while a deferred prop loads.
   let {
@@ -35,9 +35,9 @@
     </Card.Description>
     <Card.Title class="text-2xl tabular-nums {toneClass[tone]}">
       {#if value === undefined}
-        <Skeleton class="h-8 w-20" />
+        <Skeleton class="h-8 w-20 rounded-md" />
       {:else}
-        <NumberPopIn {value} />
+        <Morph text={value} />
       {/if}
     </Card.Title>
     {#if hint}<p class="text-xs text-muted-foreground">{hint}</p>{/if}

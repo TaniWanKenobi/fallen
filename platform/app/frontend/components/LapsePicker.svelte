@@ -14,6 +14,7 @@
   import { untrack } from 'svelte'
   import { formatDate } from '@/lib/format'
   import { connectLapse, lapseSync } from '@/routes'
+  import Skeleton from '@/components/Skeleton.svelte'
 
   let {
     lapse,
@@ -110,10 +111,10 @@
 
 {#if lapse === undefined && !locked}
   <div aria-busy="true">
-    <div class="skeleton-ink h-6 w-28"></div>
+    <Skeleton class="skeleton-ink h-6 w-28" />
     <div class="mt-3 grid grid-cols-2 gap-2.5">
-      <div class="skeleton-ink aspect-video"></div>
-      <div class="skeleton-ink aspect-video"></div>
+      <Skeleton class="skeleton-ink aspect-video" />
+      <Skeleton class="skeleton-ink aspect-video" />
     </div>
   </div>
 {:else if lapse?.configured || locked}

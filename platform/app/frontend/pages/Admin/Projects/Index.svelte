@@ -7,8 +7,9 @@
   import DataTable from '@/components/admin/DataTable.svelte'
   import DataTableSkeleton from '@/components/admin/DataTableSkeleton.svelte'
   import ListToolbar from '@/components/admin/ListToolbar.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import { Badge } from '@/components/admin/ui/badge'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import { projectColumns } from '@/lib/adminColumns'
   import { adminProjects } from '@/routes'
   import type { AdminProject, Pagy } from '@/types'
@@ -35,7 +36,7 @@
 <div class="mb-4 flex items-center gap-2">
   <h1 class="text-2xl font-semibold tracking-tight">Projects</h1>
   <Badge variant="secondary" class="text-sm">
-    {#if total_count == null}<Skeleton class="h-4 w-8" />{:else}{total_count}{/if}
+    {#if total_count == null}<Skeleton class="h-4 w-8 rounded-md" />{:else}<Morph text={total_count} />{/if}
   </Badge>
 </div>
 

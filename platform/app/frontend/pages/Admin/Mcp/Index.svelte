@@ -15,7 +15,7 @@
   import * as Dialog from '@/components/admin/ui/dialog'
   import { Input } from '@/components/admin/ui/input'
   import { Label } from '@/components/admin/ui/label'
-  import { Skeleton } from '@/components/admin/ui/skeleton'
+  import Skeleton from '@/components/Skeleton.svelte'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
   import { csrfToken } from '@/lib/csrf'
   import { guessDevice, mcpClients, tokenNamePart } from '@/lib/mcpClients'
@@ -162,7 +162,7 @@
 
 <h2 class="mb-3 text-lg font-semibold">SQL changes</h2>
 <Deferred data="sql_changes">
-  {#snippet fallback()}<Skeleton class="mb-8 h-20 w-full" />{/snippet}
+  {#snippet fallback()}<Skeleton class="mb-8 h-20 w-full rounded-md" />{/snippet}
   {#if !sql_changes?.length}
     <p class="mb-8 text-sm text-muted-foreground">
       Writes an agent asks for with query_sql wait here for approval.
@@ -190,7 +190,7 @@
 
 <h2 class="mb-3 text-lg font-semibold">Recent calls</h2>
 <Deferred data="actions">
-  {#snippet fallback()}<Skeleton class="h-40 w-full" />{/snippet}
+  {#snippet fallback()}<Skeleton class="h-40 w-full rounded-md" />{/snippet}
   {#if !actions?.length}
     <p class="text-sm text-muted-foreground">Nothing yet.</p>
   {:else}
