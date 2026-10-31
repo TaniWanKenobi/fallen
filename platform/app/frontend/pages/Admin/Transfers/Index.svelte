@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, router } from '@inertiajs/svelte'
+  import { router } from '@inertiajs/svelte'
   import type { ColumnDef } from '@tanstack/table-core'
   import RefreshCw from '@lucide/svelte/icons/refresh-cw'
   import DataTable from '@/components/admin/DataTable.svelte'
@@ -14,6 +14,7 @@
   import UserCell from '@/components/admin/UserCell.svelte'
   import { Button } from '@/components/admin/ui/button'
   import { renderComponent } from '@/components/admin/ui/data-table'
+  import Deferred from '@/components/Deferred.svelte'
   import { formatMinutes, timeAgo } from '@/lib/format'
   import { adminTransfers } from '@/routes'
   import type { AdminProjectTransfer, Pagy } from '@/types'

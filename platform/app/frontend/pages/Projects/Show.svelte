@@ -10,6 +10,7 @@
   import type { LapseStatus } from '@/components/LapsePicker.svelte'
   import Pagination from '@/components/Pagination.svelte'
   import ProjectBanner from '@/components/ProjectBanner.svelte'
+  import Reveal from '@/components/Reveal.svelte'
   import SlackConnect, { type SlackStatus } from '@/components/SlackConnect.svelte'
   import SolarNotebook from '@/components/icons/SolarNotebook.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
@@ -155,77 +156,84 @@
     {/if}
   </section>
 
-  <div class="mt-6 space-y-5">
-    {#if !journals || !pagy || !slack || !can || !team}
-      <div class="glass px-5 py-5 md:px-6" aria-busy="true">
-        <Skeleton class="skeleton h-6 w-40" />
-        <Skeleton class="mt-2 skeleton h-4 w-72 max-w-full" />
-      </div>
-      <ul class="space-y-5" aria-busy="true">
-        {#each { length: 2 }, i (i)}
-          <li class="glass px-5 py-5 md:px-6">
-            <Skeleton class="skeleton h-4 w-32" />
-            <Skeleton class="mt-3 skeleton h-4 w-full" />
-            <Skeleton class="mt-2 skeleton h-4 w-3/4" />
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <ProjectTeam {project} {team} {can} onInvite={() => (inviting = true)} />
+  <div class="mt-6">
+    <Reveal loading={!journals || !pagy || !slack || !can || !team}>
+      {#snippet skeleton()}
+        <div class="space-y-5">
+          <div class="glass px-5 py-5 md:px-6">
+            <Skeleton class="skeleton h-6 w-40" />
+            <Skeleton class="mt-2 skeleton h-4 w-72 max-w-full" />
+          </div>
+          <ul class="space-y-5">
+            {#each { length: 2 }, i (i)}
+              <li class="glass px-5 py-5 md:px-6">
+                <Skeleton class="skeleton h-4 w-32" />
+                <Skeleton class="mt-3 skeleton h-4 w-full" />
+                <Skeleton class="mt-2 skeleton h-4 w-3/4" />
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {/snippet}
+      {#if journals && pagy && slack && can && team}
+        <div class="space-y-5">
+          <ProjectTeam {project} {team} {can} onInvite={() => (inviting = true)} />
 
-      {#if can.journal}
-        <button
-          type="button"
-          onclick={() => {
-            sfx.select()
-            write()
-          }}
-          class="glass setting-row w-full cursor-pointer overflow-hidden text-left"
-        >
-          <span
-            class="grid size-12 shrink-0 place-items-center rounded-full bg-cream text-slate-ink shadow-[0_0_14px_rgb(252_249_239/0.35)]"
-            aria-hidden="true"><SolarNotebook size={24} /></span
-          >
-          <span class="min-w-0 flex-1 basis-56">
-            <span class="block font-montserrat text-lg font-semibold tracking-[-0.02em] text-white"
-              >Log a journal</span
+          {#if can.journal}
+            <button
+              type="button"
+              onclick={() => {
+                sfx.select()
+                write()
+              }}
+              class="glass setting-row w-full cursor-pointer overflow-hidden text-left"
             >
-            <span class="mt-0.5 block font-outfit text-sm text-sky-ice/60"
-              >What you did this session, how long it took, photos.</span
-            >
-          </span>
-          <span class="pill-cream h-11 text-base max-sm:hidden">Write</span>
-        </button>
-      {:else if can.invite}
-        <SlackConnect {slack} returnTo={projectRoute(project.id).url} />
-      {/if}
+              <span
+                class="grid size-12 shrink-0 place-items-center rounded-full bg-cream text-slate-ink shadow-[0_0_14px_rgb(252_249_239/0.35)]"
+                aria-hidden="true"><SolarNotebook size={24} /></span
+              >
+              <span class="min-w-0 flex-1 basis-56">
+                <span class="block font-montserrat text-lg font-semibold tracking-[-0.02em] text-white"
+                  >Log a journal</span
+                >
+                <span class="mt-0.5 block font-outfit text-sm text-sky-ice/60"
+                  >What you did this session, how long it took, photos.</span
+                >
+              </span>
+              <span class="pill-cream h-11 text-base max-sm:hidden">Write</span>
+            </button>
+          {:else if can.invite}
+            <SlackConnect {slack} returnTo={projectRoute(project.id).url} />
+          {/if}
 
-      {#if journals.length === 0}
-        <p class="px-1 font-outfit text-sm text-sky-ice/60">
-          No journals yet{#if project.slack_url}. Replies in <a
-              href={project.slack_url}
-              class="underline hover:text-white"
-              target="_blank"
-              rel="noopener">the Slack thread</a
-            > show up here too{/if}.
-        </p>
-      {:else}
-        <h2 class="flex items-center gap-3 pt-3 font-display text-3xl text-white">
-          Journals <span class="chip">{pagy.count}</span>
-        </h2>
-        <ol {@attach stagger} class="stagger-in space-y-5 [--stagger-step:70ms]">
-          {#each journals as journal (journal.id)}
-            <li><JournalItem {journal} editable={journal.author.id === me} onEdit={write} /></li>
-          {/each}
-        </ol>
-        <Pagination
-          {pagy}
-          noun="journals"
-          class="px-1 font-outfit text-sky-ice/60"
-          buttonClass="pill-glass h-10 text-sm"
-        />
+          {#if journals.length === 0}
+            <p class="px-1 font-outfit text-sm text-sky-ice/60">
+              No journals yet{#if project.slack_url}. Replies in <a
+                  href={project.slack_url}
+                  class="underline hover:text-white"
+                  target="_blank"
+                  rel="noopener">the Slack thread</a
+                > show up here too{/if}.
+            </p>
+          {:else}
+            <h2 class="flex items-center gap-3 pt-3 font-display text-3xl text-white">
+              Journals <span class="chip">{pagy.count}</span>
+            </h2>
+            <ol {@attach stagger} class="stagger-in space-y-5 [--stagger-step:70ms]">
+              {#each journals as journal (journal.id)}
+                <li><JournalItem {journal} editable={journal.author.id === me} onEdit={write} /></li>
+              {/each}
+            </ol>
+            <Pagination
+              {pagy}
+              noun="journals"
+              class="px-1 font-outfit text-sky-ice/60"
+              buttonClass="pill-glass h-10 text-sm"
+            />
+          {/if}
+        </div>
       {/if}
-    {/if}
+    </Reveal>
   </div>
 </div>
 

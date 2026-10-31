@@ -14,6 +14,7 @@
   import { untrack } from 'svelte'
   import { formatDate } from '@/lib/format'
   import { connectLapse, lapseSync } from '@/routes'
+  import Reveal from '@/components/Reveal.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
 
   let {
@@ -109,129 +110,141 @@
   }
 </script>
 
-{#if lapse === undefined && !locked}
-  <div aria-busy="true">
-    <Skeleton class="skeleton-ink h-6 w-28" />
-    <div class="mt-3 grid grid-cols-2 gap-2.5">
-      <Skeleton class="skeleton-ink aspect-video" />
-      <Skeleton class="skeleton-ink aspect-video" />
-    </div>
-  </div>
-{:else if lapse?.configured || locked}
-  <div class="flex flex-1 flex-col lg:min-h-0">
-    <div class="flex items-baseline justify-between gap-2">
-      <p class="font-display text-xl text-ink">
-        Timelapses
-        {#if !locked}<span class="font-outfit text-xs text-ink-soft">(optional)</span>{/if}
-      </p>
-      {#if lapse?.connected && !locked}
-        <button
-          type="button"
-          onclick={sync}
-          disabled={syncing}
-          class="cursor-pointer font-outfit text-xs text-ink-soft underline hover:text-ink disabled:cursor-default disabled:no-underline"
-        >
-          {syncing ? 'Checking Lapse…' : 'Refresh'}
-        </button>
-      {/if}
-    </div>
-
-    {#if !lapse?.connected && !locked}
-      <div class="mt-2 rounded-xl border-2 border-dashed border-paper-edge p-3 text-center">
-        <p class="font-outfit text-xs text-ink-soft">
-          Recorded the session on Lapse? Connect it and pick the timelapses that back up your hours.
-        </p>
-        <a
-          href={connectLapse({ query: { return_to: returnTo } }).url}
-          class="sketch-button mt-3 py-1.5 text-sm">Connect Lapse</a
-        >
+<Reveal loading={lapse === undefined && !locked}>
+  {#snippet skeleton()}
+    <div>
+      <Skeleton class="skeleton-ink h-6 w-28" />
+      <div class="mt-3 grid grid-cols-2 gap-2.5">
+        <Skeleton class="skeleton-ink aspect-video" />
+        <Skeleton class="skeleton-ink aspect-video" />
       </div>
-    {:else}
-      <p class="mb-2.5 font-outfit text-xs text-ink-soft">
-        {locked
-          ? 'These stay with the journal, like its hours.'
-          : "Pick every one from this session, so you don't get deflated."}
-        {#if syncFailed}<span class="text-red-700">Couldn't reach Lapse just now.</span>{/if}
-      </p>
-      {#if options.length === 0}
-        <p
-          class="rounded-xl border-2 border-dashed border-paper-edge px-3 py-4 text-center font-outfit text-xs text-ink-soft"
-        >
-          {syncing ? 'Looking for your timelapses…' : 'No timelapses yet.'}
-          <a href="https://lapse.hackclub.com" target="_blank" rel="noopener" class="underline hover:text-ink"
-            >Record one on Lapse ↗</a
-          >
-        </p>
-      {:else}
-        <ul
-          class="sketch-scroll grid max-h-[18.5rem] grid-cols-2 content-start gap-2 overflow-y-auto p-0.5 lg:max-h-none lg:min-h-0 lg:flex-1"
-          aria-label="Timelapses"
-        >
-          {#each options as timelapse (timelapse.id)}
-            {@const active = selected.includes(timelapse.id)}
-            {@const reason = blocked(timelapse)}
-            <li class="min-w-0">
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={active}
-                disabled={locked || Boolean(reason)}
-                title={reason ? `This timelapse ${reason}` : undefined}
-                onclick={() => toggle(timelapse)}
-                class={['lapse-tile', active && 'active', reason && 'blocked']}
-              >
-                <span class="lapse-thumb">
-                  {#if timelapse.thumbnail_url}
-                    <img src={timelapse.thumbnail_url} alt="" loading="lazy" />
-                  {/if}
-                  {#if timelapse.duration_text}<span class="lapse-length">{timelapse.duration_text}</span
-                    >{/if}
-                  {#if active}
-                    <span class="lapse-check" aria-hidden="true">
-                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4">
-                        <path d="M2.5 6.5l2.5 2.5 4.5-5.5" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </span>
-                  {/if}
-                </span>
-                <span class="block truncate px-0.5 pt-1.5 font-outfit text-[13px] font-semibold text-ink"
-                  >{timelapse.name || 'Untitled timelapse'}</span
-                >
-                {#if !reason || !timelapse.claim_url}
-                  <span class="block truncate px-0.5 font-outfit text-[11px] text-ink-soft">
-                    {reason
-                      ? reason.replace(/^is /, '')
-                      : timelapse.recorded_at && formatDate(timelapse.recorded_at)}
-                  </span>
-                {/if}
-              </button>
-              {#if reason && timelapse.claim_url}
-                <!-- Where it went: the journal that has it, in a new tab so this one keeps the draft. -->
-                <a
-                  href={timelapse.claim_url}
-                  target="_blank"
-                  rel="noopener"
-                  title="This timelapse {reason}"
-                  class="block truncate px-1.5 font-outfit text-[11px] text-ink-soft underline hover:text-ink"
-                  >Used in a journal ↗</a
-                >
-              {/if}
-            </li>
-          {/each}
-        </ul>
-        <p class="mt-2 font-outfit text-sm text-ink" aria-live="polite">
-          {#if selected.length > 0}
-            <strong>{totalText}</strong> from {selected.length}
-            {selected.length === 1 ? 'timelapse' : 'timelapses'}
-          {:else}
-            <span class="text-ink-soft">None picked yet.</span>
+    </div>
+  {/snippet}
+  {#if !(lapse === undefined && !locked)}
+    {#if lapse?.configured || locked}
+      <div class="flex flex-1 flex-col lg:min-h-0">
+        <div class="flex items-baseline justify-between gap-2">
+          <p class="font-display text-xl text-ink">
+            Timelapses
+            {#if !locked}<span class="font-outfit text-xs text-ink-soft">(optional)</span>{/if}
+          </p>
+          {#if lapse?.connected && !locked}
+            <button
+              type="button"
+              onclick={sync}
+              disabled={syncing}
+              class="cursor-pointer font-outfit text-xs text-ink-soft underline hover:text-ink disabled:cursor-default disabled:no-underline"
+            >
+              {syncing ? 'Checking Lapse…' : 'Refresh'}
+            </button>
           {/if}
-        </p>
-      {/if}
+        </div>
+
+        {#if !lapse?.connected && !locked}
+          <div class="mt-2 rounded-xl border-2 border-dashed border-paper-edge p-3 text-center">
+            <p class="font-outfit text-xs text-ink-soft">
+              Recorded the session on Lapse? Connect it and pick the timelapses that back up your hours.
+            </p>
+            <a
+              href={connectLapse({ query: { return_to: returnTo } }).url}
+              class="sketch-button mt-3 py-1.5 text-sm">Connect Lapse</a
+            >
+          </div>
+        {:else}
+          <p class="mb-2.5 font-outfit text-xs text-ink-soft">
+            {locked
+              ? 'These stay with the journal, like its hours.'
+              : "Pick every one from this session, so you don't get deflated."}
+            {#if syncFailed}<span class="text-red-700">Couldn't reach Lapse just now.</span>{/if}
+          </p>
+          {#if options.length === 0}
+            <p
+              class="rounded-xl border-2 border-dashed border-paper-edge px-3 py-4 text-center font-outfit text-xs text-ink-soft"
+            >
+              {syncing ? 'Looking for your timelapses…' : 'No timelapses yet.'}
+              <a
+                href="https://lapse.hackclub.com"
+                target="_blank"
+                rel="noopener"
+                class="underline hover:text-ink">Record one on Lapse ↗</a
+              >
+            </p>
+          {:else}
+            <ul
+              class="sketch-scroll grid max-h-[18.5rem] grid-cols-2 content-start gap-2 overflow-y-auto p-0.5 lg:max-h-none lg:min-h-0 lg:flex-1"
+              aria-label="Timelapses"
+            >
+              {#each options as timelapse (timelapse.id)}
+                {@const active = selected.includes(timelapse.id)}
+                {@const reason = blocked(timelapse)}
+                <li class="min-w-0">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={active}
+                    disabled={locked || Boolean(reason)}
+                    title={reason ? `This timelapse ${reason}` : undefined}
+                    onclick={() => toggle(timelapse)}
+                    class={['lapse-tile', active && 'active', reason && 'blocked']}
+                  >
+                    <span class="lapse-thumb">
+                      {#if timelapse.thumbnail_url}
+                        <img src={timelapse.thumbnail_url} alt="" loading="lazy" />
+                      {/if}
+                      {#if timelapse.duration_text}<span class="lapse-length">{timelapse.duration_text}</span
+                        >{/if}
+                      {#if active}
+                        <span class="lapse-check" aria-hidden="true">
+                          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4">
+                            <path
+                              d="M2.5 6.5l2.5 2.5 4.5-5.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </span>
+                      {/if}
+                    </span>
+                    <span class="block truncate px-0.5 pt-1.5 font-outfit text-[13px] font-semibold text-ink"
+                      >{timelapse.name || 'Untitled timelapse'}</span
+                    >
+                    {#if !reason || !timelapse.claim_url}
+                      <span class="block truncate px-0.5 font-outfit text-[11px] text-ink-soft">
+                        {reason
+                          ? reason.replace(/^is /, '')
+                          : timelapse.recorded_at && formatDate(timelapse.recorded_at)}
+                      </span>
+                    {/if}
+                  </button>
+                  {#if reason && timelapse.claim_url}
+                    <!-- Where it went: the journal that has it, in a new tab so this one keeps the draft. -->
+                    <a
+                      href={timelapse.claim_url}
+                      target="_blank"
+                      rel="noopener"
+                      title="This timelapse {reason}"
+                      class="block truncate px-1.5 font-outfit text-[11px] text-ink-soft underline hover:text-ink"
+                      >Used in a journal ↗</a
+                    >
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+            <p class="mt-2 font-outfit text-sm text-ink" aria-live="polite">
+              {#if selected.length > 0}
+                <strong>{totalText}</strong> from {selected.length}
+                {selected.length === 1 ? 'timelapse' : 'timelapses'}
+              {:else}
+                <span class="text-ink-soft">None picked yet.</span>
+              {/if}
+            </p>
+          {/if}
+        {/if}
+        {#if error}<p class="mt-1 font-outfit text-xs text-red-700">{error}</p>{/if}
+      </div>
     {/if}
-    {#if error}<p class="mt-1 font-outfit text-xs text-red-700">{error}</p>{/if}
-  </div>
-{/if}
+  {/if}
+</Reveal>
 
 <style>
   .lapse-tile {

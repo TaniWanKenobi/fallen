@@ -6,6 +6,7 @@
   import CreateProjectModal from '@/components/CreateProjectModal.svelte'
   import PageTitle from '@/components/PageTitle.svelte'
   import ProjectCard from '@/components/ProjectCard.svelte'
+  import Reveal from '@/components/Reveal.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import InviteCards from '@/components/team/InviteCards.svelte'
   import type { SlackStatus } from '@/components/SlackConnect.svelte'
@@ -62,43 +63,50 @@
   <div class="mb-6"><InviteCards {invites} /></div>
 {/if}
 
-{#if !list || !slack}
-  <div class="grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" aria-busy="true">
-    {#each { length: 3 }, i (i)}
-      <div class="glass">
-        <Skeleton class="h-36 rounded-t-[4px] md:h-44" />
-        <div class="space-y-3 px-5 pt-4 pb-5">
-          <Skeleton class="skeleton h-6 w-40" />
-          <Skeleton class="skeleton h-4 w-full" />
-          <Skeleton class="skeleton h-5 w-28" />
+<Reveal loading={!list || !slack}>
+  {#snippet skeleton()}
+    <div class="grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {#each { length: 3 }, i (i)}
+        <div class="glass">
+          <Skeleton class="h-36 rounded-t-[4px] md:h-44" />
+          <div class="space-y-3 px-5 pt-4 pb-5">
+            <Skeleton class="skeleton h-6 w-40" />
+            <Skeleton class="skeleton h-4 w-full" />
+            <Skeleton class="skeleton h-5 w-28" />
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/snippet}
+  {#if list && slack}
+    {#if list.length === 0}
+      <div class="glass flex flex-col items-center px-6 py-10 md:py-14">
+        <img src={soup} alt="" class="mb-4 h-32 w-32 object-contain sm:mb-6 sm:h-44 sm:w-44" />
+        <p class="mb-8 font-display text-3xl text-white">No projects yet</p>
+        {@render createButton()}
+        {#if !slack.oauth_available && !slack.ready}
+          <p class="mt-4 font-outfit text-xs text-red-300">
+            Slack sign-in is not configured on this server yet.
+          </p>
+        {/if}
+      </div>
+    {:else}
+      <div
+        {@attach stagger}
+        class="stagger-in grid auto-rows-fr grid-cols-1 gap-5 [--stagger-step:60ms] md:grid-cols-2 lg:grid-cols-3"
+      >
+        {#each list as project (project.id)}
+          <ProjectCard {project} />
+        {/each}
+        <div
+          class="flex h-full min-h-48 flex-col items-center justify-center rounded-[4px] border-2 border-dashed border-white/20 p-6"
+        >
+          {@render createButton('h-11 text-base')}
         </div>
       </div>
-    {/each}
-  </div>
-{:else if list.length === 0}
-  <div class="glass flex flex-col items-center px-6 py-10 md:py-14">
-    <img src={soup} alt="" class="mb-4 h-32 w-32 object-contain sm:mb-6 sm:h-44 sm:w-44" />
-    <p class="mb-8 font-display text-3xl text-white">No projects yet</p>
-    {@render createButton()}
-    {#if !slack.oauth_available && !slack.ready}
-      <p class="mt-4 font-outfit text-xs text-red-300">Slack sign-in is not configured on this server yet.</p>
     {/if}
-  </div>
-{:else}
-  <div
-    {@attach stagger}
-    class="stagger-in grid auto-rows-fr grid-cols-1 gap-5 [--stagger-step:60ms] md:grid-cols-2 lg:grid-cols-3"
-  >
-    {#each list as project (project.id)}
-      <ProjectCard {project} />
-    {/each}
-    <div
-      class="flex h-full min-h-48 flex-col items-center justify-center rounded-[4px] border-2 border-dashed border-white/20 p-6"
-    >
-      {@render createButton('h-11 text-base')}
-    </div>
-  </div>
-{/if}
+  {/if}
+</Reveal>
 
 {#if creating}
   <CreateProjectModal directUploadUrl={direct_upload_url} onClose={() => (creating = false)} />

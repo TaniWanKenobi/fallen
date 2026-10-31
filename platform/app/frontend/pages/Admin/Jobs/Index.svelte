@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link, usePoll } from '@inertiajs/svelte'
+  import { Link, usePoll } from '@inertiajs/svelte'
   import CircleCheck from '@lucide/svelte/icons/circle-check'
   import Gauge from '@lucide/svelte/icons/gauge'
   import Inbox from '@lucide/svelte/icons/inbox'
@@ -18,6 +18,7 @@
   import { buttonVariants } from '@/components/admin/ui/button'
   import { Label } from '@/components/admin/ui/label'
   import { Switch } from '@/components/admin/ui/switch'
+  import Deferred from '@/components/Deferred.svelte'
   import { formatCount } from '@/lib/format'
   import {
     JOB_RELOAD,

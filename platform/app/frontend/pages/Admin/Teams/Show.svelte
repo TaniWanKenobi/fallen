@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link, router, usePoll } from '@inertiajs/svelte'
+  import { Link, router, usePoll } from '@inertiajs/svelte'
   import Trophy from '@lucide/svelte/icons/trophy'
   import LinkTabs from '@/components/admin/LinkTabs.svelte'
   import Morph from '@/components/admin/Morph.svelte'
@@ -15,6 +15,7 @@
   import { Label } from '@/components/admin/ui/label'
   import * as Card from '@/components/admin/ui/card'
   import * as Dialog from '@/components/admin/ui/dialog'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import { Switch } from '@/components/admin/ui/switch'
   import * as Table from '@/components/admin/ui/table'

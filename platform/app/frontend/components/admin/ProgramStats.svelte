@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { Deferred, router } from '@inertiajs/svelte'
+  import { router } from '@inertiajs/svelte'
   import LoaderCircle from '@lucide/svelte/icons/loader-circle'
   import FunnelChart from '@/components/admin/FunnelChart.svelte'
   import StatTile from '@/components/admin/StatTile.svelte'
   import TimeSeriesChart from '@/components/admin/TimeSeriesChart.svelte'
   import * as Card from '@/components/admin/ui/card'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
   import { formatCount } from '@/lib/format'

@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link, router, useForm } from '@inertiajs/svelte'
+  import { Link, router, useForm } from '@inertiajs/svelte'
   import ArrowLeft from '@lucide/svelte/icons/arrow-left'
   import Ban from '@lucide/svelte/icons/ban'
   import VenetianMask from '@lucide/svelte/icons/venetian-mask'
@@ -16,6 +16,7 @@
   import * as Card from '@/components/admin/ui/card'
   import { Checkbox } from '@/components/admin/ui/checkbox'
   import { Label } from '@/components/admin/ui/label'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import { projectColumns, trialLabel } from '@/lib/adminColumns'
   import { formatDate, formatDateTime } from '@/lib/format'

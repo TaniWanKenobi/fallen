@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link } from '@inertiajs/svelte'
+  import { Link } from '@inertiajs/svelte'
   import type { ColumnDef } from '@tanstack/table-core'
   import Megaphone from '@lucide/svelte/icons/megaphone'
   import DataTable from '@/components/admin/DataTable.svelte'
@@ -16,6 +16,7 @@
   import StreakLog from '@/components/admin/streaks/StreakLog.svelte'
   import { Button } from '@/components/admin/ui/button'
   import { renderComponent } from '@/components/admin/ui/data-table'
+  import Deferred from '@/components/Deferred.svelte'
   import {
     addDays,
     dayLabel,

@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link, router } from '@inertiajs/svelte'
+  import { Link, router } from '@inertiajs/svelte'
   import Bot from '@lucide/svelte/icons/bot'
   import Check from '@lucide/svelte/icons/check'
   import Copy from '@lucide/svelte/icons/copy'
@@ -15,6 +15,7 @@
   import * as Dialog from '@/components/admin/ui/dialog'
   import { Input } from '@/components/admin/ui/input'
   import { Label } from '@/components/admin/ui/label'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
   import { csrfToken } from '@/lib/csrf'

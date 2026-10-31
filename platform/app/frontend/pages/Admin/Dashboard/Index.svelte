@@ -3,13 +3,14 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link } from '@inertiajs/svelte'
+  import { Link } from '@inertiajs/svelte'
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right'
   import ActivityChart from '@/components/admin/ActivityChart.svelte'
   import Morph from '@/components/admin/Morph.svelte'
   import { Badge } from '@/components/admin/ui/badge'
   import { buttonVariants } from '@/components/admin/ui/button'
   import * as Card from '@/components/admin/ui/card'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import { formatMinutes } from '@/lib/format'
   import { adminInsights, adminJobs, adminProjects, adminUsers } from '@/routes'

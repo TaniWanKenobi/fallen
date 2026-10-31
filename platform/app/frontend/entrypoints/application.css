@@ -612,6 +612,11 @@
     animation: none;
   }
 
+  /* Arrived behind a skeleton's sweep already (components/Reveal.svelte) */
+  :where(.reveal-swept) & > * {
+    animation: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     & > * {
       animation: none;

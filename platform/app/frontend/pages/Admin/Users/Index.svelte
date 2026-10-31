@@ -3,12 +3,12 @@
 </script>
 
 <script lang="ts">
-  import { Deferred } from '@inertiajs/svelte'
   import DataTable from '@/components/admin/DataTable.svelte'
   import DataTableSkeleton from '@/components/admin/DataTableSkeleton.svelte'
   import ListToolbar from '@/components/admin/ListToolbar.svelte'
   import Morph from '@/components/admin/Morph.svelte'
   import { Badge } from '@/components/admin/ui/badge'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import { userColumns } from '@/lib/adminColumns'
   import { adminUsers } from '@/routes'

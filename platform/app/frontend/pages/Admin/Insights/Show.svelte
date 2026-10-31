@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Deferred, Link, router, usePoll } from '@inertiajs/svelte'
+  import { Link, router, usePoll } from '@inertiajs/svelte'
   import ArrowLeft from '@lucide/svelte/icons/arrow-left'
   import Gauge from '@lucide/svelte/icons/gauge'
   import LoaderCircle from '@lucide/svelte/icons/loader-circle'
@@ -15,6 +15,7 @@
   import TimeSeriesChart from '@/components/admin/TimeSeriesChart.svelte'
   import * as Card from '@/components/admin/ui/card'
   import { Label } from '@/components/admin/ui/label'
+  import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import { Switch } from '@/components/admin/ui/switch'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
