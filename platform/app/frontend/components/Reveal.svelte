@@ -2,10 +2,12 @@
   import { Skeleton, SkulletProvider } from 'skullet/svelte'
   import { untrack, type Snippet } from 'svelte'
 
-  // Shows `skeleton` while loading, then brings the content in behind skullet's sweep: one diagonal front at the
-  // shimmer's slant and pace, so the content seems to arrive with the highlight that was crossing its placeholder.
-  // Content already there on the first render shows at once. The two sit in skullet's own wrapper divs, so put this
-  // where one block is expected, never among a grid's or a flex row's items.
+  // Shows `skeleton` while loading, then brings the content in with skullet's sweep reveal: one diagonal front at
+  // the shimmer's slant and pace, as if the highlight crossing the placeholder left the content behind it.
+  // skullet only sweeps away a skeleton it drew, so `skeleton` isn't shown as it is: skullet lays it out unseen and
+  // draws a bone over each painted box in it (the <Skeleton> bars), shimmering on its own layer. Over about a screen
+  // and a half skullet crossfades instead, and content already there on the first render shows at once.
+  // The panes are skullet's wrapper divs, so put this where one block is expected, never among a grid's items.
   let {
     loading,
     skeleton,
@@ -20,11 +22,17 @@
   })
 </script>
 
+<!-- `data` drives it, so the pane on its way out keeps the skeleton it was measured from -->
 <SkulletProvider reveal="sweep">
   <Skeleton
-    {loading}
-    {skeleton}
-    {children}
+    data={loading ? null : ('content' as const)}
+    sample="skeleton"
     class={[className, swept && 'reveal-swept'].filter(Boolean).join(' ')}
-  />
+  >
+    {#snippet children(pane)}
+      {#if pane === 'skeleton'}{@render skeleton?.()}{:else}{@render content()}{/if}
+    {/snippet}
+  </Skeleton>
 </SkulletProvider>
+
+{#snippet content()}{@render children()}{/snippet}

@@ -134,6 +134,14 @@
   @apply rounded-sm;
 }
 
+/* skullet's reveal panes (components/Reveal.svelte) wipe with a CSS mask, which clips whatever hangs outside the
+   pane, like a chart's axis labels, until the sweep is over. A rem of bleed either side, given back as padding, keeps
+   that inside the mask without moving anything. */
+[skullet-reveal] > [skullet-pane] {
+  margin-inline: -1rem;
+  padding-inline: 1rem;
+}
+
 @utility skeleton-ink {
   @apply rounded-sm;
   --skullet-base: color-mix(in oklab, var(--color-ink) 10%, transparent);
