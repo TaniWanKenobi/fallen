@@ -26,7 +26,8 @@
   onMount(() => {
     // transparent so the page shows through; no antialias because point sprites have no hard edges to smooth
     const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, depth: false })
-    if (!gl) return // no WebGL2: the page just goes without the effect
+    // no WebGL2, or a context already lost because the browser ran out of them: the page just goes without the effect
+    if (!gl || gl.isContextLost()) return
 
     layers =
       scene === 'hero'
