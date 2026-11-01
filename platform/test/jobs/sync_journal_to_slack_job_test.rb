@@ -201,11 +201,11 @@ class SyncJournalToSlackJobTest < ActiveJob::TestCase
     assert_nil Journal.find_by_slack_message("CJOURNALS", "1700000001.000200")
   end
 
-  test "a journal written in Slack goes back in Slack's own markup, broadcasts taken out" do
+  test "a journal written in Slack goes back in Slack's own markup, with names instead of pings" do
     journal = journals(:first)
-    journal.body = "Fixed *the* <https://x.test|board> &amp; told <@U123> <!channel>"
+    journal.body = "Fixed *the* <https://x.test|board> &amp; told <@U0MEMBER>, <@U999> and <@U998|@channel> <!channel>"
     text = SlackMessages.journal(journal)[:text]
-    assert_includes text, "Fixed *the* <https://x.test|board> &amp; told <@U123>"
-    assert_no_match(/<!channel>/, text)
+    assert_includes text, "Fixed *the* <https://x.test|board> &amp; told @Member Person, @someone and @\u2060channel"
+    assert_no_match(/<[!@]|@(channel|here|everyone)\b/i, text)
   end
 end

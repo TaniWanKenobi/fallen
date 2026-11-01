@@ -2,6 +2,8 @@ class JournalsController < ApplicationController
   skip_after_action :verify_policy_scoped # No index action (Rails raises on `only: :index` otherwise)
   skip_after_action :verify_authorized # Re-added below: Rails raises on the `except: :index` default without an index action
   after_action :verify_authorized
+  # Every move posts the journal into another thread afresh.
+  rate_limit to: 10, within: 10.minutes, only: :move, by: -> { current_user.id }, with: -> { redirect_back_or_to projects_path, alert: "Too many moves, try again in a few minutes." }
   before_action :set_project, only: :create
   before_action :set_journal, only: %i[update destroy move]
 

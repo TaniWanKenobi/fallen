@@ -25,10 +25,10 @@ module SlackMessages
 
   # The photos go under the message as image attachments rather than links, so the ones the editor embedded in the
   # body (as Markdown images pointing at the site) are taken out of the text. One written in Slack is already in
-  # Slack's own markup, so it goes back as it was, less any broadcast.
+  # Slack's own markup, so it goes back as it was, less any ping: Fallen posts it afresh when it moves.
   def journal(journal)
     body = without_embedded_images(journal.body)
-    text = journal.from_slack? ? defang(body) : mrkdwn(body)
+    text = journal.from_slack? ? unping(body) : mrkdwn(body)
     text = text.gsub(/\n{3,}/, "\n\n").strip
     blocks = SlackBot::Blocks.sections(text)
     # Timelapses are private to the person and staff, so the public thread never links one.
@@ -554,4 +554,12 @@ module SlackMessages
   # Text Slack handed over is already escaped, so its mentions are real ones. Broadcasts and group pings come back
   # as plain words.
   def defang(text) = text.to_s.gsub(/<!([^>|]*)(?:\|([^>]*))?>/) { $2.presence || "@#{$1.sub(/\^.*/, '')}" }.gsub(BROADCAST, "@\u2060")
+
+  # Text Slack handed over that Fallen posts again in its own name: mentions of people become their names too, so
+  # the repost can't be used to ping anyone. Someone not on Fallen is "@someone".
+  PERSON = /<@([UW][A-Z0-9]+)(?:\|([^>]*))?>/
+  def unping(text)
+    names = User.where(slack_id: text.to_s.scan(PERSON).map(&:first).uniq).pluck(:slack_id, :display_name).to_h
+    defang(text).gsub(PERSON) { "@#{escape($2.to_s.delete_prefix("@").presence || names[$1] || "someone")}" }.gsub(BROADCAST, "@\u2060")
+  end
 end
