@@ -29,11 +29,12 @@
     const start = (Class: typeof TextMorph) => {
       if (gone) return
       // Its first render is never animated, keeps any text node already there, and skips a value equal to its
-      // starting '': so an empty element, then a zero-width space, and the value comes in over that
+      // starting '': so an empty element, then a 0 for a number or a zero-width space otherwise, and the value comes
+      // in over that
       started = true
       node.textContent = ''
       instance = new Class({ element: node })
-      instance.update('\u200B')
+      instance.update(typeof text === 'number' ? '0' : '\u200B')
       waiting = false
       requestAnimationFrame(() => {
         if (!gone) morph = instance
