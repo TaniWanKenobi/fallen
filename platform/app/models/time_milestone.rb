@@ -51,11 +51,11 @@ class TimeMilestone < ApplicationRecord
 
   # Claims the check-in `time` has reached, if it is past the last one sent. Returns it when this call claimed it,
   # nil otherwise. Only the newest is claimed, so a stretch found late gets one message, not a
-  # backlog.
-  def self.claim(time)
+  # backlog. `claimed` is the furthest already claimed in this stretch, for a caller that looked it up for many.
+  def self.claim(time, claimed = where(user: time.user, since: time.since || BEGINNING).maximum(:minutes))
     minutes = (time.seconds / EVERY.to_i) * EVERY.in_minutes.to_i
     since = time.since || BEGINNING
-    return if minutes.zero? || where(user: time.user, since: since, minutes: minutes..).exists?
+    return if minutes.zero? || (claimed && claimed >= minutes)
 
     inserted = insert_all([ { user_id: time.user.id, since: since, minutes: minutes, created_at: Time.current } ],
       unique_by: %i[user_id since minutes], returning: %i[id])

@@ -52,6 +52,17 @@ class TimeMilestoneJobTest < ActiveJob::TestCase
     end
   end
 
+  test "the same queries however many are counting" do
+    users(:newcomer).update!(slack_id: "U0NEWCOMER")
+    [ @user, users(:admin), users(:newcomer) ].each { it.timer_sessions.create!(started_at: 70.minutes.ago) }
+    with_fake_slack do |slack|
+      run_job
+      assert_equal 3, slack.calls_to(:chat_postMessage).size
+      assert_query_budget(6) { run_job }
+      assert_equal 3, slack.calls_to(:chat_postMessage).size
+    end
+  end
+
   test "a new journal starts the check-ins again" do
     @user.timer_sessions.create!(started_at: 70.minutes.ago)
     with_fake_slack do |slack|

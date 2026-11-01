@@ -7,9 +7,32 @@
 class TrackedTime
   attr_reader :user, :now
 
-  def initialize(user, now: Time.current)
+  def initialize(user, now: Time.current, preloaded: nil)
     @user = user
     @now = now
+    @since, @all_sessions, @timers, @pauses = preloaded if preloaded
+  end
+
+  # One for each of `users`, from four queries in all rather than four each (TimeMilestoneJob).
+  def self.for(users, now: Time.current)
+    return [] if users.empty?
+
+    ids = users.map(&:id)
+    sinces = Journal.kept.where(user_id: ids).group(:user_id).maximum(:created_at)
+    sessions = ending_after_since(HuddleSession, :left_at, ids, sinces)
+    timers = ending_after_since(TimerSession, :stopped_at, ids, sinces)
+    pauses = ending_after_since(HuddlePause, :ended_at, ids, sinces)
+    users.map do |user|
+      new(user, now: now, preloaded: [ sinces[user.id], sessions.fetch(user.id, []), timers.fetch(user.id, []), pauses.fetch(user.id, []) ])
+    end
+  end
+
+  # `model`'s rows for each of `ids` that end after that person's `since`, by user id.
+  def self.ending_after_since(model, end_column, ids, sinces)
+    ids.map do |id|
+      scope = model.where(user_id: id)
+      sinces[id] ? scope.where(end_column => nil).or(scope.where(end_column => sinces[id]..)) : scope
+    end.reduce(:or).group_by(&:user_id)
   end
 
   # When the count starts: the newest journal, or the beginning for someone who has not written one.

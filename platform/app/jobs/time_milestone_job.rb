@@ -8,12 +8,13 @@ class TimeMilestoneJob < ApplicationJob
   def perform
     return unless SlackBot.configured?
 
-    counting_users.find_each do |user|
-      time = TrackedTime.new(user)
-      next unless time.running.in?(%w[huddle timer])
-
-      check_in = TimeMilestone.claim(time) or next
-      ask(check_in, time.running)
+    counting_users.find_in_batches do |users|
+      times = TrackedTime.for(users).select { |time| time.running.in?(%w[huddle timer]) }
+      claimed = TimeMilestone.where(user_id: times.map { it.user.id }).group(:user_id, :since).maximum(:minutes)
+      times.each do |time|
+        check_in = TimeMilestone.claim(time, claimed[[ time.user.id, time.since || TimeMilestone::BEGINNING ]]) or next
+        ask(check_in, time.running)
+      end
     end
   end
 
