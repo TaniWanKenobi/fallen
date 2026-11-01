@@ -26,7 +26,8 @@ Rails.application.configure do
                    "https://lookout.hackclub.com", "https://lookout.hackclub-assets.com", # Lookout thumbnails redirect to its asset host
                    "https://public.lapse-hackclub.link", # Lapse thumbnails
                    "https://stardance.hackclub.com", "https://fabricate.hackclub-assets.com", "https://stasis.hackclub-assets.com", # photos in transferred journals (ProjectTransfer)
-                   "https://fallout.hackclub.com", "https://cdn.hackclub.com", "https://user-cdn.hackclub-assets.com", # ...where Hack Club's CDN redirects to its asset host
+                   "https://fallout.hackclub.com", "https://f8d710a55cb9b516d88635f103c2c9f2.r2.cloudflarestorage.com", # ...Fallout's redirect to its R2 bucket,
+                   "https://cdn.hackclub.com", "https://user-cdn.hackclub-assets.com", # ...where Hack Club's CDN redirects to its asset host
                    "https://i.ytimg.com", *r2_host
     policy.frame_src "https://www.youtube-nocookie.com"
     # The landing page asks Hack Club Auth whether the person is already signed in there.
