@@ -110,7 +110,7 @@
   }
 </script>
 
-<Reveal loading={lapse === undefined && !locked}>
+<Reveal loading={lapse === undefined && !locked} class="reveal-fill">
   {#snippet skeleton()}
     <div>
       <Skeleton class="skeleton-ink h-6 w-28" />

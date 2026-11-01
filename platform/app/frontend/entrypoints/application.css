@@ -142,6 +142,18 @@
   padding-inline: 1rem;
 }
 
+/* A Reveal that fills a flex column and lets its content shrink to it, so a list inside can scroll instead of
+   spilling over what comes after. skullet puts two divs between it and the content, so the column is carried through
+   them. Unlayered like the rule above, since skullet's own pane display would beat a utility. */
+.reveal-fill,
+.reveal-fill > [skullet-pane],
+.reveal-fill > [skullet-pane] > * {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+}
+
 @utility skeleton-ink {
   @apply rounded-sm;
   --skullet-base: color-mix(in oklab, var(--color-ink) 10%, transparent);
