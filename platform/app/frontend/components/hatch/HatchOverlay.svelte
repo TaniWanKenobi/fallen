@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { chunk } from '@/lib/chunks'
   import { hatch, hatchSeen, petState } from '@/lib/pet.svelte'
   import { shared } from '@/lib/shared.svelte'
 
@@ -21,7 +22,7 @@
   })
 
   let welcomeScene: Promise<typeof import('./HatchWelcome.svelte')> | undefined
-  const loadWelcome = () => (welcomeScene ??= import('./HatchWelcome.svelte'))
+  const loadWelcome = () => (welcomeScene ??= chunk(import('./HatchWelcome.svelte')))
   $effect(() => {
     if (petState.hatching?.welcome) loadWelcome()
   })
@@ -69,7 +70,7 @@
 <svelte:window {onkeydown} />
 
 {#if petState.hatching && !hatchClosed}
-  {#await import('./EggHatch.svelte') then { default: EggHatch }}
+  {#await chunk(import('./EggHatch.svelte')) then { default: EggHatch }}
     <EggHatch pet={petState.hatching.pet} teaser={petState.hatching.teaser} {handoff} onclose={hatchDone} />
   {/await}
 {/if}

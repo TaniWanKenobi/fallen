@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte'
+  import { chunk } from '@/lib/chunks'
   import { fade } from 'svelte/transition'
   import { shared } from '@/lib/shared.svelte'
   import { petState } from '@/lib/pet.svelte'
@@ -37,7 +38,7 @@
   $effect(() => {
     petState.onboarding = tour.open
   })
-  const load = () => import('./Onboarding.svelte')
+  const load = () => chunk(import('./Onboarding.svelte'))
   // The scene's own exit runs for 0.25s; let it finish before the overlay fades.
   const SCENE_EXIT_MS = 250
 

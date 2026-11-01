@@ -17,6 +17,7 @@
   import Wordmark from '@/components/Wordmark.svelte'
   import { docs, home, signIn, slackAvatar, welcome } from '@/routes'
   import { csrfToken } from '@/lib/csrf'
+  import { chunk } from '@/lib/chunks'
   import { buildTime, travellers } from '@/lib/program'
   import { shared } from '@/lib/shared.svelte'
 
@@ -174,7 +175,7 @@
   // The WebGL effects start after the page has painted.
   let LandingScene: Component | undefined = $state()
   onMount(async () => {
-    LandingScene = (await import('@/components/shaders/LandingScene.svelte')).default
+    LandingScene = (await chunk(import('@/components/shaders/LandingScene.svelte'))).default
   })
 </script>
 

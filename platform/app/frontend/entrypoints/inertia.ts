@@ -1,5 +1,6 @@
 import { createInertiaApp, router, type ResolvedComponent } from '@inertiajs/svelte'
 import DefaultLayout from '@/layouts/DefaultLayout.svelte'
+import { chunk, untilReload } from '@/lib/chunks'
 import '@/lib/toasts'
 import '@/entrypoints/application.css'
 
@@ -9,7 +10,7 @@ const pages = import.meta.glob<ResolvedComponent>('../pages/**/*.svelte')
 
 // Loaded on its own so the SDK stays out of the main bundle. The meta tag is only rendered when SENTRY_FRONTEND_DSN is set.
 const sentryDsn = document.querySelector<HTMLMetaElement>('meta[name="sentry-dsn"]')?.content
-if (sentryDsn) import('@/lib/sentry').then(({ initSentry }) => initSentry(sentryDsn))
+if (sentryDsn) chunk(import('@/lib/sentry')).then(({ initSentry }) => initSentry(sentryDsn))
 
 // Lets ApplicationController#sync_browser_timezone keep users' timezone current without asking.
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -33,9 +34,8 @@ function reloadOnce() {
 window.addEventListener('vite:preloadError', (event) => {
   if (reloadOnce()) event.preventDefault()
 })
-// While the reload is underway, never settle, so Inertia doesn't render a broken page and Sentry doesn't get a
-// rejection for a chunk the reload is about to fix.
-const untilReload = () => new Promise<never>(() => {})
+// While the reload is underway, never settle (untilReload), so Inertia doesn't render a broken page and Sentry doesn't
+// get a rejection for a chunk the reload is about to fix.
 function reloadForMissingChunk(error: unknown) {
   if (reloadOnce()) return untilReload()
   throw error
@@ -45,10 +45,7 @@ createInertiaApp({
   resolve: (name) => {
     const page = pages[`../pages/${name}.svelte`]
     if (!page) throw new Error(`Missing Inertia page component: app/frontend/pages/${name}.svelte`)
-    // Vite resolves to undefined when the preloadError listener above has cancelled the error to reload.
-    return page()
-      .then((component) => component ?? untilReload())
-      .catch(reloadForMissingChunk)
+    return chunk(page()).catch(reloadForMissingChunk)
   },
   // Pages can override this with `export { default as layout } from '...'` in a <script module> block.
   layout: () => DefaultLayout,

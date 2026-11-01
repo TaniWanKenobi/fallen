@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { chunk } from '@/lib/chunks'
+
   // A placeholder in skullet's shimmer: one diagonal highlight sweeps the whole page, and every skeleton on it shows
   // its slice of that same sweep, however late it mounts. Size and corners come from `class`, and skullet's bar fills
   // them; the colours come from --skullet-base and --skullet-highlight (application.css and admin.css). skullet is
@@ -10,7 +12,7 @@
 
   const fill = (node: HTMLElement) => {
     let gone = false
-    import('skullet').then(({ createSkeletonBox }) => {
+    chunk(import('skullet')).then(({ createSkeletonBox }) => {
       if (gone) return
       node.append(createSkeletonBox({ width: '100%', height: '100%', radius: 'inherit' }))
       ready = true

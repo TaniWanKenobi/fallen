@@ -1,9 +1,10 @@
 <script lang="ts" module>
   import type { TextMorph } from 'torph'
+  import { chunk } from '@/lib/chunks'
 
   // Fetched as soon as a page that uses Morph loads, so it is usually here before the numbers are
   let Morpher: typeof TextMorph | undefined
-  const loading = import('torph').then((module) => (Morpher = module.TextMorph))
+  const loading = chunk(import('torph')).then((module) => (Morpher = module.TextMorph))
 </script>
 
 <script lang="ts">

@@ -43,6 +43,7 @@
   import { onMount, tick } from 'svelte'
   import { fade, fly } from 'svelte/transition'
   import { styler } from '@/components/dialog/motion'
+  import { chunk } from '@/lib/chunks'
   import plainEgg from '@/assets/onboarding/egg.png'
   import { PET_FORMS, PET_NAMES } from '@/lib/pet.svelte'
   import { H, W, breakShell } from './shell'
@@ -400,7 +401,7 @@
   // A burst of paper confetti out of the egg in every direction, flipping as it falls, on a canvas of its own inside the
   // overlay so it fades with it.
   async function celebrate() {
-    const { default: confetti } = await import('canvas-confetti')
+    const { default: confetti } = await chunk(import('canvas-confetti'))
     if (phase === 'leaving') return
     fire = confetti.create(canvas, { resize: true })
     const box = scene.querySelector('[data-egg]')!.getBoundingClientRect()

@@ -11,6 +11,7 @@
   import type { Editor } from '@tiptap/core'
   import { onMount, type Component, type Snippet } from 'svelte'
   import type { reservePhoto } from '@/lib/journal-editor'
+  import { chunk } from '@/lib/chunks'
   import { uploadImage, type UploadedImage } from '@/lib/uploads'
 
   // Writes like a rich text box and stores Markdown, which is what the site renders and Slack gets a copy of.
@@ -51,7 +52,7 @@
 
   onMount(() => {
     let destroyed = false
-    import('@/lib/journal-editor').then(({ createJournalEditor, reservePhoto }) => {
+    chunk(import('@/lib/journal-editor')).then(({ createJournalEditor, reservePhoto }) => {
       if (destroyed || !mount) return
       reserve = reservePhoto
       editor = createJournalEditor({
