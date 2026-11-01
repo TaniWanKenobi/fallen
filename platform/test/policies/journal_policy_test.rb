@@ -9,4 +9,13 @@ class JournalPolicyTest < ActiveSupport::TestCase
     assert_not JournalPolicy.new(journal.user, journal).update?
     assert JournalPolicy.new(journal.user, journal).destroy?
   end
+
+  test "only the author moves a journal, and never a transferred one" do
+    journal = journals(:first)
+    assert JournalPolicy.new(journal.user, journal).move?
+    assert_not JournalPolicy.new(users(:admin), journal).move?
+
+    journal.source = "transfer"
+    assert_not JournalPolicy.new(journal.user, journal).move?
+  end
 end

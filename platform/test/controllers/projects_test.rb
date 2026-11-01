@@ -123,6 +123,43 @@ class ProjectsTest < ActionDispatch::IntegrationTest
     assert_equal 28, users(:member).reload.xp
   end
 
+  test "moving a journal takes its hours and XP to another of my projects and its Slack reply with it" do
+    journal = journals(:first)
+    xp = journal.xp
+    assert_enqueued_with(job: SyncJournalToSlackJob, args: [ journal, "move", { "channel" => "CJOURNALS", "ts" => [ "1700000001.000100" ], "by_bot" => false } ]) do
+      patch move_journal_path(journal), params: { project_id: projects(:unlinked).public_id }
+    end
+    assert_redirected_to project_path(projects(:station))
+
+    journal.reload
+    assert_equal projects(:unlinked), journal.project
+    assert_not journal.on_slack?
+    assert_equal xp, journal.xp
+    assert_equal 60 + 90, projects(:unlinked).total_minutes
+  end
+
+  test "journals only move to my own projects, and not into or out of an approved one" do
+    journal = journals(:first)
+    patch move_journal_path(journal), params: { project_id: projects(:admins).public_id }
+    assert_response :not_found
+
+    projects(:unlinked).update!(approved: true)
+    assert_no_enqueued_jobs(only: SyncJournalToSlackJob) do
+      patch move_journal_path(journal), params: { project_id: projects(:unlinked).public_id }
+    end
+    assert_equal projects(:station), journal.reload.project
+    assert_equal "Journals can't move into or out of an approved project", flash[:alert]
+  end
+
+  test "the move popup lists my other projects that aren't approved" do
+    props = load_deferred(project_path(projects(:station)), "Projects/Show", "move_targets")
+    assert_equal [ projects(:unlinked).public_id ], props["move_targets"].pluck("id")
+
+    projects(:unlinked).update!(approved: true)
+    props = load_deferred(project_path(projects(:station)), "Projects/Show", "move_targets")
+    assert_empty props["move_targets"]
+  end
+
   test "journals carry images, one photo per two hours" do
     blob = photo("board.png")
     assert_no_difference -> { Journal.count } do

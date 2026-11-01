@@ -49,9 +49,10 @@ class MessageEvent < SlackBot::Event
   end
 
   # A journal written on the web and posted as the person arrives here too. The job records its ts
-  # right after posting, but the event can beat it; a same-text journal that is still unsent is the echo.
+  # right after posting, but the event can beat it; a same-text journal that is still unsent is the echo. A moved
+  # journal is posted afresh too, long after it was written.
   def echo_of_web_journal?(project)
-    project.journals.kept.where(user: user, slack_ts: nil, body: text).where(created_at: 10.minutes.ago..).exists?
+    project.journals.kept.where(user: user, slack_ts: nil, body: text).where(updated_at: 10.minutes.ago..).exists?
   end
 
   # Project anchors are posted as the person but carry Fallen's bot_id, so from_bot? has already let them through.

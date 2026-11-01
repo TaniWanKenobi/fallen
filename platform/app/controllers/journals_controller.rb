@@ -3,7 +3,7 @@ class JournalsController < ApplicationController
   skip_after_action :verify_authorized # Re-added below: Rails raises on the `except: :index` default without an index action
   after_action :verify_authorized
   before_action :set_project, only: :create
-  before_action :set_journal, only: %i[update destroy]
+  before_action :set_journal, only: %i[update destroy move]
 
   def create
     journal = @project.journals.build(journal_params.merge(user: current_user, source: "web"))
@@ -35,6 +35,20 @@ class JournalsController < ApplicationController
     @journal.discard
     SyncJournalToSlackJob.perform_later(@journal, "delete")
     redirect_to project_path(@journal.project), notice: "Journal deleted."
+  end
+
+  def move
+    authorize @journal
+    from = @journal.project
+    slack = @journal.slack_location
+    target = Project.kept.teamed_with(current_user).find_by_public_id!(params.expect(:project_id))
+
+    if @journal.move_to(target)
+      SyncJournalToSlackJob.perform_later(@journal, "move", slack)
+      redirect_to project_path(from), notice: "Journal moved to #{target.title}."
+    else
+      redirect_to project_path(from), alert: @journal.errors.full_messages.to_sentence
+    end
   end
 
   private

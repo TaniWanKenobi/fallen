@@ -6,16 +6,18 @@
   import { journals } from '@/routes'
   import type { Journal } from '@/types'
 
-  // summer-of-making's devlog card on the glass: who and when on top with a "more" menu for whoever wrote it, then
-  // the write-up and photos.
+  // summer-of-making's devlog card on the glass: who and when on top with a "more" menu (edit, move, delete) for
+  // whoever wrote it, then the write-up and photos.
   let {
     journal,
     editable,
     onEdit,
+    onMove,
   }: {
     journal: Journal
     editable: boolean
     onEdit: (journal: Journal) => void
+    onMove: (journal: Journal) => void
   } = $props()
 
   // Photos the writing doesn't already show (Slack journals, and older ones from before photos went inline).
@@ -116,6 +118,12 @@
                 role="menuitem"
                 class="w-full cursor-pointer px-4 py-2.5 text-left text-white hover:bg-white/10"
                 onclick={() => ((menuOpen = false), onEdit(journal))}>Edit</button
+              >
+              <button
+                type="button"
+                role="menuitem"
+                class="w-full cursor-pointer px-4 py-2.5 text-left text-white hover:bg-white/10"
+                onclick={() => ((menuOpen = false), onMove(journal))}>Move</button
               >
             {/if}
             <button

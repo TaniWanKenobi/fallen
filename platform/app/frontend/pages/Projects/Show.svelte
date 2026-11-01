@@ -7,6 +7,7 @@
   import EditProjectModal from '@/components/EditProjectModal.svelte'
   import JournalComposer from '@/components/JournalComposer.svelte'
   import JournalItem from '@/components/JournalItem.svelte'
+  import MoveJournalModal from '@/components/MoveJournalModal.svelte'
   import type { LapseStatus } from '@/components/LapsePicker.svelte'
   import Pagination from '@/components/Pagination.svelte'
   import ProjectBanner from '@/components/ProjectBanner.svelte'
@@ -24,7 +25,7 @@
   import * as sfx from '@/lib/sfx'
   import type { WritingCheckMode } from '@/lib/writingCheck'
   import { stagger } from '@/lib/stagger'
-  import type { Journal, Pagy, Person, Project } from '@/types'
+  import type { Journal, Pagy, Person, Project, ProjectChoice } from '@/types'
 
   let {
     project,
@@ -34,6 +35,7 @@
     direct_upload_url,
     team,
     people,
+    move_targets,
     lapse,
     writing_check,
     can,
@@ -47,6 +49,8 @@
     team?: TeamStatus
     // Optional: only sent while the invite popup searches for someone.
     people?: Person[]
+    // Optional: only sent while a journal's "Move" popup is open.
+    move_targets?: ProjectChoice[]
     // Deferred, and null on a project the person is not on the team of.
     lapse?: LapseStatus | null
     // How "Log journal" checks the writing first (WritingCheck.mode_for).
@@ -64,6 +68,7 @@
   let composer: { open: boolean; journal: Journal | null } = $state({ open: false, journal: null })
   let editing = $state(false)
   let inviting = $state(false)
+  let moving = $state<Journal | null>(null)
   const me = $derived(shared().auth.user?.id)
 
   function write(journal: Journal | null = null) {
@@ -221,7 +226,14 @@
             </h2>
             <ol {@attach stagger} class="stagger-in space-y-5 [--stagger-step:70ms]">
               {#each journals as journal (journal.id)}
-                <li><JournalItem {journal} editable={journal.author.id === me} onEdit={write} /></li>
+                <li>
+                  <JournalItem
+                    {journal}
+                    editable={journal.author.id === me}
+                    onEdit={write}
+                    onMove={(journal) => (moving = journal)}
+                  />
+                </li>
               {/each}
             </ol>
             <Pagination
@@ -250,6 +262,10 @@
 
 {#if inviting && team}
   <InviteModal {project} {team} {people} onClose={() => (inviting = false)} />
+{/if}
+
+{#if moving}
+  <MoveJournalModal journal={moving} targets={move_targets} onClose={() => (moving = null)} />
 {/if}
 
 {#if editing}

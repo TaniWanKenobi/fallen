@@ -34,6 +34,8 @@ class ProjectsController < ApplicationController
       journals: JournalSerializer.render(journals),
       team: team_props(@project, invite: policy.invite?),
       people: InertiaRails.optional { people_to_invite(@project, params[:people_query]) if policy.invite? },
+      # Optional: only sent when someone opens "Move" on one of their journals here (Journal#move_to).
+      move_targets: InertiaRails.optional { ProjectChoiceSerializer.render(move_targets) },
       pagy: pagy_props(pagy),
       slack: slack_props,
       direct_upload_url: uploads_path,
@@ -87,6 +89,12 @@ class ProjectsController < ApplicationController
   end
 
   private
+
+  def move_targets
+    return [] if @project.approved?
+
+    Project.kept.teamed_with(current_user).where(approved_at: nil).where.not(id: @project.id).order(:title)
+  end
 
   def set_project
     @project = Project.kept.find_by_public_id!(params[:id])

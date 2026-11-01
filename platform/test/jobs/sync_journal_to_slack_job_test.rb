@@ -184,4 +184,28 @@ class SyncJournalToSlackJobTest < ActiveJob::TestCase
       assert_equal journals(:first).slack_ts, slack.calls_to(:chat_delete).first[:ts]
     end
   end
+
+  test "a moved journal comes down from the old thread and is posted in the new one" do
+    journal = journals(:first)
+    journal.update_columns(slack_parts: [ { "ts" => journal.slack_ts, "text" => "Soldered" }, { "ts" => "1700000001.000200", "text" => "the board" } ])
+    from = journal.slack_location
+    target = users(:member).projects.create!(title: "Robot arm", slack_channel_id: "CJOURNALS", slack_thread_ts: "1700000000.000300")
+    assert journal.move_to(target)
+
+    with_fake_slack do |slack|
+      SyncJournalToSlackJob.perform_now(journal, "move", from)
+      assert_equal [ "1700000001.000100", "1700000001.000200" ], slack.calls_to(:chat_delete).map { |delete| delete[:ts] }
+      assert_equal "1700000000.000300", slack.calls_to(:chat_postMessage).sole[:thread_ts]
+    end
+    assert journal.reload.on_slack?
+    assert_nil Journal.find_by_slack_message("CJOURNALS", "1700000001.000200")
+  end
+
+  test "a journal written in Slack goes back in Slack's own markup, broadcasts taken out" do
+    journal = journals(:first)
+    journal.body = "Fixed *the* <https://x.test|board> &amp; told <@U123> <!channel>"
+    text = SlackMessages.journal(journal)[:text]
+    assert_includes text, "Fixed *the* <https://x.test|board> &amp; told <@U123>"
+    assert_no_match(/<!channel>/, text)
+  end
 end

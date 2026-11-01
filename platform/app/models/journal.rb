@@ -167,6 +167,27 @@ class Journal < ApplicationRecord
     @picked_timelapses = timelapses.to_a
   end
 
+  # Where its Slack copy is, for SyncJournalToSlackJob to take down after a move: every reply it spans.
+  def slack_location
+    return nil unless on_slack?
+
+    { "channel" => slack_channel_id, "ts" => [ slack_ts, *slack_parts.map { |part| part["ts"] } ].uniq, "by_bot" => slack_posted_by_bot }
+  end
+
+  # Moves it to another project its author is on the team of, with its hours, photos, timelapses and XP. It lets go
+  # of its Slack copy here, so taking that down doesn't delete it (MessageEvent); the controller hands the old place
+  # to SyncJournalToSlackJob. An approved project was reviewed as it stands, so nothing moves into or out of one.
+  def move_to(target)
+    errors.clear
+    errors.add(:base, "Transferred journals stay on their project") if transferred?
+    errors.add(:project, "is already this one") if target == project
+    errors.add(:project, "must be one you're on the team of") unless target.on_team?(user)
+    errors.add(:base, "Journals can't move into or out of an approved project") if project.approved? || target.approved?
+    return false if errors.any?
+
+    update(project: target, slack_channel_id: nil, slack_ts: nil, slack_parts: [], slack_posted_by_bot: false)
+  end
+
   def slack_message_edited(ts, text)
     return update(body: text) if slack_parts.empty?
 

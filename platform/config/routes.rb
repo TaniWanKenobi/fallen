@@ -57,7 +57,9 @@ Rails.application.routes.draw do
   resources :writing_checks, only: %i[create show]
 
   resources :projects do
-    resources :journals, only: %i[create update destroy], shallow: true
+    resources :journals, only: %i[create update destroy], shallow: true do
+      patch :move, on: :member
+    end
     # Teams: invites by name, the link anyone can join with, and leaving or taking someone off.
     resources :invites, controller: :project_invites, only: %i[create show destroy], shallow: true do
       post :accept, on: :member

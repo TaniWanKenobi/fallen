@@ -5,6 +5,7 @@ class JournalPolicy < ApplicationPolicy
   # A transferred journal is a copy of what was written in the other program (ProjectTransfer).
   def update? = owner? && !record.transferred?
   def destroy? = owner?
+  def move? = update?
 
   class Scope < ApplicationPolicy::Scope
     def resolve = scope.kept.where(user: user)

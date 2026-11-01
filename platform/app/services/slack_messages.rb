@@ -24,9 +24,12 @@ module SlackMessages
   end
 
   # The photos go under the message as image attachments rather than links, so the ones the editor embedded in the
-  # body (as Markdown images pointing at the site) are taken out of the text.
+  # body (as Markdown images pointing at the site) are taken out of the text. One written in Slack is already in
+  # Slack's own markup, so it goes back as it was, less any broadcast.
   def journal(journal)
-    text = mrkdwn(without_embedded_images(journal.body)).gsub(/\n{3,}/, "\n\n").strip
+    body = without_embedded_images(journal.body)
+    text = journal.from_slack? ? defang(body) : mrkdwn(body)
+    text = text.gsub(/\n{3,}/, "\n\n").strip
     blocks = SlackBot::Blocks.sections(text)
     # Timelapses are private to the person and staff, so the public thread never links one.
     blocks << footer(journal_url(journal), *(":stopwatch: #{journal.duration_text}" if journal.hours_logged?))

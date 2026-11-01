@@ -1,5 +1,5 @@
-# Mirrors a web-written journal into the project's Slack thread: create, update or delete. Transferred journals
-# (ProjectTransfer) were written in another program and stay off Slack.
+# Mirrors a web-written journal into the project's Slack thread: create, update, delete, or move to another
+# project's thread. Transferred journals (ProjectTransfer) were written in another program and stay off Slack.
 class SyncJournalToSlackJob < ApplicationJob
   queue_as :slack
   retry_on Slack::Web::Api::Errors::TooManyRequestsError, wait: :polynomially_longer, attempts: 5
@@ -7,13 +7,15 @@ class SyncJournalToSlackJob < ApplicationJob
   # connect or skip.
   discard_on SlackMessaging::NotConnected
 
-  def perform(journal, action)
+  # `from` is where a moved journal's Slack copy was (Journal#slack_location).
+  def perform(journal, action, from = nil)
     return unless SlackMessaging.configured?
 
     case action
     when "create" then create(journal)
     when "update" then update(journal)
     when "delete" then delete(journal)
+    when "move" then move(journal, from)
     end
   end
 
@@ -36,6 +38,17 @@ class SyncJournalToSlackJob < ApplicationJob
     SlackMessaging.update(journal.user, channel: journal.slack_channel_id, ts: journal.slack_ts, by_bot: journal.slack_posted_by_bot, **SlackMessages.journal(journal))
   rescue Slack::Web::Api::Errors::CantUpdateMessage, Slack::Web::Api::Errors::MessageNotFound
     nil
+  end
+
+  # The replies come down from the old thread and it is posted afresh in the new one. Ones written in Slack by
+  # someone without a connected token can't be deleted for them, so they stay as ordinary replies.
+  def move(journal, from)
+    Array(from&.dig("ts")).each do |ts|
+      SlackMessaging.delete(journal.user, channel: from["channel"], ts: ts, by_bot: from["by_bot"])
+    rescue SlackMessaging::NotConnected, Slack::Web::Api::Errors::CantDeleteMessage
+      nil
+    end
+    create(journal)
   end
 
   def delete(journal)
