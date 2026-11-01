@@ -15,6 +15,16 @@ class SlackMessagesTest < ActiveSupport::TestCase
     assert_no_match MENTION, anchor[:blocks].to_json
   end
 
+  test "a name stood in for a missing Slack id can't ping anyone" do
+    user = users(:member)
+    user.slack_id = nil
+    user.display_name = "<!channel> @here"
+
+    message = SlackMessages.teammate_joined(projects(:station), user)
+    assert_no_match MENTION, message[:text]
+    assert_no_match MENTION, message[:blocks].to_json
+  end
+
   test "Markdown links only become Slack links for web addresses" do
     text = SlackMessages.mrkdwn("[hi](!channel) [x](@U123) ![y](!subteam^S1) [ok](https://fallen.hackclub.com)")
 

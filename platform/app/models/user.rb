@@ -197,7 +197,7 @@ class User < ApplicationRecord
     avatar.presence || FALLBACK_AVATAR
   end
 
-  def slack_mention = slack_id.present? ? "<@#{slack_id}>" : display_name
+  def slack_mention = slack_id.present? ? "<@#{slack_id}>" : SlackMessages.escape(display_name)
 
   def local_date(time = Time.current) = time.in_time_zone(timezone).to_date
 
