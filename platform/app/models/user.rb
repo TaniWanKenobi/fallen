@@ -109,6 +109,9 @@ class User < ApplicationRecord
   # Finishing onboarding (picking a pet) or linking Slack while sitting in the huddle gets a welcome (HuddleWelcomeJob).
   after_commit :enqueue_slack_onboarding, on: %i[create update], if: :joined_team?
   after_save :revoke_admin_tokens, if: :lost_admin_access?
+  after_create -> { XpEntry.grant_email_signup(self) }
+  # The email signup bonus's DM waits for Slack when someone got the bonus before linking it.
+  after_commit :send_email_signup_dm, on: :update, if: -> { saved_change_to_slack_id? && slack_id_before_last_save.blank? && slack_id.present? }
 
   scope :admins, -> { where("roles @> ARRAY[?]::varchar[]", "admin") }
   scope :with_role, ->(role) { where("roles @> ARRAY[?]::varchar[]", role.to_s) }
@@ -321,6 +324,7 @@ class User < ApplicationRecord
   def hand_over_to!(user)
     projects.update_all(user_id: user.id)
     user.update!(pet: pet) if user.pet.nil? && pet
+    XpEntry.hand_over_email_signup(self, user)
     discard
   end
 
@@ -366,6 +370,11 @@ class User < ApplicationRecord
   end
 
   def revoke_admin_tokens = admin_tokens.live.update_all(revoked_at: Time.current, updated_at: Time.current)
+
+  def send_email_signup_dm
+    entry = xp_entries.kept.find_by(kind: "email_signup")
+    EmailSignupBonusJob.perform_later(entry) if entry
+  end
 
   def roles_are_known
     unknown = roles - ROLES

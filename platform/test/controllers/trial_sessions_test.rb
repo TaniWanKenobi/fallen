@@ -84,6 +84,38 @@ class TrialSessionsTest < ActionDispatch::IntegrationTest
     assert trial.reload.discarded?
   end
 
+  test "a trial account from the big email keeps its bonus and gets the DM once Slack comes with HCA" do
+    travel_to(XpEntry::EMAIL_SIGNUP_UNTIL - 1.hour)
+    get root_path(utm_source: XpEntry::EMAIL_SIGNUP_SOURCE)
+    post trial_session_path, params: { email: "inbox@example.com" }
+    trial = User.find(session[:user_id])
+    assert_equal XpEntry::EMAIL_SIGNUP_BONUS, trial.reload.xp
+
+    with_fake_slack do |slack|
+      perform_enqueued_jobs(only: EmailSignupBonusJob) { sign_in_through_hca("hca_inbox", slack_id: "U0INBOX") }
+      assert_equal [ "U0INBOX" ], slack.calls_to(:chat_postMessage).map { it[:channel] }
+    end
+    assert_equal trial.id, session[:user_id]
+    assert_equal XpEntry::EMAIL_SIGNUP_BONUS, trial.reload.xp
+  end
+
+  test "a trial account from the big email handed to an existing account brings the bonus, once" do
+    member = users(:member)
+    travel_to(XpEntry::EMAIL_SIGNUP_UNTIL - 1.hour)
+    get root_path(utm_source: XpEntry::EMAIL_SIGNUP_SOURCE)
+    post trial_session_path, params: { email: "other@example.com" }
+    trial = User.find(session[:user_id])
+
+    with_fake_slack do |slack|
+      assert_difference -> { member.reload.xp }, XpEntry::EMAIL_SIGNUP_BONUS do
+        perform_enqueued_jobs(only: EmailSignupBonusJob) { sign_in_through_hca(member.hca_id) }
+      end
+      assert_equal [ member.slack_id ], slack.calls_to(:chat_postMessage).map { it[:channel] }
+    end
+    assert_equal 0, trial.reload.xp
+    assert_equal [ member.id ], XpEntry.where(kind: "email_signup").where(user: [ member, trial ]).pluck(:user_id)
+  end
+
   test "trial accounts are on no team" do
     user = User.start_trial!(email: "team@example.com")
     user.update!(pet: "lulu")
@@ -100,12 +132,12 @@ class TrialSessionsTest < ActionDispatch::IntegrationTest
     response.parsed_body["props"]["setup"]
   end
 
-  def sign_in_through_hca(hca_id)
+  def sign_in_through_hca(hca_id, slack_id: nil)
     with_env("HCA_CLIENT_ID" => "id", "HCA_CLIENT_SECRET" => "secret") do
       get sign_in_path
       state = Rack::Utils.parse_query(URI(response.location).query)["state"]
       stub_method(HCA, :exchange_code_for_token, { "access_token" => "tok" }) do
-        stub_method(HCA, :identity, { "id" => hca_id, "primary_email" => "#{hca_id}@example.com" }) do
+        stub_method(HCA, :identity, { "id" => hca_id, "primary_email" => "#{hca_id}@example.com", "slack_id" => slack_id }.compact) do
           get hca_callback_path(code: "abc", state: state)
         end
       end

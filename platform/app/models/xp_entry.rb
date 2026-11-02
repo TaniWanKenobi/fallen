@@ -29,6 +29,7 @@
 #  index_xp_entries_on_user_id                             (user_id)
 #  index_xp_entries_on_user_id_and_day                     (user_id,day)
 #  index_xp_entries_on_user_id_and_kind_and_day            (user_id,kind,day) UNIQUE WHERE (source_id IS NULL)
+#  index_xp_entries_one_email_signup_per_user              (user_id) UNIQUE WHERE ((kind)::text = 'email_signup'::text)
 #  index_xp_entries_one_stupendous_per_user                (user_id) UNIQUE WHERE ((kind)::text = 'stupendous'::text)
 #
 # Foreign Keys
@@ -41,10 +42,17 @@ class XpEntry < ApplicationRecord
   has_paper_trail
 
   PER_HOUR = 8
-  KINDS = %w[journal early_bird weekly_bonus team_win stupendous transfer grant].freeze
+  KINDS = %w[journal early_bird weekly_bonus team_win stupendous transfer grant email_signup].freeze
   # Once per person, for the first journal that says "stupendous", spelled right, in any case.
   STUPENDOUS_BONUS = 20
   STUPENDOUS = /stupendous/i
+  # Once per person, for signing up from the big email (its UTM source) by the end of Sunday, Nov 1 anywhere on Earth
+  # (UTC-12, the last timezone to finish the day).
+  EMAIL_SIGNUP_BONUS = 20
+  EMAIL_SIGNUP_SOURCE = "bigemailthing"
+  EMAIL_SIGNUP_UNTIL = Time.utc(2026, 11, 2, 12)
+  # Kinds that aren't the team's doing, so they never count in the race.
+  UNRACED = %w[team_win grant email_signup].freeze
 
   belongs_to :user
   belongs_to :source, polymorphic: true, optional: true
@@ -58,8 +66,8 @@ class XpEntry < ApplicationRecord
   scope :during, ->(week) { kept.where(day: week.days) }
   # XP that counts in the team race. A transfer's was earned in another program (admins can look at it alongside, on
   # /admin/teams), the win is the race's prize (it lands on the last day of the week it was won for and must not add
-  # to that week), and a grant is an admin's (StreakAdjustment), not the team's.
-  scope :raced, ->(transfers: false) { kept.where.not(kind: transfers ? %w[team_win grant] : %w[transfer team_win grant]) }
+  # to that week), a grant is an admin's (StreakAdjustment), not the team's, and the email signup bonus is for signing up.
+  scope :raced, ->(transfers: false) { kept.where.not(kind: transfers ? UNRACED : UNRACED + %w[transfer]) }
   # XP made during the race's week (Week#race_times). A bonus made after a week has ended counts in the week it was
   # made, even when its `day` is in the one before, so a week that has been paid never changes.
   scope :raced_in, ->(week, transfers: false) { raced(transfers:).where(created_at: week.race_times) }
@@ -67,6 +75,7 @@ class XpEntry < ApplicationRecord
   before_create -> { self.pet ||= user.pet }
   after_save :recount_user
   after_create_commit -> { StupendousBonusJob.perform_later(self) }, if: -> { kind == "stupendous" }
+  after_create_commit -> { EmailSignupBonusJob.perform_later(self) }, if: -> { kind == "email_signup" }
 
   # Every journal with hours is worth at least 1 XP, so the first one always hatches the egg.
   def self.journal_xp(minutes, multiplier) = [ (minutes * PER_HOUR / 60.0 * multiplier).round, 1 ].max
@@ -90,6 +99,30 @@ class XpEntry < ApplicationRecord
     user.xp_entries.create_or_find_by!(kind: "stupendous") do |entry|
       entry.assign_attributes(amount: STUPENDOUS_BONUS, day: user.local_date(journal.created_at), source: journal)
     end
+  end
+
+  def self.email_signup?(user)
+    user.signup_source["utm_source"] == EMAIL_SIGNUP_SOURCE && user.created_at <= EMAIL_SIGNUP_UNTIL
+  end
+
+  def self.grant_email_signup(user)
+    return unless email_signup?(user)
+    return if user.xp_entries.exists?(kind: "email_signup")
+
+    user.xp_entries.create_or_find_by!(kind: "email_signup") do |entry|
+      entry.assign_attributes(amount: EMAIL_SIGNUP_BONUS, day: user.local_date(user.created_at))
+    end
+  end
+
+  # A trial account handed over to the account someone already had (User#hand_over_to!) brings its bonus along, unless
+  # that one has it already. The DM goes now if the trial had no Slack to send it to.
+  def self.hand_over_email_signup(trial, user)
+    entry = trial.xp_entries.kept.find_by(kind: "email_signup")
+    return if entry.nil? || user.xp_entries.exists?(kind: "email_signup")
+
+    entry.update!(user: user, pet: user.pet)
+    User.recount_xp(trial.id)
+    EmailSignupBonusJob.perform_later(entry) if trial.slack_id.blank?
   end
 
   # XP each team earned in the race's week, by pet name: each entry for the team it was made on, from people who can

@@ -130,6 +130,19 @@ class XpTest < ActiveSupport::TestCase
     assert user.xp_entries.kept.exists?(kind: "stupendous"), "kept when the journal goes"
   end
 
+  test "signing up from the big email by the end of Nov 1 anywhere earns the bonus once, outside the team race" do
+    from_email = { "utm_source" => XpEntry::EMAIL_SIGNUP_SOURCE }
+    user = travel_to(XpEntry::EMAIL_SIGNUP_UNTIL - 1.minute) { User.start_trial!(email: "inbox@example.com", signup_source: from_email) }
+    assert_equal [ XpEntry::EMAIL_SIGNUP_BONUS ], user.xp_entries.where(kind: "email_signup").pluck(:amount)
+    assert_equal XpEntry::EMAIL_SIGNUP_BONUS, user.reload.xp
+    assert_nil XpEntry.grant_email_signup(user), "paid once"
+    assert_not XpEntry.raced.exists?(kind: "email_signup")
+
+    late = travel_to(XpEntry::EMAIL_SIGNUP_UNTIL + 1.minute) { User.start_trial!(email: "late@example.com", signup_source: from_email) }
+    other = travel_to(XpEntry::EMAIL_SIGNUP_UNTIL - 1.minute) { User.start_trial!(email: "web@example.com", signup_source: { "utm_source" => "google" }) }
+    assert_not XpEntry.where(user: [ late, other ]).exists?(kind: "email_signup")
+  end
+
   test "adding stupendous to a journal later earns nothing" do
     user = users(:member)
     journal = projects(:station).journals.create!(user: user, body: journal_text("x"), duration: "1h", images: [ photo ])

@@ -127,6 +127,8 @@ module SlackMessages
   # DMed by StupendousBonusJob.
   def stupendous_bonus(amount) = { text: "heya! you just received a stupendous +#{amount} XP :)" }
 
+  def email_signup_bonus(amount) = { text: "yoo, thanks for signing up from our email last weekend, here's the promised +#{amount} XP :)" }
+
   def stray_post(text, removed:)
     cta = "If you're looking to start a new project, visit the Fallen platform!"
     start = SlackBot::Blocks.actions(SlackBot::Blocks.button("Start a new project here", "open_fallen", url: new_project_url, style: "primary"))
