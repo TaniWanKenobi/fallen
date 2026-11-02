@@ -10,6 +10,9 @@ default: &default
   variables:
     statement_timeout: <%= ENV.fetch("DB_STATEMENT_TIMEOUT", "5s") %>
     lock_timeout: 5s
+    # Correlated subqueries make the planner guess thousands of times the real cost, which turns on JIT: the admin
+    # funnel spent 2.1s of 2.2s compiling a 70ms query. Nothing here scans enough rows to win that back.
+    jit: "off"
 
 development:
   <<: *default

@@ -35,9 +35,11 @@ class ProgramStats
   ].freeze
   # /admin/stats goes on through the checkpoints to qualifying (QualifyingPace), showing those up to this week's.
   MILESTONES = QualifyingPace.funnel_steps.freeze
-  COUNTS = ->(steps) { steps.each_index.map { |i| "COUNT(*) FILTER (WHERE #{steps[..i].map { |(_, _, sql)| "(#{sql})" }.join(" AND ")})" }.freeze }
-  FUNNEL_COUNTS = COUNTS.(FUNNEL)
-  ADMIN_FUNNEL_COUNTS = COUNTS.(FUNNEL + MILESTONES)
+  # How many steps in a row someone got through. CASE stops at the first they didn't, so each step's subqueries run once
+  # a person, and only for those who got that far; repeating every earlier step in each count timed out.
+  REACHED = ->(steps) { "CASE #{steps.each_with_index.map { |(_, _, sql), i| "WHEN (#{sql}) IS NOT TRUE THEN #{i}" }.join(" ")} ELSE #{steps.size} END".freeze }
+  FUNNEL_REACHED = REACHED.(FUNNEL)
+  ADMIN_FUNNEL_REACHED = REACHED.(FUNNEL + MILESTONES)
   # Signups, and those who ever tracked time or wrote a journal.
   SOURCE_COUNTS = [ "COUNT(*)", "COUNT(*) FILTER (WHERE #{FUNNEL.to_h { |key, _, sql| [ key, "(#{sql})" ] }.values_at("tracked", "journaled").join(" OR ")})" ].freeze
 
@@ -118,8 +120,9 @@ class ProgramStats
   end
 
   def funnel
-    steps, sql = @milestones ? [ FUNNEL + MILESTONES, ADMIN_FUNNEL_COUNTS ] : [ FUNNEL, FUNNEL_COUNTS ]
-    counts = User.kept.where(is_banned: false, created_at: from..).pick(*sql.map { Arel.sql(it) })
+    steps, reached = @milestones ? [ FUNNEL + MILESTONES, ADMIN_FUNNEL_REACHED ] : [ FUNNEL, FUNNEL_REACHED ]
+    people = User.kept.where(is_banned: false, created_at: from..).group(Arel.sql(reached)).count
+    counts = steps.each_index.map { |i| people.sum { |got, count| got > i ? count : 0 } }
     this_week = QualifyingPace.checkpoint(QualifyingPace.today(@now))
     steps.zip(counts).filter_map { |(key, label, _, due), count| { key:, label:, count: } unless due && due > this_week }
   end
