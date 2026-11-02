@@ -78,6 +78,20 @@
         <XpCard {xp} />
       {/if}
 
+      <section class="glass">
+        <SettingRow
+          title="Got thoughts on Fallen?"
+          description="Tell us what to fix or add. Two random people who fill out the form get 15 XP."
+        >
+          <a
+            href="https://forms.hackclub.com/fallenfeedback"
+            target="_blank"
+            rel="noopener"
+            class="pill-glass">Share feedback ↗</a
+          >
+        </SettingRow>
+      </section>
+
       <section class="glass divide-y divide-white/10" aria-labelledby="hours">
         <h2 id="hours" class="glass-heading">Your hours</h2>
         {#if goal && xp?.team}
@@ -133,17 +147,6 @@
           </div>
         </section>
       {/if}
-
-      <p class="pt-4 text-center font-outfit text-sm text-sky-ice/50">
-        Got thoughts on Fallen?
-        <a
-          href="https://forms.hackclub.com/fallenfeedback"
-          target="_blank"
-          rel="noopener"
-          class="text-sky-ice/80 underline decoration-sky-ice/30 underline-offset-4 transition-colors hover:text-white hover:decoration-white/60"
-          >Share your feedback ↗</a
-        >. Two random people who fill it out get 15 XP.
-      </p>
     </div>
   {/if}
 </Reveal>
