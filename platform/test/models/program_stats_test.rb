@@ -64,6 +64,15 @@ class ProgramStatsTest < ActiveSupport::TestCase
     assert_equal 0, counts["returned"]
   end
 
+  test "the admin funnel goes on through each checkpoint up to this week's, then qualifying" do
+    travel_to Time.utc(2026, 11, 4, 17)
+    User.update_all(created_at: 1.day.ago)
+
+    keys = ProgramStats.new(range: "7d", milestones: true).funnel.map { it[:key] }
+    assert_equal %w[pace_2026-10-25 pace_2026-11-01 pace_2026-11-08 qualified], keys.last(4)
+    assert_equal ProgramStats::FUNNEL.size, ProgramStats.new(range: "7d").funnel.size, "the public funnel stops at journaling"
+  end
+
   test "sources group signups by UTM source, then ref, then referring site, and sum the small ones" do
     User.update_all(created_at: 1.day.ago, signup_source: {})
     users(:member).update_columns(signup_source: { "utm_source" => "bigemailthing", "ref" => "slack-join" })

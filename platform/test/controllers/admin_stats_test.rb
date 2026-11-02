@@ -13,7 +13,7 @@ class AdminStatsTest < ActionDispatch::IntegrationTest
     sign_in_as users(:admin)
     props = load_deferred(admin_stats_path(range: "all"), "Admin/Stats/Show", "active", "daily", "funnel")
 
-    assert_equal ProgramStats::FUNNEL.size, props["funnel"].size
+    assert_equal "qualified", props["funnel"].last["key"], "with the checkpoints to qualifying"
     assert props["daily"]["days"].any?
   end
 

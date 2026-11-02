@@ -33,7 +33,11 @@ class ProgramStats
       (SELECT COUNT(DISTINCT #{LOCAL_DATE.('journals.created_at')}) FROM journals WHERE journals.user_id = users.id AND journals.discarded_at IS NULL) >= 2
     SQL
   ].freeze
-  FUNNEL_COUNTS = FUNNEL.each_index.map { |i| "COUNT(*) FILTER (WHERE #{FUNNEL[..i].map { |(*, sql)| "(#{sql})" }.join(" AND ")})" }.freeze
+  # /admin/stats goes on through the checkpoints to qualifying (QualifyingPace), showing those up to this week's.
+  MILESTONES = QualifyingPace.funnel_steps.freeze
+  COUNTS = ->(steps) { steps.each_index.map { |i| "COUNT(*) FILTER (WHERE #{steps[..i].map { |(_, _, sql)| "(#{sql})" }.join(" AND ")})" }.freeze }
+  FUNNEL_COUNTS = COUNTS.(FUNNEL)
+  ADMIN_FUNNEL_COUNTS = COUNTS.(FUNNEL + MILESTONES)
   # Signups, and those who ever tracked time or wrote a journal.
   SOURCE_COUNTS = [ "COUNT(*)", "COUNT(*) FILTER (WHERE #{FUNNEL.to_h { |key, _, sql| [ key, "(#{sql})" ] }.values_at("tracked", "journaled").join(" OR ")})" ].freeze
 
@@ -60,9 +64,11 @@ class ProgramStats
 
   attr_reader :range
 
-  def initialize(range:, now: Time.current)
+  # `milestones` adds the checkpoints on the way to qualifying to the funnel (QualifyingPace), for /admin/stats.
+  def initialize(range:, now: Time.current, milestones: false)
     @range = RANGES.key?(range) ? range : DEFAULT_RANGE
     @now = now
+    @milestones = milestones
   end
 
   # Builders (tracked time or wrote a journal) in the last day, week and 30 days, whatever the range.
@@ -112,8 +118,10 @@ class ProgramStats
   end
 
   def funnel
-    counts = User.kept.where(is_banned: false, created_at: from..).pick(*FUNNEL_COUNTS.map { Arel.sql(it) })
-    FUNNEL.zip(counts).map { |(key, label), count| { key:, label:, count: } }
+    steps, sql = @milestones ? [ FUNNEL + MILESTONES, ADMIN_FUNNEL_COUNTS ] : [ FUNNEL, FUNNEL_COUNTS ]
+    counts = User.kept.where(is_banned: false, created_at: from..).pick(*sql.map { Arel.sql(it) })
+    this_week = QualifyingPace.checkpoint(QualifyingPace.today(@now))
+    steps.zip(counts).filter_map { |(key, label, _, due), count| { key:, label:, count: } unless due && due > this_week }
   end
 
   # Signups by source, most first, and how many of them tracked time or journaled. No source is "", and the small ones are

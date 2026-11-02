@@ -90,6 +90,13 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     # Recent journals and the huddle, pauses and timer sessions for active builders; the days from signups, visits, journals and the huddle, pauses and timer sessions;
     # the funnel in one; the sources in one; the AI-writing checks in one.
     assert_query_budget(14) { load_deferred(admin_stats_path, "Admin/Stats/Show", "active", "daily", "funnel", "sources", "writing") }
+    assert_query_budget(3) { get admin_qualifying_path }
+    # Everyone's statuses and the extra tabs' counts in two, the history from everyone's first approval and XP by day,
+    # the spread and the hours funnel in one each.
+    assert_query_budget(6) { load_deferred(admin_qualifying_path, "Admin/Qualifying/Show", "summary", "history", "spread", "hours_funnel") }
+    assert_query_budget(8) { load_deferred(admin_qualifying_path, "Admin/Qualifying/Show", "rows", "pagy") }
+    # Who is locking in, the top of them, and their journals.
+    assert_query_budget(3) { load_deferred(admin_qualifying_path, "Admin/Qualifying/Show", "locking_in") }
     assert_query_budget(4) { get admin_teams_path }
     # Every week's XP by team, which were paid and the chart's running totals; then the week's teams, chart, leaders
     # (with their hours, pet changes and days with XP) and projects.

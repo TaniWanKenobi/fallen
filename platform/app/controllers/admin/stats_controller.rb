@@ -4,7 +4,7 @@ class Admin::StatsController < Admin::ApplicationController
 
   def show
     authorize [ :admin, :stats ]
-    stats = ProgramStats.new(range: params[:range])
+    stats = ProgramStats.new(range: params[:range], milestones: true)
 
     render inertia: "Admin/Stats/Show", props: {
       range: stats.range,

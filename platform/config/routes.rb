@@ -110,6 +110,7 @@ Rails.application.routes.draw do
 
       get "stats" => "stats#show", as: :stats
       get "teams" => "teams#show", as: :teams
+      get "qualifying" => "qualifying#show", as: :qualifying
       post "teams/pay" => "teams#pay", as: :pay_teams
       get "insights(/:kind)" => "insights#show", as: :insights, constraints: { kind: /requests|jobs/ }
 
