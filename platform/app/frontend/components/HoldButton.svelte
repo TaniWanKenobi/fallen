@@ -3,7 +3,8 @@
   import * as sfx from '@/lib/sfx'
 
   // For things that are a pain to undo: it only goes through once held for `seconds`. Holding fills it with a
-  // rising hum and a growing shiver; letting go early drains it back.
+  // rising hum and a growing shiver; letting go early drains it back and says to keep holding for a moment, so a tap
+  // isn't silently ignored.
   let {
     label,
     holding: holdingLabel = 'Keep holding',
@@ -25,6 +26,8 @@
   let shake = $state(0)
   let held = $state(false)
   let finished = $state(false)
+  let nudged = $state(false)
+  let nudge = 0
   let frame = 0
   let hum: { stop(): void } | null = null
 
@@ -44,6 +47,8 @@
   function start() {
     if (held || finished) return
     held = true
+    nudged = false
+    clearTimeout(nudge)
     const left = (1 - progress) * seconds
     hum = sfx.charge(left)
     animate(progress, 1, left * 1000, () => {
@@ -62,9 +67,12 @@
     hum?.stop()
     sfx.cancel()
     animate(progress, 0, progress * 300)
+    nudged = true
+    clearTimeout(nudge)
+    nudge = window.setTimeout(() => (nudged = false), 2000)
   }
 
-  const shown = $derived(finished ? 2 : held && progress > 0 ? 1 : 0)
+  const shown = $derived(finished ? 2 : (held && progress > 0) || nudged ? 1 : 0)
   const isKey = (event: KeyboardEvent) => event.key === ' ' || event.key === 'Enter'
 </script>
 
