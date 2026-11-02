@@ -133,6 +133,17 @@
           </div>
         </section>
       {/if}
+
+      <p class="pt-4 text-center font-outfit text-sm text-sky-ice/50">
+        Got thoughts on Fallen?
+        <a
+          href="https://forms.hackclub.com/fallenfeedback"
+          target="_blank"
+          rel="noopener"
+          class="text-sky-ice/80 underline decoration-sky-ice/30 underline-offset-4 transition-colors hover:text-white hover:decoration-white/60"
+          >Share your feedback ↗</a
+        >. Two random people who fill it out get 15 XP.
+      </p>
     </div>
   {/if}
 </Reveal>
