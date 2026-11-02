@@ -48,8 +48,11 @@ module SlackHuddle
   end
 
   # The huddle running in the channel now, found from the message Slack posts when one starts. Nil when none is.
+  # `latest` makes Slack page back from now; with only `oldest` it pages forward from LOOKBACK, so a channel busier
+  # than `limit` messages a day hides the new huddle behind the one that just ended.
   def live_room(channel = channel_id)
-    body = client.call("conversations.history", channel: channel, oldest: LOOKBACK.ago.to_i, limit: 200)
+    now = Time.current
+    body = client.call("conversations.history", channel: channel, oldest: (now - LOOKBACK).to_i, latest: now.to_i, limit: 200)
     message = Array(body["messages"]).find { |m| m["subtype"] == "huddle_thread" && m["room"].is_a?(Hash) }
     return unless message
 

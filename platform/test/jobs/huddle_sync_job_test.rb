@@ -21,6 +21,17 @@ class HuddleSyncJobTest < ActiveSupport::TestCase
     assert_nil huddle.sessions.find_by(slack_id: "U0STRANGER").user
   end
 
+  test "reads the channel back from now, so a busy day does not hide the new huddle" do
+    browser = fake_browser(history: [ huddle_message("R1", %w[U0BOT U0MEMBER]) ])
+
+    freeze_time do
+      sync(browser)
+
+      _, fields = browser.calls.assoc("conversations.history")
+      assert_equal [ Time.current.to_i, SlackHuddle::LOOKBACK.ago.to_i ], fields.values_at(:latest, :oldest)
+    end
+  end
+
   test "closes the session of someone who left and asks whether they are still on it when they come back" do
     huddle = Huddle.create!(call_id: "R1", channel_id: CHANNEL, thread_ts: "1700000000.000100", started_at: 1.hour.ago)
     huddle.sessions.create!(slack_id: "U0MEMBER", user: users(:member), joined_at: 30.minutes.ago, mode: "working", goal: "Case")
