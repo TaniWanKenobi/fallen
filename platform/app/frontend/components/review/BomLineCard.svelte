@@ -3,7 +3,9 @@
   import NumberInput from '@/components/NumberInput.svelte'
   import ReasonChips from '@/components/review/ReasonChips.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
-  import { pop, reveal } from '@/components/review/motion'
+  import { animate } from 'motion'
+  import { prefersReducedMotion } from '@/components/dialog/motion'
+  import { reveal } from '@/components/review/motion'
   import {
     itemDecided,
     itemFunded,
@@ -78,6 +80,19 @@
     }
     if (out.length < 2 && asked > 1) out.push({ label: '½', cents: Math.round(asked / 2) })
     return out.filter((p) => p.cents > 0 && p.cents < asked).slice(0, 3)
+  })
+
+  // The asked amount, struck through under the funding while a line funds less than it asks. Its space is always
+  // kept, so it fades in and out on a spring without the card changing height.
+  const lowered = $derived(funded != null && funded < asked)
+  let was: HTMLElement
+  $effect(() => {
+    const on = lowered
+    animate(
+      was,
+      { opacity: on ? 1 : 0, y: on ? 0 : -4 },
+      prefersReducedMotion() ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 34 },
+    )
   })
 
   let root: HTMLElement
@@ -191,11 +206,15 @@
             <Morph text={money(funded)} />
           {/if}
         </p>
-        {#if funded != null && funded < asked}
-          <p transition:pop class="font-mono text-[11px] text-muted-foreground line-through">
-            {money(asked)}
-          </p>
-        {/if}
+        <!-- Always there, so the card keeps its height; it only fades in when the line funds less than asked. -->
+        <p
+          bind:this={was}
+          aria-hidden={!lowered}
+          class="font-mono text-[11px] text-muted-foreground line-through"
+          style:opacity={0}
+        >
+          {money(asked)}
+        </p>
       </div>
     </div>
   </div>
