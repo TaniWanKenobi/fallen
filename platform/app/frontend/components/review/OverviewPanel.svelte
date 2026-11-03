@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Morph from '@/components/admin/Morph.svelte'
   import Key from '@/components/review/Key.svelte'
   import CollapsibleCard from '@/components/review/CollapsibleCard.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
@@ -60,7 +61,7 @@
               'font-semibold text-amber-600 dark:text-amber-400',
           ]}
         >
-          {formatMinutes(countedMinutes)}
+          <Morph text={formatMinutes(countedMinutes)} />
         </p>
       </div>
       <div class="px-3 py-2">
@@ -71,7 +72,7 @@
         <p class="mb-0.5 text-xs text-muted-foreground">Asked for / funding</p>
         <p class="font-mono text-sm">
           {money(s.requested_cents)} <span class="text-muted-foreground">→</span>
-          {money(fundedCents)}
+          <Morph text={money(fundedCents)} />
         </p>
       </div>
     </div>

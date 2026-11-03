@@ -2,6 +2,7 @@
   import { Button } from '@/components/admin/ui/button'
   import JournalReviewCard from '@/components/review/JournalReviewCard.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import { formatMinutes } from '@/lib/format'
   import { journalDecided, journalDeflated, type ReviewDraft, type ReviewPage } from '@/lib/review.svelte'
 
@@ -60,13 +61,13 @@
     {#if !readonly}
       <span
         class={[
-          'rounded px-1.5 py-0.5 text-xs',
+          'rounded px-1.5 py-0.5 text-xs transition-colors duration-300',
           open
             ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
             : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
         ]}
       >
-        {open ? `${open} to decide` : 'All decided'}
+        {#if open}<Morph text={open} /> to decide{:else}All decided{/if}
       </span>
     {/if}
     <div class="ml-auto flex items-center gap-1">
@@ -81,8 +82,8 @@
         onChange={(value) => (filter = value)}
         options={[
           { value: 'all', label: 'All', tint: 'gray' },
-          { value: 'open', label: `To decide (${open})`, tint: 'amber' },
-          { value: 'cut', label: `Deflated (${cut})`, tint: 'red' },
+          { value: 'open', label: 'To decide', count: open, tint: 'amber' },
+          { value: 'cut', label: 'Deflated', count: cut, tint: 'red' },
         ]}
       />
     </div>

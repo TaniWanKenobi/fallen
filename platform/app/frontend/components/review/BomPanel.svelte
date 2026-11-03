@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from '@/components/admin/ui/button'
   import Segmented from '@/components/review/Segmented.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import { pop } from '@/components/review/motion'
   import {
     itemFunded,
@@ -56,8 +57,8 @@
   >
     <span class="text-sm"><span class="font-semibold">{items.length}</span> lines</span>
     <span class="font-mono text-sm"
-      >{money(requested)} <span class="text-muted-foreground">asked →</span>
-      <span class="font-semibold">{money(funded)}</span></span
+      ><Morph text={money(requested)} /> <span class="text-muted-foreground">asked →</span>
+      <span class="font-semibold"><Morph text={money(funded)} /></span></span
     >
     {#if !readonly && undecided}
       <span
@@ -182,7 +183,7 @@
               </div>
             </td>
             <td class="py-2 pl-2 text-right font-mono font-semibold tabular-nums"
-              >{out == null ? '' : money(out)}</td
+              >{#if out != null}<Morph text={money(out)} />{/if}</td
             >
           </tr>
         {/each}
@@ -192,9 +193,11 @@
           <td colspan="3" class="py-2 text-xs text-muted-foreground"
             >Owned parts are listed at their price but ask for nothing.</td
           >
-          <td class="px-2 py-2 text-right font-mono tabular-nums">{money(requested)}</td>
+          <td class="px-2 py-2 text-right font-mono tabular-nums"><Morph text={money(requested)} /></td>
           <td></td>
-          <td class="py-2 pl-2 text-right font-mono text-base font-semibold tabular-nums">{money(funded)}</td>
+          <td class="py-2 pl-2 text-right font-mono text-base font-semibold tabular-nums"
+            ><Morph text={money(funded)} /></td
+          >
         </tr>
       </tfoot>
     </table>

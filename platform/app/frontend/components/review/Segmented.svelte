@@ -3,6 +3,7 @@
   import { animate, type AnimationPlaybackControls } from 'motion'
   import { prefersReducedMotion } from '@/components/dialog/motion'
   import type { ReviewTabTint } from '@/components/review/ReviewTabBar.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
 
   // A small choice in the review tab bar's look: a muted track with a raised pill that springs to the picked option,
   // whose label fades to its tint. Used for every call on the review page (rubric answers, journal time, parts).
@@ -14,7 +15,7 @@
     disabled = false,
     size = 'sm',
   }: {
-    options: { value: T; label: string; tint: ReviewTabTint; title?: string }[]
+    options: { value: T; label: string; count?: number; tint: ReviewTabTint; title?: string }[]
     value: T | null | undefined
     onChange: (value: T) => void
     label: string
@@ -63,7 +64,10 @@
         title={option.title}
         data-tint={option.tint}
         class="seg-item"
-        onclick={() => onChange(option.value)}>{option.label}</button
+        onclick={() => onChange(option.value)}
+        >{option.label}{#if option.count != null}&nbsp;<span class="seg-count"
+            >(<Morph text={option.count} />)</span
+          >{/if}</button
       >
     {/each}
   </div>
@@ -114,6 +118,9 @@
   }
   .seg-item:hover:not(:disabled):not([aria-checked='true']) {
     color: color-mix(in oklch, var(--foreground) 80%, transparent);
+  }
+  .seg-count {
+    font-variant-numeric: tabular-nums;
   }
   .seg-item:disabled {
     cursor: default;

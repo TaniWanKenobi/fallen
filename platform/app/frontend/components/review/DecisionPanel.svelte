@@ -6,6 +6,7 @@
   import { Button } from '@/components/admin/ui/button'
   import { Separator } from '@/components/admin/ui/separator'
   import Segmented from '@/components/review/Segmented.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import { appear, reveal } from '@/components/review/motion'
   import Key from '@/components/review/Key.svelte'
   import { Textarea } from '@/components/admin/ui/textarea'
@@ -100,19 +101,19 @@
   <div class="space-y-1.5">
     <p class="text-xs text-muted-foreground">{title}</p>
     <div class="flex items-center gap-2 text-sm">
-      <span class="font-mono whitespace-nowrap text-muted-foreground">{of}</span>
+      <span class="font-mono whitespace-nowrap text-muted-foreground"><Morph text={of} /></span>
       <span class="text-muted-foreground">→</span>
       <span
         class={[
           'font-mono whitespace-nowrap',
           value !== of ? 'font-semibold text-foreground' : 'text-muted-foreground',
-        ]}>{value}</span
+        ]}><Morph text={value} /></span
       >
       {#if !decided && left}
         <span
           transition:appear
           class="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400"
-          >{left} {left === 1 ? noun.replace(/s$/, '') : noun} left</span
+          ><Morph text={left} /> {left === 1 ? noun.replace(/s$/, '') : noun} left</span
         >
       {/if}
     </div>

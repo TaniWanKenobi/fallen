@@ -3,6 +3,7 @@
   import Markdown from '@/components/Markdown.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
+  import Morph from '@/components/admin/Morph.svelte'
   import { pop, reveal } from '@/components/review/motion'
   import { formatDateTime, formatMinutes } from '@/lib/format'
   import { countedMinutes, journalDecided, type JournalCall } from '@/lib/review.svelte'
@@ -247,7 +248,9 @@
       />
       {#if decided && mode !== 'full'}
         <span transition:pop class="text-xs text-muted-foreground">
-          takes off <span class="font-mono text-foreground">{formatMinutes(logged - (counted ?? 0))}</span>
+          takes off <span class="font-mono text-foreground"
+            ><Morph text={formatMinutes(logged - (counted ?? 0))} /></span
+          >
         </span>
       {/if}
     </div>
