@@ -121,7 +121,7 @@
           <img
             src={shot.url}
             alt="Screenshot {i + 1}"
-            class="aspect-[4/3] h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+            class="aspect-[4/3] h-full w-full object-contain transition-transform duration-300 hover:scale-[1.02]"
           />
         </button>
       {/each}
