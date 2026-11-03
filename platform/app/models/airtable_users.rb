@@ -7,11 +7,20 @@
 module AirtableUsers
   module_function
 
-  def sync
-    rows = rows(User.order(:id).to_a)
+  BATCH = 500
+  TOKENS = %w[hca_token slack_user_token lapse_token].freeze
+
+  # Read in batches so no one statement carries the whole table: a worker short of CPU just after a deploy once read
+  # the single 3.5 MB result slowly enough to hit statement_timeout.
+  def sync(batch_size: BATCH)
+    rows = users.find_in_batches(batch_size:).flat_map { rows(it) }
     Airtable.sync(ENV.fetch("AIRTABLE_USERS_TABLE", "Users"), ENV.fetch("AIRTABLE_USERS_SYNC_ID"), rows) if rows.any?
     rows.size
   end
+
+  # Users without their encrypted tokens, which are most of a row's bytes and never uploaded; Slack Connected only needs
+  # to know whether one is set (disconnecting clears it to nil, as ProgramStats assumes).
+  def users = User.select(*(User.column_names - TOKENS), "slack_user_token IS NOT NULL AS slack_token_set")
 
   def rows(users)
     ids = users.map(&:id)
@@ -43,7 +52,7 @@ module AirtableUsers
       "Roles" => user.roles,
       "Timezone" => user.timezone,
       "Pet" => user.pet,
-      "Slack Connected" => user.slack_connected?,
+      "Slack Connected" => user.slack_token_set,
       "XP" => user.xp,
       "XP Multiplier" => user.xp_multiplier.to_f,
       "Streak Freezes" => user.streak_freezes,
