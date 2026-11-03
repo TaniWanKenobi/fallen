@@ -6,38 +6,42 @@
 #
 # Table name: submissions
 #
-#  id               :bigint           not null, primary key
-#  approved_cents   :integer
-#  bom_csv          :text
-#  checks           :jsonb            not null
-#  claim_expires_at :datetime
-#  commit_sha       :string
-#  decided_at       :datetime
-#  feedback         :text
-#  flag_reason      :text
-#  flagged_at       :datetime
-#  internal_reason  :text
-#  kind             :string           default("design"), not null
-#  lock_version     :integer          default(0), not null
-#  made_with        :string           default([]), not null, is an Array
-#  note             :text
-#  repo_url         :string           not null
-#  requested_cents  :integer          default(0), not null
-#  rubric           :jsonb            not null
-#  status           :string           default("pending"), not null
-#  created_at       :datetime         not null
-#  updated_at       :datetime         not null
-#  claimed_by_id    :bigint
-#  project_id       :bigint           not null
-#  repo_snapshot_id :bigint
-#  reviewer_id      :bigint
-#  user_id          :bigint           not null
+#  id                 :bigint           not null, primary key
+#  approved_cents     :integer
+#  bom_csv            :text
+#  checks             :jsonb            not null
+#  claim_expires_at   :datetime
+#  commit_sha         :string
+#  decided_at         :datetime
+#  feedback           :text
+#  flag_reason        :text
+#  flagged_at         :datetime
+#  internal_reason    :text
+#  kind               :string           default("design"), not null
+#  lock_version       :integer          default(0), not null
+#  made_with          :string           default([]), not null, is an Array
+#  note               :text
+#  repo_url           :string           not null
+#  requested_cents    :integer          default(0), not null
+#  review_draft       :jsonb
+#  review_draft_at    :datetime
+#  rubric             :jsonb            not null
+#  status             :string           default("pending"), not null
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  claimed_by_id      :bigint
+#  project_id         :bigint           not null
+#  repo_snapshot_id   :bigint
+#  review_draft_by_id :bigint
+#  reviewer_id        :bigint
+#  user_id            :bigint           not null
 #
 # Indexes
 #
 #  index_submissions_on_claimed_by_id          (claimed_by_id)
 #  index_submissions_on_project_id             (project_id)
 #  index_submissions_on_repo_snapshot_id       (repo_snapshot_id)
+#  index_submissions_on_review_draft_by_id     (review_draft_by_id)
 #  index_submissions_on_reviewer_id            (reviewer_id)
 #  index_submissions_on_status_and_created_at  (status,created_at)
 #  index_submissions_on_user_id                (user_id)
@@ -48,6 +52,7 @@
 #  fk_rails_...  (claimed_by_id => users.id)
 #  fk_rails_...  (project_id => projects.id)
 #  fk_rails_...  (repo_snapshot_id => repo_snapshots.id)
+#  fk_rails_...  (review_draft_by_id => users.id)
 #  fk_rails_...  (reviewer_id => users.id)
 #  fk_rails_...  (user_id => users.id)
 #
@@ -77,6 +82,7 @@ class Submission < ApplicationRecord
   belongs_to :repo_snapshot, optional: true
   belongs_to :reviewer, class_name: "User", optional: true
   belongs_to :claimed_by, class_name: "User", optional: true
+  belongs_to :review_draft_by, class_name: "User", optional: true
   has_many :bom_items, -> { ordered }, dependent: :delete_all, inverse_of: :submission
   has_many :journal_reviews, dependent: :delete_all
   has_one :grant_payout, dependent: :restrict_with_error
@@ -120,6 +126,21 @@ class Submission < ApplicationRecord
   rescue ActiveRecord::RecordNotUnique
     submission.errors.add(:base, "This project is already waiting for review")
     submission
+  end
+
+  # The most an unfinished review can take, written out as JSON.
+  MAX_DRAFT_BYTES = 200.kilobytes
+  DRAFT_KEYS = %w[rubric journals bom feedback internal].freeze
+
+  # Saves an unfinished review (SubmissionReview's fields as the review page holds them) for whoever holds the
+  # submission, so leaving the page loses nothing and the next reviewer starts from it. False when they don't hold it
+  # (someone else does, or it's decided), so a tab left open can't write over another reviewer's work.
+  def save_review_draft(reviewer, data)
+    data = data.to_h.stringify_keys.slice(*DRAFT_KEYS)
+    return false if data.to_json.bytesize > MAX_DRAFT_BYTES
+
+    Submission.pending.where(id:, claimed_by_id: reviewer.id).where(claim_expires_at: Time.current..)
+      .update_all(review_draft: data, review_draft_at: Time.current, review_draft_by_id: reviewer.id, updated_at: Time.current) == 1
   end
 
   # Taken back by the person while it waits, so they can fix something. Nothing about it is kept for review.

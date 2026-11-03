@@ -62,7 +62,8 @@ class SubmissionReview
       covered.each { |journal| record_journal(journal) }
       items.each { |item| record_item(item) }
       submission.update!(status: verdict, reviewer:, rubric:, feedback:, internal_reason:, decided_at: Time.current,
-        approved_cents: verdict == "approved" ? items.sum(&:funded_cents) : nil, claimed_by: nil, claim_expires_at: nil)
+        approved_cents: verdict == "approved" ? items.sum(&:funded_cents) : nil, claimed_by: nil, claim_expires_at: nil,
+        review_draft: nil, review_draft_at: nil, review_draft_by: nil)
       GrantPayout.create!(submission:, user: submission.user, amount_cents: submission.approved_cents) if submission.approved? && submission.approved_cents.positive?
     end
     return false if errors.any?

@@ -14,7 +14,7 @@ class ReviewPageProps
   def props
     project = @submission.project
     Project.preload_teams([ project ])
-    ActiveRecord::Associations::Preloader.new(records: [ @submission ], associations: [ :user, :reviewer, :claimed_by, :bom_items, :grant_payout, :repo_snapshot, { screenshots_attachments: :blob } ]).call
+    ActiveRecord::Associations::Preloader.new(records: [ @submission ], associations: [ :user, :reviewer, :claimed_by, *(:review_draft_by if @submission.review_draft_by_id), :bom_items, :grant_payout, :repo_snapshot, { screenshots_attachments: :blob } ]).call
     journals = SubmissionReview.journals_for(@submission).order(:created_at, :id).includes(:user, :xp_entry, :lapse_timelapses, images_attachments: :blob).to_a
     ids = journals.map(&:id)
     calls = if @submission.decided?
@@ -40,6 +40,11 @@ class ReviewPageProps
         rubric: Submission::RUBRIC, answers: Submission::ANSWERS, journal_reasons: JournalReview::REASONS,
         cut_reasons: BomItem::CUT_REASONS, adjust_reasons: BomItem::ADJUST_REASONS
       },
+      # An unfinished review someone left, to carry on from.
+      draft: @submission.pending? && @submission.review_draft ? {
+        data: @submission.review_draft, at: @submission.review_draft_at,
+        by: @submission.review_draft_by && PersonSerializer.render(@submission.review_draft_by)
+      } : nil,
       claimed: @claimed,
       can: @can
     }

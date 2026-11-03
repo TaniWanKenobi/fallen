@@ -106,6 +106,7 @@ Rails.application.routes.draw do
       resources :submissions, only: %i[index show update] do
         member do
           post :heartbeat
+          patch :draft
           post :release
           post :flag
           post :unflag

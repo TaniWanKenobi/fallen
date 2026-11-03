@@ -66,6 +66,18 @@ class Review::SubmissionsController < Review::ApplicationController
     render json: { held: SubmissionReview.claim(submission, true_user) }
   end
 
+  # The review so far, saved as the reviewer works and when they leave the page (lib/review.svelte.ts).
+  def draft
+    submission = find_submission
+    authorize [ :review, submission ], :claim?
+    data = params.expect(draft: {})&.to_unsafe_h
+    if submission.save_review_draft(true_user, data)
+      render json: { saved: true }
+    else
+      render json: { saved: false }, status: :conflict
+    end
+  end
+
   # Skip: lets go of it and opens the next one.
   def release
     submission = find_submission

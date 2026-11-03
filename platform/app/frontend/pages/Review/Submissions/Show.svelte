@@ -31,11 +31,18 @@
     itemVerdict,
     journalDecided,
     saveReviewDraft,
+    serverDraft,
     type ReviewPage,
     type Verdict,
   } from '@/lib/review.svelte'
   import { toast } from '@/lib/toasts'
-  import { heartbeatReviewSubmission, reviewSubmission, reviewSubmissions } from '@/routes'
+  import {
+    draftReviewSubmission,
+    heartbeatReviewSubmission,
+    reviewSubmission,
+    reviewSubmissions,
+  } from '@/routes'
+  import { shared } from '@/lib/shared.svelte'
   import { csrfToken } from '@/lib/csrf'
 
   // One design submission's review, after Fallout's review pages: tabs on the left for the evidence (overview,
@@ -79,10 +86,35 @@
   const decided = $derived(props.submission?.status !== 'pending')
   const readonly = $derived(decided || !props.can.decide)
 
-  // Saved under the id it opened with: leaving the page swaps the props for the next page's before this goes.
+  // Saved under the id it opened with: leaving the page swaps the props for the next page's before this goes. Kept
+  // in this browser at once and on the server a moment later (and as the page is left), but only by whoever holds
+  // the submission, and not for what it opened with.
+  // svelte-ignore state_referenced_locally
+  const saving = !decided && props.claimed
+  const server = serverDraft(draftReviewSubmission(submissionId).url)
+  let opened = false
   $effect(() => {
     const snapshot = $state.snapshot(draft)
-    if (!decided) saveReviewDraft(submissionId, snapshot)
+    if (decided) return
+    saveReviewDraft(submissionId, snapshot)
+    if (opened && saving) server.schedule(snapshot)
+    opened = true
+  })
+
+  onMount(() => {
+    const by = props.draft?.by
+    if (!decided && by && by.id !== shared().auth.user?.id)
+      toast.info(`Carrying on from ${by.name}’s unfinished review`)
+    if (!saving) return
+    const leaving = () => server.flush()
+    const hidden = () => document.visibilityState === 'hidden' && server.flush()
+    window.addEventListener('pagehide', leaving)
+    document.addEventListener('visibilitychange', hidden)
+    return () => {
+      server.flush()
+      window.removeEventListener('pagehide', leaving)
+      document.removeEventListener('visibilitychange', hidden)
+    }
   })
 
   const countedMinutes = $derived(
@@ -169,7 +201,9 @@
       },
       {
         onSuccess: (page) => {
-          if (!Object.keys(page.props.errors ?? {}).length) clearReviewDraft(submissionId)
+          if (Object.keys(page.props.errors ?? {}).length) return
+          server.stop()
+          clearReviewDraft(submissionId)
         },
         onError: (e) => (errors = e as Record<string, string>),
         onFinish: () => {

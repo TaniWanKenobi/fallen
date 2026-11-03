@@ -74,6 +74,30 @@ class ReviewTest < ActionDispatch::IntegrationTest
     assert @submission.reload.flagged_at, "only admins clear a flag"
   end
 
+  test "the review so far is saved on the server, carried on by the next person, and cleared by the decision" do
+    sign_in_as @reviewer
+    get review_next_path
+    draft = { rubric: { complete: "yes" }, feedback: "Nice work so far", internal: "", journals: {}, bom: {}, extra: "dropped" }
+    patch draft_review_submission_path(@submission), params: { draft: }, as: :json
+    assert response.parsed_body["saved"]
+    assert_equal({ "complete" => "yes" }, @submission.reload.review_draft["rubric"])
+    assert_not @submission.review_draft.key?("extra")
+    assert_equal @reviewer, @submission.review_draft_by
+
+    other = users(:admin)
+    sign_in_as other
+    patch draft_review_submission_path(@submission), params: { draft: { feedback: "overwrite" } }, as: :json
+    assert_response :conflict
+    assert_equal "Nice work so far", @submission.reload.review_draft["feedback"]
+
+    @submission.update_columns(claim_expires_at: 1.minute.ago)
+    props = inertia_props(review_submission_path(@submission), "Review/Submissions/Show")
+    assert_equal [ "Nice work so far", @reviewer.public_id ], [ props.dig("draft", "data", "feedback"), props.dig("draft", "by", "id") ]
+
+    patch review_submission_path(@submission), params: decision
+    assert_nil @submission.reload.review_draft
+  end
+
   test "nobody reviews their own project" do
     users(:member).update!(roles: %w[user design_reviewer])
     sign_in_as users(:member)

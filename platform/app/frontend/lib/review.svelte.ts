@@ -1,3 +1,4 @@
+import { csrfToken } from '@/lib/csrf'
 import type { Person, ReviewJournal, ReviewSubmission, ReviewerNote } from '@/types'
 
 // The review page's props (ReviewPageProps on the server).
@@ -36,6 +37,8 @@ export interface ReviewProject {
 
 export interface ReviewPage {
   submission: ReviewSubmission
+  // An unfinished review saved on the server (Submission#save_review_draft), to carry on from.
+  draft: { data: Partial<ReviewDraft>; at: string; by: Person | null } | null
   project: ReviewProject
   journals: ReviewJournal[]
   repo: ReviewRepo | null
@@ -111,10 +114,10 @@ export function initialDraft(page: ReviewPage): ReviewDraft {
     feedback: submission.feedback ?? '',
     internal: submission.internal_reason ?? '',
   }
-  if (decided || typeof localStorage === 'undefined') return fresh
+  if (decided) return fresh
+  const saved = newestSaved(page)
+  if (!saved) return fresh
   try {
-    const saved = JSON.parse(localStorage.getItem(key(submission.id)) ?? 'null') as ReviewDraft | null
-    if (!saved) return fresh
     return {
       rubric: { ...fresh.rubric, ...saved.rubric },
       journals: Object.fromEntries(
@@ -137,9 +140,28 @@ export function initialDraft(page: ReviewPage): ReviewDraft {
   }
 }
 
+type Saved = Partial<ReviewDraft> & { savedAt?: number }
+
+// The newer of what this browser kept and what the server has, so a review carries on from wherever it was left.
+function newestSaved(page: ReviewPage): Saved | null {
+  let local: Saved | null = null
+  try {
+    local =
+      typeof localStorage === 'undefined'
+        ? null
+        : JSON.parse(localStorage.getItem(key(page.submission.id)) ?? 'null')
+  } catch {
+    local = null
+  }
+  const server = page.draft ? { ...page.draft.data, savedAt: Date.parse(page.draft.at) } : null
+  if (!local) return server
+  if (!server) return local
+  return (local.savedAt ?? 0) >= (server.savedAt ?? 0) ? local : server
+}
+
 export function saveReviewDraft(id: string, draft: ReviewDraft) {
   try {
-    localStorage.setItem(key(id), JSON.stringify(draft))
+    localStorage.setItem(key(id), JSON.stringify({ ...draft, savedAt: Date.now() }))
   } catch {
     // Storage full or off: the review still works, it just isn't kept.
   }
@@ -147,6 +169,50 @@ export function saveReviewDraft(id: string, draft: ReviewDraft) {
 
 export function clearReviewDraft(id: string) {
   localStorage.removeItem(key(id))
+}
+
+// Keeps the server's copy of the review in step: a moment after each change, and straight away (`flush`) when the
+// page is left, hidden or closed, with keepalive so the request outlives the page. `stop` ends it once the review
+// is sent, so the decision is never followed by an old draft.
+export function serverDraft(url: string) {
+  let pending: ReviewDraft | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let stopped = false
+
+  const send = () => {
+    clearTimeout(timer)
+    if (!pending || stopped) return
+    const body = JSON.stringify({ draft: pending })
+    pending = null
+    fetch(url, {
+      method: 'PATCH',
+      keepalive: body.length < 60_000,
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': csrfToken(),
+      },
+      body,
+    }).catch(() => {
+      // Offline for a moment: the browser's copy still has it, and the next change sends it again.
+    })
+  }
+
+  return {
+    schedule(draft: ReviewDraft) {
+      if (stopped) return
+      pending = draft
+      clearTimeout(timer)
+      timer = setTimeout(send, 1200)
+    },
+    flush: send,
+    stop() {
+      stopped = true
+      clearTimeout(timer)
+      pending = null
+    },
+  }
 }
 
 export const modeFor = (minutes: number, logged: number): JournalMode =>

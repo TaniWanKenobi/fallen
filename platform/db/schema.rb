@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -724,10 +724,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_120100) do
     t.integer "lock_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "review_draft"
+    t.datetime "review_draft_at"
+    t.bigint "review_draft_by_id"
     t.index ["claimed_by_id"], name: "index_submissions_on_claimed_by_id"
     t.index ["project_id"], name: "index_submissions_on_project_id"
     t.index ["project_id"], name: "index_submissions_one_pending_per_project", unique: true, where: "((status)::text = 'pending'::text)"
     t.index ["repo_snapshot_id"], name: "index_submissions_on_repo_snapshot_id"
+    t.index ["review_draft_by_id"], name: "index_submissions_on_review_draft_by_id"
     t.index ["reviewer_id"], name: "index_submissions_on_reviewer_id"
     t.index ["status", "created_at"], name: "index_submissions_on_status_and_created_at"
     t.index ["user_id"], name: "index_submissions_on_user_id"
@@ -921,6 +925,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_120100) do
   add_foreign_key "submissions", "repo_snapshots"
   add_foreign_key "submissions", "users"
   add_foreign_key "submissions", "users", column: "claimed_by_id"
+  add_foreign_key "submissions", "users", column: "review_draft_by_id"
   add_foreign_key "submissions", "users", column: "reviewer_id"
   add_foreign_key "time_milestones", "users"
   add_foreign_key "timer_sessions", "users"
