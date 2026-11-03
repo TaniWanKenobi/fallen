@@ -135,13 +135,15 @@ class Journal < ApplicationRecord
   # another journal or a banner, even one's own, is refused. `blobs` are the ones being newly attached; ones built
   # from bytes just now (Slack photos) have nothing to check. Blobs uploaded before uploads were tagged have no
   # uploader.
-  def self.reused_uploads?(blobs, uploaders:, record:)
+  def self.reused_uploads(blobs, uploaders:, record:)
     stored = blobs.select(&:persisted?)
-    return false if stored.empty?
+    return [] if stored.empty?
 
-    stored.any? { |blob| !blob.metadata.fetch(UPLOADER_KEY, uploaders.first).in?(uploaders) } ||
-      ActiveStorage::Attachment.where(blob_id: stored.map(&:id)).where.not(record_type: record.class.name, record_id: record.id).exists?
+    elsewhere = ActiveStorage::Attachment.where(blob_id: stored.map(&:id)).where.not(record_type: record.class.name, record_id: record.id).pluck(:blob_id).to_set
+    stored.select { |blob| elsewhere.include?(blob.id) || !blob.metadata.fetch(UPLOADER_KEY, uploaders.first).in?(uploaders) }
   end
+
+  def self.reused_uploads?(...) = reused_uploads(...).any?
 
   def self.body_from(parts) = parts.map { |part| part["text"] }.compact_blank.join("\n\n")
 
@@ -303,9 +305,16 @@ class Journal < ApplicationRecord
     lapse_timelapses.reset
   end
 
+  # Says which photos, counted in the order the composer sends them (the order they appear in the writing), since a
+  # restored draft can carry a photo that has since gone out on another journal.
   def images_are_new_uploads
-    added = images.attachments.select(&:new_record?).map(&:blob)
-    errors.add(:images, "must be photos you uploaded for this journal") if Journal.reused_uploads?(added, uploaders: [ user_id, imported_by&.id ].compact, record: self)
+    attached = images.attachments
+    reused = Journal.reused_uploads(attached.select(&:new_record?).map(&:blob), uploaders: [ user_id, imported_by&.id ].compact, record: self).map(&:id)
+    return if reused.empty?
+
+    numbers = attached.each_with_index.filter_map { |attachment, i| i + 1 if attachment.blob_id.in?(reused) }
+    one = numbers.one?
+    errors.add(:images, "can't use #{one ? 'photo' : 'photos'} #{numbers.to_sentence}: #{one ? 'it is' : 'they are'} already on another journal or banner. Delete #{one ? 'it' : 'them'} here and upload #{one ? 'it' : 'them'} again")
   end
 
   # The writing shows only this journal's own photos, never a picture from anywhere else.

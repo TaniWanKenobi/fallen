@@ -149,7 +149,16 @@
   const unembedded = new Set(
     (journal?.images ?? []).filter((i) => !journal?.body.includes(i.id)).map((i) => i.id),
   )
-  const photos = $derived(form.images.filter((i) => unembedded.has(i.id) || form.body.includes(i.id)))
+  // In the order they appear in the writing, so the server can name one by its place (Journal#images_are_new_uploads).
+  const photos = $derived(
+    form.images
+      .filter((i) => unembedded.has(i.id) || form.body.includes(i.id))
+      .toSorted((a, b) => place(a.id) - place(b.id)),
+  )
+  function place(id: string) {
+    const at = form.body.indexOf(id)
+    return at === -1 ? Infinity : at
+  }
   // One per two hours (Journal#images_cover_hours). A journal whose hours are logged may keep the photos it has.
   const photosNeeded = $derived.by(() => {
     if (minutes <= 0) return null

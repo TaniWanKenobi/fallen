@@ -225,9 +225,9 @@ class JournalTest < ActiveSupport::TestCase
     image = photo
     projects(:station).journals.create!(user: users(:member), body: journal_text, duration: "1", images: [ image ])
 
-    reused = projects(:station).journals.build(user: users(:member), body: journal_text, duration: "1", images: [ image ])
+    reused = projects(:station).journals.build(user: users(:member), body: journal_text, duration: "1", images: [ photo("new.png"), image ])
     assert_not reused.valid?
-    assert_includes reused.errors[:images], "must be photos you uploaded for this journal"
+    assert_includes reused.errors[:images], "can't use photo 2: it is already on another journal or banner. Delete it here and upload it again"
   end
 
   test "a photo someone else uploaded can't be attached" do
