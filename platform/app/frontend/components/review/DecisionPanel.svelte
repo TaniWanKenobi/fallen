@@ -5,13 +5,17 @@
   import WandSparkles from '@lucide/svelte/icons/wand-sparkles'
   import * as AlertDialog from '@/components/admin/ui/alert-dialog'
   import { Button } from '@/components/admin/ui/button'
-  import { Kbd } from '@/components/admin/ui/kbd'
+  import { Separator } from '@/components/admin/ui/separator'
+  import Segmented from '@/components/review/Segmented.svelte'
+  import Key from '@/components/review/Key.svelte'
   import { Textarea } from '@/components/admin/ui/textarea'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import StatusBadge from '@/components/review/StatusBadge.svelte'
   import { formatDateTime, formatMinutes } from '@/lib/format'
   import {
     draftFeedback,
+    RAISED,
+    RAISED_KEY,
     journalDecided,
     type Answer,
     type ReviewDraft,
@@ -95,152 +99,162 @@
   export const blockers = () => ({ approve: approveBlocker, return: returnBlocker })
 </script>
 
+{#snippet label(text: string, hint: string, key?: string, forId?: string)}
+  <label for={forId} class="flex items-center gap-1.5 text-xs text-muted-foreground">
+    {text} <span class="text-muted-foreground/60">({hint})</span>
+    {#if key}<Key>{key}</Key>{/if}
+  </label>
+{/snippet}
+
+{#snippet stat(title: string, value: string, of: string, left: number, noun: string)}
+  <div class="space-y-1.5">
+    <p class="text-xs text-muted-foreground">{title}</p>
+    <div class="flex items-center gap-2 text-sm">
+      <span class="font-mono whitespace-nowrap text-muted-foreground">{of}</span>
+      <span class="text-muted-foreground">→</span>
+      <span
+        class={[
+          'font-mono whitespace-nowrap',
+          value !== of ? 'font-semibold text-foreground' : 'text-muted-foreground',
+        ]}>{value}</span
+      >
+      {#if !decided && left}
+        <span
+          class="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+          >{left} {left === 1 ? noun.replace(/s$/, '') : noun} left</span
+        >
+      {/if}
+    </div>
+  </div>
+{/snippet}
+
 <div class="space-y-4 p-4">
   {#if decided}
     <div class="space-y-2">
-      <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Review complete</h3>
-      <div class="flex items-center gap-2">
-        <StatusBadge status={s.status} class="text-xs" />
-        {#if s.reviewer}<span class="text-xs text-muted-foreground"
-            >by {s.reviewer.name}, {formatDateTime(s.decided_at)}</span
-          >{/if}
-      </div>
-      {#if s.status === 'approved'}
-        <p class="font-mono text-lg">
-          {money(s.approved_cents)}
-          <span class="text-xs text-muted-foreground">funding, {s.payout_status ?? 'nothing to send'}</span>
-        </p>
-      {/if}
-    </div>
-  {:else if s.flagged_at}
-    <div
-      class="rounded-md border border-red-300 bg-red-50 p-3 text-sm dark:border-red-900 dark:bg-red-950/40"
-    >
-      <p class="font-semibold text-red-700 dark:text-red-300">Flagged for fraud</p>
-      <p class="mt-1 whitespace-pre-wrap">{s.flag_reason}</p>
-    </div>
-  {:else if !page.can.decide}
-    <div class="rounded-md border border-border bg-muted/40 p-3 text-sm">
-      {#if s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date()}
-        <PersonChip person={s.claimed_by} class="font-medium" /> is reviewing this right now. You can read along.
-      {:else if page.project.team.some((p) => p.id === s.submitter.id)}
-        You can read this, but not review it.
-      {/if}
-    </div>
-  {/if}
-
-  <section class="space-y-2">
-    <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Rubric</h3>
-    {#each questions as [key, question] (key)}
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-sm leading-tight">{question}</span>
-        <div
-          class="inline-flex shrink-0 overflow-hidden rounded-md border border-border text-xs"
-          role="radiogroup"
-          aria-label={question}
-        >
-          {#each page.options.answers as answer (answer)}
-            {@const on = draft.rubric[key] === answer}
-            <button
-              type="button"
-              role="radio"
-              aria-checked={on}
-              disabled={decided || !page.can.decide}
-              onclick={() => (draft.rubric[key] = answer as Answer)}
-              class={[
-                'border-r border-border px-2 py-1 capitalize last:border-r-0 disabled:cursor-default',
-                on && answer === 'yes' && 'bg-emerald-600 text-white',
-                on && answer === 'partly' && 'bg-amber-500 text-white',
-                on && answer === 'no' && 'bg-red-600 text-white',
-                !on && 'bg-background hover:bg-muted',
-              ]}>{answer}</button
-            >
-          {/each}
-        </div>
-      </div>
-    {/each}
-  </section>
-
-  <section class="grid grid-cols-2 gap-2 text-xs">
-    <div class="rounded-md border border-border p-2">
-      <p class="text-muted-foreground">Time that counts</p>
-      <p class="font-mono text-sm">
-        {formatMinutes(countedMinutes)}
-        <span class="text-muted-foreground">/ {formatMinutes(page.project.logged_minutes)}</span>
-      </p>
-      {#if !decided && journalsLeft}<p class="text-amber-600 dark:text-amber-400">
-          {journalsLeft} journals left
+      <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Review Complete</h3>
+      <StatusBadge status={s.status} class="text-xs" />
+      {#if s.reviewer}<p class="text-xs text-muted-foreground">
+          by {s.reviewer.name}, {formatDateTime(s.decided_at)}
         </p>{/if}
     </div>
-    <div class="rounded-md border border-border p-2">
-      <p class="text-muted-foreground">Funding</p>
-      <p class="font-mono text-sm">
-        {money(fundedCents)} <span class="text-muted-foreground">/ {money(s.requested_cents)}</span>
-      </p>
-      {#if !decided && itemsLeft}<p class="text-amber-600 dark:text-amber-400">{itemsLeft} parts left</p>{/if}
-    </div>
-  </section>
+  {:else}
+    <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Submit Review</h3>
+    {#if s.flagged_at}
+      <div
+        class="rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-sm dark:border-red-900 dark:bg-red-950/40"
+      >
+        <p class="text-xs font-medium text-red-700 dark:text-red-400">Flagged for fraud</p>
+        <p class="mt-0.5 whitespace-pre-wrap">{s.flag_reason}</p>
+      </div>
+    {:else if !page.can.decide}
+      <div class="rounded-md border border-border bg-muted/40 px-2.5 py-2 text-sm">
+        {#if s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date()}
+          <PersonChip person={s.claimed_by} class="font-medium" /> is reviewing this right now. You can read along.
+        {:else}
+          You can read this, but not review it.
+        {/if}
+      </div>
+    {/if}
+  {/if}
 
-  <div class="h-px bg-border"></div>
-
-  <section class="space-y-1.5">
-    <label for="internal-reason" class="flex items-center gap-1.5 text-xs text-muted-foreground">
-      Internal reason <span class="text-muted-foreground/60">(reviewers only)</span>
-      {#if !decided}<Kbd class="ml-auto">{mod}J</Kbd>{/if}
-    </label>
-    <Textarea
-      id="internal-reason"
-      bind:ref={internalRef}
-      bind:value={draft.internal}
-      readonly={decided || !page.can.decide}
-      placeholder="Why you decided this, for the next reviewer and for audits."
-      class="h-20 resize-y text-sm"
-    />
+  <div class="space-y-2">
+    {@render label(
+      'Internal Reason',
+      'not shown to user',
+      decided ? undefined : `${mod}J`,
+      'internal-reason',
+    )}
+    {#if decided}
+      <p class="text-sm whitespace-pre-wrap">{draft.internal}</p>
+    {:else}
+      <Textarea
+        id="internal-reason"
+        bind:ref={internalRef}
+        bind:value={draft.internal}
+        readonly={!page.can.decide}
+        placeholder="Justify your decision..."
+        class="h-20 resize-y text-sm"
+      />
+    {/if}
     {#if errors.internal_reason}<p class="text-xs text-red-600">{errors.internal_reason}</p>{/if}
-  </section>
+  </div>
 
-  <section class="space-y-1.5">
-    <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <label for="feedback"
-        >Feedback <span class="text-muted-foreground/60">(sent to them on Slack)</span></label
-      >
-      {#if !decided}<Kbd class="ml-auto">{mod}F</Kbd>{/if}
-    </div>
-    <Textarea
-      id="feedback"
-      bind:ref={feedbackRef}
-      bind:value={draft.feedback}
-      readonly={decided || !page.can.decide}
-      placeholder="What they did well, and what to change. Needed to send it back."
-      class="h-36 resize-y text-sm"
-    />
-    {#if !decided && page.can.decide}
-      <Button
-        size="sm"
-        variant="ghost"
-        class="w-full justify-start text-muted-foreground"
-        onclick={writeFeedback}
-      >
-        <WandSparkles data-icon="inline-start" /> Write it from my calls
-      </Button>
+  <div class="space-y-2">
+    {@render label('Feedback', 'shown to user', decided ? undefined : `${mod}F`, 'feedback')}
+    {#if decided}
+      <p class="text-sm whitespace-pre-wrap">{draft.feedback || 'None'}</p>
+    {:else}
+      <Textarea
+        id="feedback"
+        bind:ref={feedbackRef}
+        bind:value={draft.feedback}
+        readonly={!page.can.decide}
+        placeholder="What they did well, and what to change..."
+        class="h-32 resize-y text-sm"
+      />
+      {#if page.can.decide}
+        <button
+          type="button"
+          onclick={writeFeedback}
+          class="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <WandSparkles class="size-3.5" /> Write it from my calls
+        </button>
+      {/if}
     {/if}
     {#if errors.feedback}<p class="text-xs text-red-600">{errors.feedback}</p>{/if}
-  </section>
+  </div>
+
+  <Separator />
+
+  <div class="space-y-3">
+    {@render stat(
+      'Time That Counts',
+      formatMinutes(countedMinutes),
+      formatMinutes(page.project.logged_minutes),
+      journalsLeft,
+      'journals',
+    )}
+    {@render stat('Funding', money(fundedCents), money(s.requested_cents), itemsLeft, 'parts')}
+  </div>
+
+  <div class="space-y-2.5">
+    <p class="text-xs text-muted-foreground">
+      Rubric <span class="text-muted-foreground/60">(not shown to user)</span>
+    </p>
+    {#each questions as [key, question] (key)}
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[13px] leading-snug">{question}</span>
+        <Segmented
+          label={question}
+          size="xs"
+          value={draft.rubric[key]}
+          disabled={decided || !page.can.decide}
+          onChange={(answer) => (draft.rubric[key] = answer as Answer)}
+          options={[
+            { value: 'yes', label: 'Yes', tint: 'green' },
+            { value: 'partly', label: 'Partly', tint: 'amber' },
+            { value: 'no', label: 'No', tint: 'red' },
+          ]}
+        />
+      </div>
+    {/each}
+  </div>
 
   {#if !decided && page.can.decide}
     {@const shown = Object.entries(errors).filter(([k]) => !['feedback', 'internal_reason'].includes(k))}
     {#if shown.length}
       <ul
-        class="space-y-1 rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300"
+        class="space-y-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
       >
         {#each shown as [field, message] (field)}<li>{message}</li>{/each}
       </ul>
     {/if}
 
-    <div class="space-y-2 pt-1">
+    <div class="space-y-2 pt-2">
       <div class="grid grid-cols-2 gap-2">
         <Button
-          class="bg-emerald-600 text-white hover:bg-emerald-700"
+          class={RAISED.success}
           disabled={submitting || !!approveBlocker}
           title={approveBlocker ?? undefined}
           onclick={() => onDecide('approved')}
@@ -249,10 +263,11 @@
               class="animate-spin"
               data-icon="inline-start"
             />{:else}<Check data-icon="inline-start" />{/if}
-          Approve <Kbd class="ml-1 bg-emerald-700/60 text-emerald-50">{mod}P</Kbd>
+          Approve
+          <Key class="ml-1 {RAISED_KEY.success}">{mod}P</Key>
         </Button>
         <Button
-          class="bg-amber-600 text-white hover:bg-amber-700"
+          class={RAISED.warning}
           disabled={submitting || !!returnBlocker}
           title={returnBlocker ?? undefined}
           onclick={() => onDecide('returned')}
@@ -261,10 +276,11 @@
               class="animate-spin"
               data-icon="inline-start"
             />{:else}<CornerDownLeft data-icon="inline-start" />{/if}
-          Return <Kbd class="ml-1 bg-amber-700/60 text-amber-50">{mod}E</Kbd>
+          Return
+          <Key class="ml-1 {RAISED_KEY.warning}">{mod}E</Key>
         </Button>
       </div>
-      <p class="min-h-4 text-center text-xs text-muted-foreground">
+      <p class="text-center text-xs text-muted-foreground">
         {approveBlocker ?? `Approving sends ${money(fundedCents)}.`}
       </p>
 
@@ -276,9 +292,11 @@
                 {...props}
                 variant="ghost"
                 size="sm"
-                class="w-full text-red-600"
-                disabled={submitting || !!returnBlocker}>Reject for good</Button
+                class="w-full justify-between text-muted-foreground"
+                disabled={submitting || !!returnBlocker}
               >
+                Reject for good
+              </Button>
             {/snippet}
           </AlertDialog.Trigger>
           <AlertDialog.Content>

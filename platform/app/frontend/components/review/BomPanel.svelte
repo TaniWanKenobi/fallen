@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Button } from '@/components/admin/ui/button'
+  import Segmented from '@/components/review/Segmented.svelte'
   import {
     itemFunded,
     itemRequested,
@@ -136,29 +137,17 @@
             >
             <td class="px-2 py-2">
               <div class="flex flex-wrap items-center gap-1.5">
-                <div
-                  class="inline-flex overflow-hidden rounded-md border border-border text-xs"
-                  role="radiogroup"
-                  aria-label="Decision on {item.name}"
-                >
-                  {#each [['approved', 'Approve'], ['adjusted', 'Lower'], ['cut', 'Cut']] as [value, label] (value)}
-                    {@const on = call?.verdict === value}
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      disabled={readonly}
-                      onclick={() => set(item.id, value as ItemVerdict)}
-                      class={[
-                        'border-r border-border px-2 py-1 last:border-r-0 disabled:cursor-default',
-                        on && value === 'approved' && 'bg-emerald-600 text-white',
-                        on && value === 'adjusted' && 'bg-amber-500 text-white',
-                        on && value === 'cut' && 'bg-red-600 text-white',
-                        !on && 'bg-background hover:bg-muted',
-                      ]}>{label}</button
-                    >
-                  {/each}
-                </div>
+                <Segmented
+                  label="Decision on {item.name}"
+                  value={call?.verdict}
+                  disabled={readonly}
+                  onChange={(value) => set(item.id, value)}
+                  options={[
+                    { value: 'approved', label: 'Approve', tint: 'green' },
+                    { value: 'adjusted', label: 'Lower', tint: 'amber' },
+                    { value: 'cut', label: 'Cut', tint: 'red' },
+                  ]}
+                />
                 {#if call?.verdict === 'adjusted'}
                   <span class="inline-flex items-center gap-1 text-xs">
                     $<input

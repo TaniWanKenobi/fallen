@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import Markdown from '@/components/Markdown.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
+  import Segmented from '@/components/review/Segmented.svelte'
   import { formatDateTime, formatMinutes } from '@/lib/format'
   import { journalDeflated, parseMinutes, type JournalCall } from '@/lib/review.svelte'
   import type { ReviewJournal } from '@/types'
@@ -73,18 +74,27 @@
   id="review-{journal.id}"
   onfocusin={onFocus}
   class={[
-    'scroll-mt-4 rounded-md border border-l-4 bg-background transition-shadow',
-    focused ? 'border-border shadow-[0_0_0_2px_var(--color-ring)]' : 'border-border',
-    !decided && 'border-l-zinc-300 dark:border-l-zinc-700',
-    decided && mode === 'full' && 'border-l-emerald-500',
-    decided && mode === 'reduced' && 'border-l-amber-500',
-    decided && mode === 'none' && 'border-l-red-500',
+    'scroll-mt-4 overflow-hidden rounded-lg border bg-card transition-shadow',
+    focused
+      ? 'border-ring shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_25%,transparent)]'
+      : 'border-border',
   ]}
 >
   <header
     class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2 text-xs text-muted-foreground"
   >
-    <span class="font-mono text-[10px] text-muted-foreground/70">#{index + 1}</span>
+    <span
+      class={[
+        'grid size-5 place-items-center rounded-full font-mono text-[10px] font-semibold',
+        !decided && 'bg-muted text-muted-foreground',
+        decided &&
+          mode === 'full' &&
+          'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+        decided && mode === 'reduced' && 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+        decided && mode === 'none' && 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
+      ]}
+      title={decided ? 'Decided' : 'Not decided yet'}>{index + 1}</span
+    >
     <PersonChip person={journal.author} class="text-foreground" />
     <span title={formatDateTime(journal.created_at)}
       >{new Date(journal.created_at).toLocaleDateString(undefined, {
@@ -168,7 +178,7 @@
             {/if}
             <span class="min-w-0">
               <span
-                class="block rounded bg-purple-100 px-1 text-[10px] font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                class="inline-block rounded bg-purple-100 px-1 text-[10px] font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300"
                 >Lapse</span
               >
               <span class="block truncate">{t.name ?? 'Timelapse'}</span>
@@ -190,31 +200,17 @@
     {/if}
     <div class="flex flex-wrap items-center gap-2">
       <span class="text-xs text-muted-foreground">Counts</span>
-      <div
-        class="inline-flex overflow-hidden rounded-md border border-border text-xs"
-        role="radiogroup"
-        aria-label="How much of this journal counts"
-      >
-        {#each [['full', `All ${journal.duration_text}`, 'A'], ['reduced', 'Less', 'R'], ['none', 'None', 'X']] as [value, label, key] (value)}
-          {@const on = mode === value && (decided || call.carried)}
-          <button
-            type="button"
-            role="radio"
-            aria-checked={on}
-            disabled={readonly}
-            onclick={() => choose(value as 'full' | 'reduced' | 'none')}
-            class={[
-              'border-r border-border px-2.5 py-1 last:border-r-0 disabled:cursor-default',
-              on && value === 'full' && 'bg-emerald-600 text-white',
-              on && value === 'reduced' && 'bg-amber-500 text-white',
-              on && value === 'none' && 'bg-red-600 text-white',
-              !on && 'bg-background hover:bg-muted',
-              call.carried && on && 'opacity-60',
-            ]}
-            title="{label} ({key})">{label}</button
-          >
-        {/each}
-      </div>
+      <Segmented
+        label="How much of this journal counts"
+        value={decided || call.carried ? mode : null}
+        disabled={readonly}
+        onChange={(value) => choose(value)}
+        options={[
+          { value: 'full', label: `All ${journal.duration_text}`, tint: 'green', title: 'All of it (A)' },
+          { value: 'reduced', label: 'Less', tint: 'amber', title: 'Less (R)' },
+          { value: 'none', label: 'None', tint: 'red', title: 'None (X)' },
+        ]}
+      />
       {#if mode === 'reduced'}
         <input
           bind:this={minutesInput}

@@ -5,12 +5,14 @@
 <script lang="ts">
   import { router } from '@inertiajs/svelte'
   import { onMount } from 'svelte'
+  import Folder from '@lucide/svelte/icons/folder'
   import FolderOpen from '@lucide/svelte/icons/folder-open'
+  import ReviewTabBar, { type ReviewTab } from '@/components/review/ReviewTabBar.svelte'
   import LayoutGrid from '@lucide/svelte/icons/layout-grid'
   import NotebookPen from '@lucide/svelte/icons/notebook-pen'
   import Package from '@lucide/svelte/icons/package'
   import * as Dialog from '@/components/admin/ui/dialog'
-  import { Kbd } from '@/components/admin/ui/kbd'
+  import Key from '@/components/review/Key.svelte'
   import BomPanel from '@/components/review/BomPanel.svelte'
   import DecisionPanel from '@/components/review/DecisionPanel.svelte'
   import JournalsPanel from '@/components/review/JournalsPanel.svelte'
@@ -37,11 +39,11 @@
   let props: ReviewPage = $props()
 
   type Tab = 'overview' | 'journals' | 'bom' | 'repo'
-  const TABS: { id: Tab; label: string; icon: typeof LayoutGrid }[] = [
-    { id: 'overview', label: 'Overview', icon: LayoutGrid },
-    { id: 'journals', label: 'Journals', icon: NotebookPen },
-    { id: 'bom', label: 'Parts', icon: Package },
-    { id: 'repo', label: 'Repo', icon: FolderOpen },
+  const TABS: (ReviewTab & { id: Tab })[] = [
+    { id: 'overview', title: 'Overview', icon: LayoutGrid, tint: 'green' },
+    { id: 'journals', title: 'Journals', icon: NotebookPen, tint: 'blue' },
+    { id: 'bom', title: 'Parts', icon: Package, tint: 'amber' },
+    { id: 'repo', title: 'Repo', icon: Folder, activeIcon: FolderOpen, tint: 'violet' },
   ]
 
   // svelte-ignore state_referenced_locally
@@ -214,37 +216,13 @@
 <svelte:head><title>{props.project.title} · Review</title></svelte:head>
 
 {#snippet tabBar()}
-  <div class="inline-flex rounded-lg border border-border bg-background p-0.5" role="tablist">
-    {#each TABS as t, i (t.id)}
-      {@const count = t.id === 'journals' ? journalsLeft : t.id === 'bom' ? itemsLeft : 0}
-      <button
-        type="button"
-        role="tab"
-        aria-selected={tab === t.id}
-        onclick={() => (tab = t.id)}
-        class={[
-          'flex items-center gap-1.5 rounded-md px-3 py-1 text-sm transition-colors',
-          tab === t.id
-            ? 'bg-muted font-medium text-foreground'
-            : 'text-muted-foreground hover:text-foreground',
-        ]}
-      >
-        <t.icon class="size-4" />
-        {t.label}
-        {#if count && !readonly}<span
-            class="rounded-full bg-amber-500 px-1.5 text-[10px] leading-4 text-white tabular-nums"
-            >{count}</span
-          >{/if}
-        <Kbd class="hidden lg:inline-flex">{i + 1}</Kbd>
-      </button>
-    {/each}
-  </div>
+  <ReviewTabBar tabs={TABS} value={tab} onChange={(id) => (tab = id as Tab)} />
 {/snippet}
 
 <div
   class={[
     'flex h-screen flex-col overflow-hidden border-t-3',
-    decided ? 'border-zinc-400' : 'border-sky-500',
+    decided ? 'border-zinc-400' : 'border-purple-500',
   ]}
 >
   <ReviewTopBar
@@ -289,7 +267,7 @@
       {/if}
     </main>
     <div class="w-px shrink-0 bg-border"></div>
-    <aside class="w-96 shrink-0 overflow-y-auto">
+    <aside class="w-80 shrink-0 overflow-y-auto">
       <DecisionPanel
         bind:this={decision}
         page={props}
@@ -312,7 +290,7 @@
     <Dialog.Header><Dialog.Title>Shortcuts</Dialog.Title></Dialog.Header>
     <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
       {#each SHORTCUTS as [keys, what] (keys)}
-        <dt><Kbd>{keys}</Kbd></dt>
+        <dt><Key>{keys}</Key></dt>
         <dd class="text-muted-foreground">{what}</dd>
       {/each}
     </dl>

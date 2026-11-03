@@ -220,3 +220,20 @@ const fmt = (minutes: number) => {
   const m = minutes % 60
   return [h && `${h}h`, (m || !h) && `${m}m`].filter(Boolean).join(' ')
 }
+
+// Fallout's raised buttons, over the admin Button's classes: a soft top-down gradient, a drop shadow and a 1px
+// highlight along the top.
+export const RAISED = {
+  success:
+    'border-emerald-700 bg-linear-to-b from-emerald-500 to-emerald-600 text-white shadow-sm inset-shadow-2xs inset-shadow-emerald-300 hover:bg-transparent hover:from-emerald-400 dark:border-emerald-500 dark:inset-shadow-emerald-400',
+  warning:
+    'border-amber-300 bg-linear-to-b from-amber-50 to-amber-100 text-amber-800 shadow-xs inset-shadow-2xs inset-shadow-white hover:bg-transparent hover:to-amber-200 dark:border-amber-700 dark:from-amber-900 dark:to-amber-950 dark:text-amber-200 dark:inset-shadow-amber-800',
+  primary:
+    'border-zinc-950 bg-linear-to-b from-zinc-700 to-zinc-900 text-white shadow-sm inset-shadow-2xs inset-shadow-zinc-500 hover:bg-transparent hover:from-zinc-600 dark:border-zinc-300 dark:from-zinc-100 dark:to-zinc-300 dark:text-zinc-900 dark:inset-shadow-white',
+}
+// The key hints inside them, matched to each face.
+export const RAISED_KEY = {
+  success: 'border-emerald-400 bg-emerald-600 text-emerald-50',
+  warning:
+    'border-amber-300 bg-amber-100 text-amber-600 dark:border-amber-700 dark:bg-amber-900 dark:text-amber-400',
+}

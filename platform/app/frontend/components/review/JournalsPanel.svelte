@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from '@/components/admin/ui/button'
   import JournalReviewCard from '@/components/review/JournalReviewCard.svelte'
+  import Segmented from '@/components/review/Segmented.svelte'
   import { formatMinutes } from '@/lib/format'
   import { journalDecided, journalDeflated, type ReviewDraft, type ReviewPage } from '@/lib/review.svelte'
 
@@ -74,13 +75,16 @@
           >Keep last review’s calls ({carried})</Button
         >
       {/if}
-      {#each [['all', 'All'], ['open', 'To decide'], ['cut', `Cut (${cut})`]] as [value, label] (value)}
-        <Button
-          size="sm"
-          variant={filter === value ? 'secondary' : 'ghost'}
-          onclick={() => (filter = value as typeof filter)}>{label}</Button
-        >
-      {/each}
+      <Segmented
+        label="Show"
+        value={filter}
+        onChange={(value) => (filter = value)}
+        options={[
+          { value: 'all', label: 'All', tint: 'gray' },
+          { value: 'open', label: `To decide (${open})`, tint: 'amber' },
+          { value: 'cut', label: `Cut (${cut})`, tint: 'red' },
+        ]}
+      />
     </div>
   </div>
 

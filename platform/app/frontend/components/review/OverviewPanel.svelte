@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Kbd } from '@/components/admin/ui/kbd'
+  import Key from '@/components/review/Key.svelte'
   import CollapsibleCard from '@/components/review/CollapsibleCard.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import StatusBadge from '@/components/review/StatusBadge.svelte'
@@ -190,7 +190,7 @@
   </CollapsibleCard>
 
   <p class="text-xs text-muted-foreground">
-    Tabs: <Kbd>1</Kbd> overview, <Kbd>2</Kbd> journals, <Kbd>3</Kbd> parts, <Kbd>4</Kbd> repo. <Kbd>?</Kbd> for
+    Tabs: <Key>1</Key> overview, <Key>2</Key> journals, <Key>3</Key> parts, <Key>4</Key> repo. <Key>?</Key> for
     every shortcut.
   </p>
 </div>

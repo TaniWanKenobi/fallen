@@ -9,7 +9,7 @@
   import * as AlertDialog from '@/components/admin/ui/alert-dialog'
   import { Badge } from '@/components/admin/ui/badge'
   import { Button } from '@/components/admin/ui/button'
-  import { Kbd } from '@/components/admin/ui/kbd'
+  import Key from '@/components/review/Key.svelte'
   import { Textarea } from '@/components/admin/ui/textarea'
   import { adminDark, toggleAdminDark } from '@/lib/adminDark.svelte'
   import type { ReviewPage } from '@/lib/review.svelte'
@@ -48,13 +48,13 @@
 </script>
 
 <div
-  class="relative z-40 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-4 py-2.5"
+  class="relative z-40 flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-4 py-3"
 >
   <Button variant="outline" href={reviewSubmissions.reviewRoot().url}>
-    End session <Kbd class="ml-1">E</Kbd>
+    End session <Key class="ml-1">E</Key>
   </Button>
   {#if page.submission.status === 'pending'}
-    <Button variant="ghost" onclick={skip}>Skip <Kbd class="ml-1">S</Kbd></Button>
+    <Button variant="ghost" onclick={skip}>Skip <Key class="ml-1">S</Key></Button>
   {/if}
 
   <span class="mx-1 hidden h-6 w-px bg-border sm:block"></span>
@@ -69,18 +69,17 @@
     by {page.project.team.map((p) => p.name).join(', ')}
   </span>
 
-  <div class="absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 xl:block">
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
     {@render center()}
   </div>
 
   <div class="ml-auto flex flex-wrap items-center gap-2">
-    <div class="xl:hidden">{@render center()}</div>
     <Button variant="outline" href={page.submission.repo_url} target="_blank" rel="noopener noreferrer">
-      <GitBranch data-icon="inline-start" /> Repo <Kbd class="ml-1">G</Kbd>
+      <GitBranch data-icon="inline-start" /> Repo <Key class="ml-1">G</Key>
     </Button>
     <Button variant="outline" onclick={onToggleNotes}>
       <MessageSquareText data-icon="inline-start" /> Notes{notesCount > 0 ? ` (${notesCount})` : ''}
-      <Kbd class="ml-1">N</Kbd>
+      <Key class="ml-1">N</Key>
     </Button>
     <Button variant="ghost" size="icon" aria-label="Toggle dark mode" onclick={toggleAdminDark}>
       {#if adminDark.on}<Sun />{:else}<Moon />{/if}
