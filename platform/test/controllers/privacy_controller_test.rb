@@ -53,6 +53,25 @@ class PrivacyControllerTest < ActionDispatch::IntegrationTest
     assert_not PaperTrail::Version.exists?(item_type: "Journal")
   end
 
+  test "deletes design submissions with their parts, reviews, notes and funding" do
+    submission = submit_design(projects(:station))
+    reviewer = users(:admin)
+    reviewer.update!(roles: %w[user admin])
+    journals = SubmissionReview.journals_for(submission).to_h { [ it.public_id, { "approved_minutes" => it.duration_minutes } ] }
+    bom = submission.bom_items.to_h { [ it.public_id, { "verdict" => "approved" } ] }
+    assert SubmissionReview.new(submission, reviewer:, verdict: "approved", internal_reason: "ok", rubric: Submission::RUBRIC.keys.index_with { "yes" }, journals:, bom:).save
+    projects(:station).reviewer_notes.create!(user: reviewer, body: "Seen before")
+
+    call_hub :delete, dry_run: false, subject: { emails: [ "member@example.com" ] }
+    deleted = response.parsed_body["deleted"]
+
+    assert_equal [ 1, 2, 1, 1 ], deleted.values_at("submissions", "bom_items", "grant_payouts", "reviewer_notes")
+    assert_not Submission.exists?(submission.id)
+    assert_not RepoSnapshot.exists?(project_id: projects(:station).id)
+
+    assert_equal 0, JournalReview.count
+  end
+
   test "takes the person off flags turned on for them by name" do
     Flipper.enable_actor(:beta, users(:member))
     Flipper.enable_actor(:beta, users(:admin))

@@ -24,8 +24,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(8) { get projects_path }
     # 11 since journals can have several Lapse timelapses: one preload query, whatever the page holds. The team
     # costs what the owner query it replaced did: members, what each logged here and invites waiting, with journal
-    # authors taken from the team.
-    assert_query_budget(11) { get project_path(projects(:station)) }
+    # authors taken from the team. One more for the latest design submission.
+    assert_query_budget(12) { get project_path(projects(:station)) }
     assert_query_budget(4) { load_deferred(project_path(projects(:station)), "Projects/Show", "lapse") }
     assert_query_budget(2) { get new_project_path }
     # Plus the team's members, which the project's serializer carries.
@@ -60,6 +60,24 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(2) { get sorry_path }
   end
 
+  test "design review pages" do
+    submission = submit_design(projects(:station))
+    submit_design(projects(:unlinked)).update!(status: "returned")
+    reviewer = users(:newcomer)
+    reviewer.update!(roles: %w[user design_reviewer])
+    sign_in_as reviewer
+
+    assert_query_budget(3) { get review_submissions_path }
+    assert_query_budget(14) { load_deferred(review_submissions_path, "Review/Submissions/Index", "submissions", "pagy", "counts") }
+    # Claims it, then everything the review needs, the same count whatever the number of journals or parts.
+    assert_query_budget(30) { get review_submission_path(submission) }
+
+    # The project page with a submission on it: that, its parts, its payout and its screenshots, the same five queries
+    # whatever their number, on top of a fresh sign-in's two.
+    sign_in_as users(:member)
+    assert_query_budget(19) { get project_path(projects(:station)) }
+  end
+
   test "admin pages" do
     sign_in_as users(:admin)
 
@@ -79,6 +97,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(3) { get admin_transfers_path }
     assert_query_budget(8) { load_deferred(admin_transfers_path, "Admin/Transfers/Index", "transfers", "pagy", "counts") }
     assert_query_budget(6) { get admin_transfer_path(project_transfers(:stardance)) }
+    assert_query_budget(5) { get admin_grants_path }
+    assert_query_budget(8) { load_deferred(admin_grants_path, "Admin/Grants/Index", "payouts", "pagy", "totals") }
     assert_query_budget(3) { get admin_streaks_path }
     assert_query_budget(9) { load_deferred(admin_streaks_path, "Admin/Streaks/Index", "rows", "pagy", "weeks", "counts") }
     assert_query_budget(8) { load_deferred(admin_streaks_path(tab: "log"), "Admin/Streaks/Index", "rows", "pagy") }

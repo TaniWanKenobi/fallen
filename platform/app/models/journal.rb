@@ -12,6 +12,7 @@
 #  duration_minutes    :integer
 #  hours_self_claimed  :boolean
 #  lapse_url           :string
+#  reviewed_minutes    :integer
 #  slack_parts         :jsonb            not null
 #  slack_posted_by_bot :boolean          default(FALSE), not null
 #  slack_ts            :string
@@ -153,6 +154,8 @@ class Journal < ApplicationRecord
   def on_slack? = slack_channel_id.present? && slack_ts.present?
   def slack_url = on_slack? ? SlackMessaging.permalink(slack_channel_id, slack_ts, thread_ts: project.slack_thread_ts) : nil
   def hours_logged? = duration_minutes.present?
+  # The time that earns XP: what was logged, or less if a design reviewer took some off (SubmissionReview).
+  def counted_minutes = reviewed_minutes || duration_minutes
   def xp = xp_entry&.kept? ? xp_entry.amount : nil
   def images_needed = (duration_minutes.to_f / MINUTES_PER_IMAGE).ceil
   def duration_text = Duration.format(duration_minutes)
@@ -185,6 +188,8 @@ class Journal < ApplicationRecord
     errors.add(:project, "is already this one") if target == project
     errors.add(:project, "must be one you're on the team of") unless target.on_team?(user)
     errors.add(:base, "Journals can't move into or out of an approved project") if project.approved? || target.approved?
+    errors.add(:base, "Journals can't move once a design review has looked at them") if reviewed_minutes || JournalReview.exists?(journal_id: id)
+    errors.add(:base, "Journals can't move into or out of a project waiting for review") if Submission.pending.where(project_id: [ project_id, target.id ]).exists?
     return false if errors.any?
 
     update(project: target, slack_channel_id: nil, slack_ts: nil, slack_parts: [], slack_posted_by_bot: false)

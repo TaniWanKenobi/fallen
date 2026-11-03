@@ -90,6 +90,30 @@ module SlackMessages
     { text: text, blocks: blocks }
   end
 
+  # DMed to everyone on the team when a design review is in (SubmissionDecidedJob), with the reviewer's feedback.
+  def submission_decided(submission)
+    project = escape(submission.project.title)
+    lines =
+      case submission.status
+      when "approved"
+        funding = submission.approved_cents.to_i.positive? ? " for #{Money.format(submission.approved_cents)} of funding" : ""
+        [ ":tada: The design of *#{project}* was approved#{funding}!",
+          ("We'll send the funding to #{escape(submission.user.display_name)} as an HCB card grant, by email." if submission.approved_cents.to_i.positive?) ]
+      when "returned" then [ ":hammer_and_wrench: The design of *#{project}* needs a few changes before it can be approved. Fix them and submit it again." ]
+      else [ "The design of *#{project}* wasn't approved, and can't be submitted again." ]
+      end
+    lines << "\nFrom the reviewer:\n#{escape(submission.feedback.truncate(2500)).gsub(/^/, '> ')}" if submission.feedback.present?
+    text = lines.compact.join("\n")
+    { text: text, blocks: [ SlackBot::Blocks.section(text),
+      SlackBot::Blocks.actions(SlackBot::Blocks.button("See the review", "open_fallen", url: project_url(submission.project), style: "primary")) ] }
+  end
+
+  # In the project's thread when its design is approved or sent back (SubmissionDecidedJob). The feedback stays in DMs.
+  def submission_decided_in_thread(submission)
+    text = submission.approved? ? ":white_check_mark: Design approved! On to building it." : ":hammer_and_wrench: Design review: a few changes needed before it's approved."
+    { text: text, blocks: [ SlackBot::Blocks.context(text) ] }
+  end
+
   # DMed by ProjectTransferDecidedJob to the rest of the team when an approved transfer is added to their project.
   def project_transfer_added_to_team(transfer)
     name = escape(transfer.snapshot&.dig("title").presence || transfer.project_name || "a project")

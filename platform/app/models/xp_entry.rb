@@ -1,5 +1,5 @@
-# One line in the XP ledger; users.xp is the sum of the kept ones. A journal's entry follows its hours
-# (Journal#sync_xp) and keeps the multiplier the person had when it was first saved. Deleting its source discards the
+# One line in the XP ledger; users.xp is the sum of the kept ones. A journal's entry follows its hours, less any a
+# design reviewer took off (Journal#counted_minutes, Journal#sync_xp), and keeps the multiplier the person had when it was first saved. Deleting its source discards the
 # entry rather than removing it, so the ledger still shows what was earned and taken back. Everything else is granted once: by its source, or by kind
 # and day, so a week can be closed again without paying twice. `day` is the person's own calendar day. A transfer's
 # XP is the amount its reviewer set (ProjectTransfer#approve); its journals earn none of their own. `pet` is the team
@@ -86,7 +86,7 @@ class XpEntry < ApplicationRecord
     if journal.discarded? || !journal.hours_logged?
       entry.discard if entry.persisted? && !entry.discarded?
     else
-      entry.update!(amount: journal_xp(journal.duration_minutes, entry.multiplier), discarded_at: nil)
+      entry.update!(amount: journal_xp(journal.counted_minutes, entry.multiplier), discarded_at: nil)
     end
   end
 

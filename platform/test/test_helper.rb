@@ -68,6 +68,26 @@ module FixtureHelper
   end
 end
 
+module SubmissionHelper
+  # A repository already read, as RepoSnapshotJob leaves it, with a KiCad project, gerbers and a BOM.
+  def read_snapshot(project, user = project.user)
+    RepoSnapshot.create!(project:, user:, url: "https://github.com/someone/thing", status: "done", fetched_at: Time.current,
+      branch: "main", commit_sha: "a" * 40, readme_path: "README.md", readme: "# Thing\n\n![board](board.png)",
+      tree: %w[README.md board.kicad_pcb board.kicad_sch board.kicad_pro gerbers.zip bom.csv].map { { "path" => it, "type" => "blob" } },
+      bom_path: "bom.csv", bom_csv: "Part,Qty,Price,Link\nRP2040,2,$1.00,https://lcsc.com/a\n")
+  end
+
+  def bom_rows = [ { kind: "part", name: "RP2040", quantity: 2, unit_cents: 100, total_cents: 200, link: "https://lcsc.com/a", owned: false },
+                   { kind: "shipping", name: "Shipping", quantity: 1, total_cents: 500 } ]
+
+  # A submission waiting for review, sent the way the popup sends it.
+  def submit_design(project, user: project.user)
+    project.journals.kept.needing_hours.update_all(duration_minutes: 30)
+    blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("png"), filename: "render.png", content_type: "image/png", metadata: { Journal::UPLOADER_KEY => user.id })
+    Submission.submit(project:, user:, snapshot: read_snapshot(project, user), made_with: %w[pcb], note: nil, items: bom_rows, screenshots: [ blob.signed_id ])
+  end
+end
+
 module SignInHelper
   # Uses the local-only DevController route to establish a session.
   def sign_in_as(user)
@@ -96,6 +116,10 @@ module InertiaHelper
     assert_response :success
     response.parsed_body["props"]
   end
+end
+
+class ActiveSupport::TestCase
+  include SubmissionHelper
 end
 
 class ActionDispatch::IntegrationTest

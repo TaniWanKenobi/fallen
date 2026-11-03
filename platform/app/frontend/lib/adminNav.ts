@@ -10,8 +10,11 @@ import Goal from '@lucide/svelte/icons/goal'
 import Trophy from '@lucide/svelte/icons/trophy'
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard'
 import Users from '@lucide/svelte/icons/users'
+import ClipboardCheck from '@lucide/svelte/icons/clipboard-check'
+import Banknote from '@lucide/svelte/icons/banknote'
 import {
   adminFlags,
+  adminGrants,
   adminInsights,
   adminJobs,
   adminMcp,
@@ -23,6 +26,7 @@ import {
   adminTeams,
   adminTransfers,
   adminUsers,
+  reviewSubmissions,
 } from '@/routes'
 import type { AdminStats } from '@/types'
 
@@ -55,6 +59,8 @@ export const adminNav: AdminNavSection[] = [
       { label: 'Users', href: adminUsers.index().url, icon: Users, statKey: 'users_count' },
       { label: 'Transfers', href: adminTransfers.index().url, icon: ArrowLeftRight },
       { label: 'Streaks', href: adminStreaks.index().url, icon: Flame },
+      { label: 'Design review', href: reviewSubmissions.reviewRoot().url, icon: ClipboardCheck },
+      { label: 'Grants', href: adminGrants.index().url, icon: Banknote },
     ],
   },
   {

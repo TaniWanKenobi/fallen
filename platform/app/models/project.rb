@@ -46,6 +46,9 @@ class Project < ApplicationRecord
   has_many :memberships, -> { order(:created_at, :id) }, class_name: "ProjectMember", dependent: :delete_all, inverse_of: :project
   has_many :invites, class_name: "ProjectInvite", dependent: :delete_all
   has_many :journal_drafts, dependent: :delete_all
+  has_many :submissions, dependent: :destroy
+  has_many :repo_snapshots, dependent: :delete_all
+  has_many :reviewer_notes, dependent: :delete_all
   has_one_attached :banner
 
   BANNER_TYPES = Journal::IMAGE_TYPES

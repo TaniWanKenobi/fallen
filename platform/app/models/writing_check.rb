@@ -54,6 +54,8 @@ class WritingCheck < ApplicationRecord
 
   validates :status, inclusion: { in: STATUSES }
 
+  scope :flagged, -> { where(status: "done").where(fraction_ai: FLAG_AT..) }
+
   # How the composer checks writing before "Log journal", for people the writing_check flag is on for: "pangram"
   # sends it to Pangram, "paste" (with the disable_pangram flag on) sends nothing and reminds only people who pasted
   # text in. Nil for everyone else.

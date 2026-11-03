@@ -10,7 +10,7 @@ class FeatureFlag
   # Registered with Flipper in config/initializers/flipper.rb; User#flipper_group? decides who is in each.
   GROUPS = {
     admins: { label: "Admins", description: "People with the admin role" },
-    staff: { label: "Staff", description: "Admins and reviewers" },
+    staff: { label: "Staff", description: "Admins, reviewers and design reviewers" },
     verified: { label: "Verified people", description: "Signed in with Hack Club Auth" },
     trial: { label: "Trial accounts", description: "Not signed in with Hack Club Auth yet" }
   }.freeze

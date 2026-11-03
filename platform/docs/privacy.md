@@ -34,6 +34,8 @@ Only from the token's `subject`: any `emails` (case-insensitive against `users.e
 | Team Sami's weekly streak results (days missed and excused, multiplier and freezes before and after), and changes staff made to their streak (days excused, freezes given, values set) with the staff reason, the message DMed to them and what it changed. Changes they made to other people's streaks as staff lose their name | `streak_weeks`, `streak_adjustments` |
 | Each change to their timezone, and changes refused for coming too soon: the zone before and after, where it came from and when | `timezone_changes` |
 | Project transfer requests: their email and name as typed on the transfer form, the other program's project link, the hours they claimed, a copy of that project's public page (title, writing, photo links, the author's Slack id), and the reviewer's decision, their note and the message sent to the person in a Slack DM. Their reviews of other people's transfers lose the reviewer | `project_transfers` |
+| Design submissions of their projects or sent by them: the repository link and the copy of it read when they checked it (commit, file list, README, bom.csv), what they said the project has, their note to the reviewer, the bill of materials (parts, purposes, quantities, prices, links, stores, what they own), screenshots, the checks' results, and the review (the reviewer, the rubric answers, how much of each journal's time counted and why, the decision on each part, the feedback DMed to them and the reviewers' internal reason and notes on the project, fraud flags) | `submissions`, `repo_snapshots`, `bom_items`, `journal_reviews`, `reviewer_notes`, Active Storage |
+| Design funding: what each approved submission was owed, whether and how it was sent and the HCB reference, and their HCB card grant as Fallen knows it (HCB id, email, amount, balance) | `grant_payouts`, `hcb_grant_cards` |
 | Feature flags an admin turned on for them by name (their public id on the flag) | `flipper_gates` |
 | Admins only: their MCP tokens (name, digest, last four characters, when made, last used, expiry), the calls made with them, and the SQL writes their agent asked for with previews of the rows they touched | `admin_tokens`, `mcp_actions`, `mcp_sql_changes` |
 | MCP calls made about the person or their projects (tool, arguments, result of a write, which admin) | `mcp_actions` |
@@ -49,6 +51,7 @@ Sessions are signed cookies holding the user id, so they stop working once the r
 
 | What | Why |
 | --- | --- |
+| Design reviews and notes they wrote about other people's projects, and payouts they marked sent | Belong to those projects. The reviewer, note author and sender are set to null. An HCB connection they made is deleted, so an admin connects HCB again. |
 | History of changes the person made to other accounts as staff | Belongs to those accounts. `whodunnit` is set to null so it no longer points at the person. |
 | Banned accounts | Kept as a placeholder with only the HCA id and ban flag, so the ban still applies if they sign in again. Name, email, avatar, pet, Slack id and tokens are wiped and the account's history is deleted. Its Airtable row shows the placeholder after the next upload. |
 
@@ -76,6 +79,10 @@ Sessions are signed cookies holding the user id, so they stop working once the r
   only the person's own journals on it are deleted. The project's title, description and banner stay with it.
 - Slack itself is not ours to delete from. Project threads and journal messages stay in the workspace, and so do
   flagged AI-writing checks posted to the private #fallen-ai-flags channel.
+- HCB keeps its own record of every card grant and top-up sent, and the grant's email, under Hack Club's financial
+  record keeping. Fallen only deletes its copy.
+- Design submissions' repositories are read from wherever the person hosts them. Fallen keeps only the copy described
+  above.
 - Journal writing checked for AI is sent to Pangram (pangram.com), which keeps it under its own retention.
 - Stray posts in the journals channel are deleted through Prometheus, which keeps their text in its private audit
   log channel. That log belongs to Prometheus, not Fallen.

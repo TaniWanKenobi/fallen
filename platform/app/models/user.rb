@@ -45,7 +45,7 @@
 #  index_users_on_slack_id            (slack_id)
 #
 class User < ApplicationRecord
-  ROLES = %w[user reviewer admin].freeze
+  ROLES = %w[user reviewer design_reviewer admin].freeze
   FALLBACK_AVATAR = "/static-assets/pfp_fallback.webp"
   # Cachet redirects to the current Slack profile picture, so stored Slack image URLs never go stale.
   CACHET_URL = "https://cachet.hackclub.com"
@@ -76,6 +76,8 @@ class User < ApplicationRecord
   encrypts :hca_token, :slack_user_token, :lapse_token
 
   has_many :projects, dependent: :destroy
+  has_many :submissions, dependent: :destroy
+  has_many :hcb_grant_cards, dependent: :restrict_with_error
   has_many :project_memberships, class_name: "ProjectMember", dependent: :delete_all
   has_many :project_invites, dependent: :delete_all
   has_many :journals, dependent: :destroy
@@ -123,7 +125,10 @@ class User < ApplicationRecord
   def has_role?(role) = roles.include?(role.to_s)
   def admin? = has_role?(:admin)
   def reviewer? = has_role?(:reviewer)
-  def staff? = admin? || reviewer?
+  def design_reviewer? = has_role?(:design_reviewer)
+  def staff? = admin? || reviewer? || design_reviewer?
+  # Who works the design review queue (/review).
+  def reviews_designs? = admin? || design_reviewer?
 
   # Feature flags (FeatureFlag) name people by public_id, so the admin page can show who a flag is on for.
   def flipper_id = public_id

@@ -10,6 +10,7 @@ require "test_helper"
 #  duration_minutes    :integer
 #  hours_self_claimed  :boolean
 #  lapse_url           :string
+#  reviewed_minutes    :integer
 #  slack_parts         :jsonb            not null
 #  slack_posted_by_bot :boolean          default(FALSE), not null
 #  slack_ts            :string

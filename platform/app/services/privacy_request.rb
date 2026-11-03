@@ -79,6 +79,7 @@ class PrivacyRequest
     emails = users.map { it.email.downcase }
     deleted["project_transfers"] = forget(ProjectTransfer.where(user_id: ids).or(ProjectTransfer.where(project_id: project_ids)).or(ProjectTransfer.where(email: emails)))
     ProjectTransfer.where(reviewer_id: ids).update_all(reviewer_id: nil)
+    deleted.merge!(forget_submissions(ids, project_ids, journal_ids))
     deleted["journals"] = forget(Journal.where(id: journal_ids))
     deleted["project_members"] = forget(ProjectMember.where(user_id: ids).or(ProjectMember.where(project_id: project_ids)))
     deleted["project_invites"] = forget(ProjectInvite.where(user_id: ids).or(ProjectInvite.where(inviter_id: ids)).or(ProjectInvite.where(project_id: project_ids)))
@@ -114,6 +115,33 @@ class PrivacyRequest
   end
 
   # Deletes the rows along with their change history, which is counted under "versions".
+  # Design submissions of their projects or sent by them, with their parts lists, screenshots, reviews and funding,
+  # and the repository reads behind them. Reviews and notes they wrote about other people's projects lose their name.
+  def forget_submissions(ids, project_ids, journal_ids)
+    submissions = Submission.where(user_id: ids).or(Submission.where(project_id: project_ids))
+    submission_ids = submissions.pluck(:id)
+    Submission.where(id: submission_ids).includes(:screenshots_attachments).find_each { |submission| submission.screenshots.purge_later } if commit?
+    ActiveStorage::Attachment.where(record_type: "Submission", record_id: submission_ids).delete_all
+    result = {
+      "bom_items" => forget(BomItem.where(submission_id: submission_ids)),
+      "journal_reviews" => forget(JournalReview.where(submission_id: submission_ids).or(JournalReview.where(journal_id: journal_ids))),
+      "reviewer_notes" => forget(ReviewerNote.where(project_id: project_ids).or(ReviewerNote.where(submission_id: submission_ids))),
+      "grant_payouts" => forget(GrantPayout.where(submission_id: submission_ids).or(GrantPayout.where(user_id: ids))),
+      "hcb_grant_cards" => forget(HcbGrantCard.where(user_id: ids))
+    }
+    result["submissions"] = forget(Submission.where(id: submission_ids))
+    snapshots = RepoSnapshot.where(user_id: ids).or(RepoSnapshot.where(project_id: project_ids))
+    Submission.where(repo_snapshot_id: snapshots.select(:id)).update_all(repo_snapshot_id: nil)
+    result["repo_snapshots"] = forget(snapshots)
+    Submission.where(reviewer_id: ids).update_all(reviewer_id: nil)
+    Submission.where(claimed_by_id: ids).update_all(claimed_by_id: nil, claim_expires_at: nil)
+    JournalReview.where(reviewer_id: ids).update_all(reviewer_id: nil)
+    ReviewerNote.where(user_id: ids).update_all(user_id: nil)
+    GrantPayout.where(sent_by_id: ids).update_all(sent_by_id: nil)
+    HcbConnection.where(connected_by_id: ids).delete_all
+    result
+  end
+
   def forget(scope)
     ids = scope.pluck(:id)
     @versions += PaperTrail::Version.where(item_type: scope.model.name, item_id: ids).delete_all

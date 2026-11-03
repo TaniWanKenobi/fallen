@@ -1,7 +1,7 @@
 <script lang="ts">
   import { router } from '@inertiajs/svelte'
   import Markdown from '@/components/Markdown.svelte'
-  import { formatDateTime, timeAgo } from '@/lib/format'
+  import { formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
   import * as sfx from '@/lib/sfx'
   import { journals } from '@/routes'
   import type { Journal } from '@/types'
@@ -60,7 +60,18 @@
         <p class="font-montserrat text-lg font-semibold tracking-[-0.02em] text-white">
           {journal.author.name}
         </p>
-        {#if journal.duration_text}
+        {#if journal.duration_text && journal.reviewed_minutes != null}
+          <span
+            class="chip"
+            title="A design reviewer counted {formatMinutes(
+              journal.reviewed_minutes,
+            )} of the {journal.duration_text} logged"
+            ><s class="opacity-50">{journal.duration_text}</s> {formatMinutes(journal.reviewed_minutes)}</span
+          >
+          {#if journal.xp != null}
+            <span class="chip bg-saffron/20! text-saffron!">+{journal.xp} XP</span>
+          {/if}
+        {:else if journal.duration_text}
           <span class="chip">{journal.duration_text}</span>
           {#if journal.xp != null}
             <span class="chip bg-saffron/20! text-saffron!">+{journal.xp} XP</span>

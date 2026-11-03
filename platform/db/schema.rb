@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -102,6 +102,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
     t.index ["user_id"], name: "index_admin_tokens_on_user_id"
   end
 
+  create_table "bom_items", force: :cascade do |t|
+    t.bigint "submission_id", null: false
+    t.integer "position", null: false
+    t.string "kind", default: "part", null: false
+    t.string "name", null: false
+    t.string "purpose"
+    t.integer "quantity", default: 1, null: false
+    t.integer "unit_cents"
+    t.integer "total_cents", null: false
+    t.string "link"
+    t.string "vendor"
+    t.boolean "owned", default: false, null: false
+    t.string "verdict"
+    t.string "reason"
+    t.integer "approved_cents"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["submission_id"], name: "index_bom_items_on_submission_id"
+  end
+
   create_table "fallout_invites", primary_key: "digest", id: :string, force: :cascade do |t|
   end
 
@@ -119,6 +139,52 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["feature_key", "key", "value"], name: "index_flipper_gates_on_feature_key_and_key_and_value", unique: true
+  end
+
+  create_table "grant_payouts", force: :cascade do |t|
+    t.bigint "submission_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "hcb_grant_card_id"
+    t.bigint "sent_by_id"
+    t.integer "amount_cents", null: false
+    t.string "status", default: "pending", null: false
+    t.string "via", default: "auto", null: false
+    t.string "hcb_reference"
+    t.text "error"
+    t.datetime "sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hcb_grant_card_id"], name: "index_grant_payouts_on_hcb_grant_card_id"
+    t.index ["sent_by_id"], name: "index_grant_payouts_on_sent_by_id"
+    t.index ["status"], name: "index_grant_payouts_on_status"
+    t.index ["submission_id"], name: "index_grant_payouts_on_submission_id"
+    t.index ["submission_id"], name: "index_grant_payouts_one_per_submission", unique: true
+    t.index ["user_id"], name: "index_grant_payouts_on_user_id"
+  end
+
+  create_table "hcb_connections", force: :cascade do |t|
+    t.bigint "connected_by_id", null: false
+    t.text "access_token"
+    t.text "refresh_token"
+    t.datetime "token_expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connected_by_id"], name: "index_hcb_connections_on_connected_by_id"
+  end
+
+  create_table "hcb_grant_cards", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "hcb_id"
+    t.string "email"
+    t.integer "amount_cents", null: false
+    t.integer "balance_cents"
+    t.string "status", default: "active", null: false
+    t.datetime "last_synced_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hcb_id"], name: "index_hcb_grant_cards_on_hcb_id", unique: true
+    t.index ["user_id"], name: "index_hcb_grant_cards_on_user_id"
+    t.index ["user_id"], name: "index_hcb_grant_cards_one_active_per_user", unique: true, where: "((status)::text = 'active'::text)"
   end
 
   create_table "huddle_events", force: :cascade do |t|
@@ -203,6 +269,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
     t.index ["user_id"], name: "index_journal_drafts_on_user_id"
   end
 
+  create_table "journal_reviews", force: :cascade do |t|
+    t.bigint "submission_id", null: false
+    t.bigint "journal_id", null: false
+    t.bigint "reviewer_id"
+    t.integer "approved_minutes", null: false
+    t.string "reason"
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["journal_id"], name: "index_journal_reviews_on_journal_id"
+    t.index ["reviewer_id"], name: "index_journal_reviews_on_reviewer_id"
+    t.index ["submission_id", "journal_id"], name: "index_journal_reviews_on_submission_id_and_journal_id", unique: true
+    t.index ["submission_id"], name: "index_journal_reviews_on_submission_id"
+  end
+
   create_table "journals", force: :cascade do |t|
     t.bigint "project_id", null: false
     t.bigint "user_id", null: false
@@ -220,6 +301,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
     t.integer "tracked_minutes"
     t.boolean "hours_self_claimed"
     t.boolean "slack_posted_by_bot", default: false, null: false
+    t.integer "reviewed_minutes"
     t.index ["created_at"], name: "index_journals_on_created_at"
     t.index ["discarded_at"], name: "index_journals_on_discarded_at"
     t.index ["project_id"], name: "index_journals_needing_hours", where: "((discarded_at IS NULL) AND (duration_minutes IS NULL))"
@@ -369,6 +451,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
     t.index ["slack_channel_id", "slack_thread_ts"], name: "index_projects_on_slack_channel_id_and_slack_thread_ts", unique: true, where: "(slack_thread_ts IS NOT NULL)"
     t.index ["updated_at"], name: "index_projects_on_updated_at"
     t.index ["user_id"], name: "index_projects_on_user_id"
+  end
+
+  create_table "repo_snapshots", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "user_id", null: false
+    t.string "url", null: false
+    t.string "status", default: "pending", null: false
+    t.string "host"
+    t.string "branch"
+    t.string "commit_sha"
+    t.jsonb "tree", default: [], null: false
+    t.boolean "tree_truncated", default: false, null: false
+    t.text "readme"
+    t.string "readme_path"
+    t.text "bom_csv"
+    t.string "bom_path"
+    t.text "error"
+    t.datetime "fetched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_repo_snapshots_on_project_id"
+    t.index ["user_id"], name: "index_repo_snapshots_on_user_id"
+  end
+
+  create_table "reviewer_notes", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "submission_id"
+    t.bigint "user_id"
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_reviewer_notes_on_project_id"
+    t.index ["submission_id"], name: "index_reviewer_notes_on_submission_id"
+    t.index ["user_id"], name: "index_reviewer_notes_on_user_id"
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|
@@ -582,6 +698,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
     t.index ["user_id", "start"], name: "index_streak_weeks_on_user_id_and_start", unique: true
   end
 
+  create_table "submissions", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "repo_snapshot_id"
+    t.string "kind", default: "design", null: false
+    t.string "status", default: "pending", null: false
+    t.string "repo_url", null: false
+    t.string "commit_sha"
+    t.string "made_with", default: [], null: false, array: true
+    t.jsonb "checks", default: [], null: false
+    t.text "note"
+    t.text "bom_csv"
+    t.integer "requested_cents", default: 0, null: false
+    t.integer "approved_cents"
+    t.bigint "reviewer_id"
+    t.bigint "claimed_by_id"
+    t.datetime "claim_expires_at"
+    t.jsonb "rubric", default: {}, null: false
+    t.text "feedback"
+    t.text "internal_reason"
+    t.datetime "decided_at"
+    t.datetime "flagged_at"
+    t.text "flag_reason"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["claimed_by_id"], name: "index_submissions_on_claimed_by_id"
+    t.index ["project_id"], name: "index_submissions_on_project_id"
+    t.index ["project_id"], name: "index_submissions_one_pending_per_project", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["repo_snapshot_id"], name: "index_submissions_on_repo_snapshot_id"
+    t.index ["reviewer_id"], name: "index_submissions_on_reviewer_id"
+    t.index ["status", "created_at"], name: "index_submissions_on_status_and_created_at"
+    t.index ["user_id"], name: "index_submissions_on_user_id"
+  end
+
   create_table "time_milestones", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.datetime "since", null: false
@@ -716,11 +867,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_tokens", "users"
+  add_foreign_key "bom_items", "submissions"
+  add_foreign_key "grant_payouts", "hcb_grant_cards"
+  add_foreign_key "grant_payouts", "submissions"
+  add_foreign_key "grant_payouts", "users"
+  add_foreign_key "grant_payouts", "users", column: "sent_by_id"
+  add_foreign_key "hcb_connections", "users", column: "connected_by_id"
+  add_foreign_key "hcb_grant_cards", "users"
   add_foreign_key "huddle_pauses", "users"
   add_foreign_key "huddle_sessions", "huddles"
   add_foreign_key "huddle_sessions", "users"
   add_foreign_key "journal_drafts", "projects"
   add_foreign_key "journal_drafts", "users"
+  add_foreign_key "journal_reviews", "journals"
+  add_foreign_key "journal_reviews", "submissions"
+  add_foreign_key "journal_reviews", "users", column: "reviewer_id"
   add_foreign_key "journals", "projects"
   add_foreign_key "journals", "users"
   add_foreign_key "lapse_timelapses", "journals"
@@ -739,6 +900,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
   add_foreign_key "project_transfers", "users"
   add_foreign_key "project_transfers", "users", column: "reviewer_id"
   add_foreign_key "projects", "users"
+  add_foreign_key "repo_snapshots", "projects"
+  add_foreign_key "repo_snapshots", "users"
+  add_foreign_key "reviewer_notes", "projects"
+  add_foreign_key "reviewer_notes", "submissions"
+  add_foreign_key "reviewer_notes", "users"
   add_foreign_key "solid_queue_batch_executions", "solid_queue_batches", column: "batch_id", on_delete: :cascade
   add_foreign_key "solid_queue_batch_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
@@ -751,6 +917,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_230100) do
   add_foreign_key "streak_adjustments", "users", column: "admin_id"
   add_foreign_key "streak_adjustments", "users", column: "undone_by_id"
   add_foreign_key "streak_weeks", "users"
+  add_foreign_key "submissions", "projects"
+  add_foreign_key "submissions", "repo_snapshots"
+  add_foreign_key "submissions", "users"
+  add_foreign_key "submissions", "users", column: "claimed_by_id"
+  add_foreign_key "submissions", "users", column: "reviewer_id"
   add_foreign_key "time_milestones", "users"
   add_foreign_key "timer_sessions", "users"
   add_foreign_key "timezone_changes", "users"

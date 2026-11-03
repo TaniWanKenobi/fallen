@@ -688,6 +688,57 @@
 }
 
 /* Journals on the glass panels: prose-journal's shapes in the docs' colours. */
+/* Journals and READMEs on the review page, in the admin theme's colours, light or dark. */
+@utility prose-review {
+  @apply text-sm leading-relaxed text-foreground;
+  & h1,
+  & h2,
+  & h3,
+  & h4 {
+    @apply mt-4 mb-1 font-semibold;
+  }
+  & h1 {
+    @apply text-lg;
+  }
+  & h2 {
+    @apply text-base;
+  }
+  & p {
+    @apply my-2;
+  }
+  & ul {
+    @apply my-2 list-disc pl-5;
+  }
+  & ol {
+    @apply my-2 list-decimal pl-5;
+  }
+  & a {
+    @apply text-blue-600 underline underline-offset-2 dark:text-blue-400;
+  }
+  & code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-[12px];
+  }
+  & pre {
+    @apply my-3 overflow-x-auto rounded-md bg-muted p-3 font-mono text-[12px];
+  }
+  & pre code {
+    @apply bg-transparent p-0;
+  }
+  & img {
+    @apply my-3 max-h-80 rounded-md;
+  }
+  & blockquote {
+    @apply my-2 border-l-2 border-border pl-3 text-muted-foreground;
+  }
+  & table {
+    @apply my-3 text-xs;
+  }
+  & th,
+  & td {
+    @apply border border-border px-2 py-1;
+  }
+}
+
 @utility prose-glass {
   @apply font-outfit text-[15px] leading-relaxed text-pale-blue;
   & h1,

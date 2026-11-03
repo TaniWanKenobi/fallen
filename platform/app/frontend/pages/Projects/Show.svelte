@@ -17,6 +17,8 @@
   import SolarNotebook from '@/components/icons/SolarNotebook.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import InviteModal from '@/components/team/InviteModal.svelte'
+  import DesignStatus from '@/components/submission/DesignStatus.svelte'
+  import SubmitDesignModal from '@/components/submission/SubmitDesignModal.svelte'
   import ProjectTeam from '@/components/team/ProjectTeam.svelte'
   import { projects, project as projectRoute } from '@/routes'
   import { formatMinutes } from '@/lib/format'
@@ -26,7 +28,7 @@
   import * as sfx from '@/lib/sfx'
   import type { WritingCheckMode } from '@/lib/writingCheck'
   import { stagger } from '@/lib/stagger'
-  import type { Journal, Pagy, Person, Project, ProjectChoice } from '@/types'
+  import type { Journal, Pagy, Person, Project, ProjectChoice, Submission } from '@/types'
 
   let {
     project,
@@ -39,6 +41,7 @@
     move_targets,
     lapse,
     writing_check,
+    submission,
     can,
   }: {
     project: Project
@@ -56,7 +59,11 @@
     lapse?: LapseStatus | null
     // How "Log journal" checks the writing first (WritingCheck.mode_for).
     writing_check?: WritingCheckMode | null
+    // The latest design submission, if there is one.
+    submission?: Submission | null
     can?: {
+      submit: boolean
+      withdraw: boolean
       update: boolean
       destroy: boolean
       journal: boolean
@@ -70,6 +77,7 @@
   let editing = $state(false)
   let inviting = $state(false)
   let moving = $state<Journal | null>(null)
+  let submitting = $state(false)
   const me = $derived(shared().auth.user?.id)
 
   function write(journal: Journal | null = null) {
@@ -185,6 +193,13 @@
         <div class="space-y-5">
           <ProjectTeam {project} {team} {can} onInvite={() => (inviting = true)} />
 
+          <DesignStatus
+            submission={submission ?? null}
+            canSubmit={can.submit && !!direct_upload_url}
+            canWithdraw={can.withdraw}
+            onSubmit={() => (submitting = true)}
+          />
+
           {#if can.journal}
             <button
               type="button"
@@ -267,6 +282,15 @@
 
 {#if moving}
   <MoveJournalModal journal={moving} targets={move_targets} onClose={() => (moving = null)} />
+{/if}
+
+{#if submitting && direct_upload_url}
+  <SubmitDesignModal
+    {project}
+    directUploadUrl={direct_upload_url}
+    resubmission={submission?.status === 'returned'}
+    onClose={() => (submitting = false)}
+  />
 {/if}
 
 {#if editing}

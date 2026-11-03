@@ -10,6 +10,7 @@
 #  duration_minutes    :integer
 #  hours_self_claimed  :boolean
 #  lapse_url           :string
+#  reviewed_minutes    :integer
 #  slack_parts         :jsonb            not null
 #  slack_posted_by_bot :boolean          default(FALSE), not null
 #  slack_ts            :string
@@ -40,7 +41,7 @@ class JournalSerializer < ApplicationSerializer
   typelize_from Journal
   typelize id: :string, slack_url: [ :string, nullable: true ], duration_text: [ :string, nullable: true ], xp: [ :number, nullable: true ],
            images: "Array<{ id: string; url: string; filename: string }>"
-  attributes :body, :duration_minutes, :lapse_url, :source, :created_at, :updated_at
+  attributes :body, :duration_minutes, :reviewed_minutes, :lapse_url, :source, :created_at, :updated_at
   attribute(:id) { |journal| journal.public_id }
   attribute(:slack_url, &:slack_url)
   attribute(:duration_text, &:duration_text)

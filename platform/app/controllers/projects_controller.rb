@@ -28,6 +28,8 @@ class ProjectsController < ApplicationController
     # Their authors are nearly always on the team, which is loaded already.
     ActiveRecord::Associations::Preloader.new(records: journals.to_a, associations: :user, available_records: @project.teammates).call
     policy = policy(@project)
+    submission = Submission.latest_for(@project)
+    ActiveRecord::Associations::Preloader.new(records: [ submission ], associations: [ :bom_items, :grant_payout, { screenshots_attachments: :blob } ]).call if submission
 
     render inertia: "Projects/Show", props: {
       project: ProjectSerializer.render(@project, covers: Project.journal_covers([ @project ]), **totals),
@@ -41,7 +43,9 @@ class ProjectsController < ApplicationController
       direct_upload_url: uploads_path,
       lapse: InertiaRails.defer { lapse_props(timelapses: true) if @project.on_team?(current_user) },
       writing_check: WritingCheck.mode_for(current_user),
+      submission: submission && SubmissionSerializer.render(submission),
       can: {
+        submit: can_submit?(submission), withdraw: submission.present? && policy(submission).destroy?,
         update: policy.update?, destroy: policy.destroy?, journal: policy(@project.journals.build(user: current_user)).create?,
         invite: policy.invite?, leave: policy.leave?, remove_teammate: policy.remove_teammate?
       }
@@ -89,6 +93,12 @@ class ProjectsController < ApplicationController
   end
 
   private
+
+  # Whether the project can go for design review now: on the team, the flag on, and nothing waiting or decided for good.
+  def can_submit?(latest)
+    Flipper.enabled?(SubmissionsController::FLAG, current_user) && policy(Submission.new(project: @project)).create? &&
+      (latest.nil? || latest.returned?)
+  end
 
   def move_targets
     return [] if @project.approved?

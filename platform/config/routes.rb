@@ -57,6 +57,8 @@ Rails.application.routes.draw do
   resources :photo_checks, only: :create
   # The AI-writing check the journal composer runs before posting (WritingCheck).
   resources :writing_checks, only: %i[create show]
+  # Turns a bom.csv into rows for the submit popup (BomImport).
+  resources :bom_imports, only: :create
 
   resources :projects do
     resources :journals, only: %i[create update destroy], shallow: true do
@@ -67,6 +69,10 @@ Rails.application.routes.draw do
       post :accept, on: :member
     end
     resource :join_link, controller: :project_join_links, only: :create
+    # Design submission: the submit popup's steps (repo check, checks) and sending it.
+    resources :submissions, only: %i[create destroy], shallow: true
+    resources :repo_snapshots, only: %i[create show], shallow: true
+    resource :submission_check, only: :create
     resources :teammates, controller: :project_teammates, only: :destroy
   end
   get "join/:token" => "project_joins#show", as: :join
@@ -92,6 +98,23 @@ Rails.application.routes.draw do
   post "mcp" => "mcp#handle", as: :mcp, format: false
   match "mcp" => "mcp#not_allowed", via: %i[get put patch delete], format: false
 
+  # The design review queue (SubmissionReview), for design reviewers and admins.
+  constraints Constraints::DesignReviewer.new do
+    namespace :review do
+      root "submissions#index"
+      get "next" => "submissions#next", as: :next
+      resources :submissions, only: %i[index show update] do
+        member do
+          post :heartbeat
+          post :release
+          post :flag
+          post :unflag
+        end
+        resources :notes, only: :create
+      end
+    end
+  end
+
   constraints Constraints::Admin.new do
     namespace :admin do
       root "dashboard#index"
@@ -108,6 +131,18 @@ Rails.application.routes.draw do
         post :sync, on: :collection
       end
       resources :streaks, only: :index
+      # Design funding sent through HCB (GrantPayout), and connecting HCB.
+      resources :grants, only: :index do
+        member do
+          post :send_now
+          post :retry
+          post :mark_sent
+        end
+        collection do
+          get :connect, as: :hcb_connect
+          get :callback, as: :hcb_callback
+        end
+      end
       resources :streak_adjustments, only: %i[create destroy]
 
       get "stats" => "stats#show", as: :stats
