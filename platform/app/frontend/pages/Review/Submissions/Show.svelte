@@ -20,6 +20,7 @@
   import OverviewPanel from '@/components/review/OverviewPanel.svelte'
   import RepoPanel from '@/components/review/RepoPanel.svelte'
   import ReviewTopBar from '@/components/review/ReviewTopBar.svelte'
+  import { rise } from '@/components/review/motion'
   import {
     clearReviewDraft,
     initialDraft,
@@ -208,7 +209,7 @@
   const SHORTCUTS = [
     ['1 to 4', 'Switch tabs'],
     ['J / K', 'Next or previous journal'],
-    ['A / R / X', 'Journal counts all, less, or none'],
+    ['A / R / X', 'Journal counts all, is deflated, or counts none'],
     ['N', 'Notes'],
     ['G', 'Open the repo'],
     ['S', 'Skip to the next submission'],
@@ -258,21 +259,25 @@
 
   <div class="flex min-h-0 flex-1">
     <main class="min-w-0 flex-1 overflow-y-auto">
-      {#if tab === 'overview'}
-        <OverviewPanel page={props} {countedMinutes} {fundedCents} />
-      {:else if tab === 'journals'}
-        <JournalsPanel
-          bind:this={journalsPanel}
-          page={props}
-          bind:draft
-          {readonly}
-          bind:focused={focusedJournal}
-        />
-      {:else if tab === 'bom'}
-        <BomPanel page={props} bind:draft {readonly} />
-      {:else}
-        <RepoPanel repo={props.repo} />
-      {/if}
+      {#key tab}
+        <div in:rise>
+          {#if tab === 'overview'}
+            <OverviewPanel page={props} {countedMinutes} {fundedCents} />
+          {:else if tab === 'journals'}
+            <JournalsPanel
+              bind:this={journalsPanel}
+              page={props}
+              bind:draft
+              {readonly}
+              bind:focused={focusedJournal}
+            />
+          {:else if tab === 'bom'}
+            <BomPanel page={props} bind:draft {readonly} />
+          {:else}
+            <RepoPanel repo={props.repo} />
+          {/if}
+        </div>
+      {/key}
     </main>
     <div class="w-px shrink-0 bg-border"></div>
     <aside class="w-80 shrink-0 overflow-y-auto">

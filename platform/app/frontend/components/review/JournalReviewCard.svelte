@@ -3,6 +3,7 @@
   import Markdown from '@/components/Markdown.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
+  import { pop, reveal } from '@/components/review/motion'
   import { formatDateTime, formatMinutes } from '@/lib/format'
   import { countedMinutes, journalDecided, type JournalCall } from '@/lib/review.svelte'
   import type { ReviewJournal } from '@/types'
@@ -106,7 +107,7 @@
   id="review-{journal.id}"
   onfocusin={onFocus}
   class={[
-    'scroll-mt-4 overflow-hidden rounded-lg border bg-card transition-shadow',
+    'scroll-mt-4 overflow-hidden rounded-lg border bg-card transition-[box-shadow,border-color] duration-200',
     focused
       ? 'border-ring shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_25%,transparent)]'
       : 'border-border',
@@ -117,7 +118,7 @@
   >
     <span
       class={[
-        'grid size-5 place-items-center rounded-full font-mono text-[10px] font-semibold',
+        'grid size-5 place-items-center rounded-full font-mono text-[10px] font-semibold transition-colors duration-300',
         !decided && 'bg-muted text-muted-foreground',
         decided &&
           mode === 'full' &&
@@ -222,9 +223,9 @@
     {/if}
   </div>
 
-  <footer class="space-y-3 border-t border-border bg-muted/30 px-3 py-3">
+  <footer class="border-t border-border bg-muted/30 px-3 py-3">
     {#if call.carried}
-      <p class="text-xs text-sky-700 dark:text-sky-300">
+      <p transition:reveal class="pb-3 text-xs text-sky-700 dark:text-sky-300">
         The last review counted {formatMinutes(counted ?? 0)}{call.reason
           ? ` (${call.reason.toLowerCase()})`
           : ''}. Pick it again to keep it, or change it.
@@ -232,7 +233,7 @@
     {/if}
 
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <span class="w-16 shrink-0 text-xs text-muted-foreground">Counts</span>
+      <span class="w-24 shrink-0 text-xs text-muted-foreground">Counts</span>
       <Segmented
         label="How much of this journal counts"
         value={mode}
@@ -240,103 +241,114 @@
         onChange={(value) => choose(value)}
         options={[
           { value: 'full', label: `All ${journal.duration_text}`, tint: 'green', title: 'All of it (A)' },
-          { value: 'part', label: 'Part of it', tint: 'amber', title: 'Part of it (R)' },
+          { value: 'part', label: 'Deflate', tint: 'amber', title: 'Deflate (R)' },
           { value: 'none', label: 'None', tint: 'red', title: 'None (X)' },
         ]}
       />
       {#if decided && mode !== 'full'}
-        <span class="text-xs text-muted-foreground">
+        <span transition:pop class="text-xs text-muted-foreground">
           takes off <span class="font-mono text-foreground">{formatMinutes(logged - (counted ?? 0))}</span>
         </span>
       {/if}
     </div>
 
     {#if mode === 'part'}
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span class="w-16 shrink-0 text-xs text-muted-foreground">Time</span>
-        <div
-          class={[
-            'flex h-8 items-center rounded-md border bg-background pr-2 font-mono text-sm',
-            partProblem ? 'border-amber-400' : 'border-input',
-          ]}
-        >
-          <input
-            bind:this={hoursInput}
-            bind:value={hours}
-            oninput={typed}
-            disabled={readonly}
-            inputmode="numeric"
-            aria-label="Hours that count"
-            placeholder="0"
-            class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
-          />
-          <span class="text-muted-foreground">h</span>
-          <input
-            bind:value={mins}
-            oninput={typed}
-            disabled={readonly}
-            inputmode="numeric"
-            aria-label="Minutes that count"
-            placeholder="00"
-            class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
-          />
-          <span class="text-muted-foreground">m</span>
-        </div>
-        <span class="text-xs text-muted-foreground">of {journal.duration_text}</span>
-        {#if !readonly}
-          <div class="flex gap-1">
-            {#each presets as preset (preset.label)}
-              <button
-                type="button"
-                onclick={() => setPart(preset.minutes)}
-                class={[
-                  'rounded-full px-2 py-0.5 text-xs transition-colors',
-                  counted === preset.minutes
-                    ? 'bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                ]}>{preset.label} · {formatMinutes(preset.minutes)}</button
-              >
-            {/each}
+      <div transition:reveal>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 pt-3">
+          <span class="w-24 shrink-0 text-xs text-muted-foreground">Time</span>
+          <div
+            class={[
+              'flex h-8 items-center rounded-md border bg-background pr-2 font-mono text-sm transition-colors duration-200',
+              partProblem ? 'border-amber-400' : 'border-input',
+            ]}
+          >
+            <input
+              bind:this={hoursInput}
+              bind:value={hours}
+              oninput={typed}
+              disabled={readonly}
+              inputmode="numeric"
+              aria-label="Hours that count"
+              placeholder="0"
+              class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
+            />
+            <span class="text-muted-foreground">h</span>
+            <input
+              bind:value={mins}
+              oninput={typed}
+              disabled={readonly}
+              inputmode="numeric"
+              aria-label="Minutes that count"
+              placeholder="00"
+              class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
+            />
+            <span class="text-muted-foreground">m</span>
           </div>
-        {/if}
+          <span class="text-xs text-muted-foreground">of {journal.duration_text}</span>
+          {#if !readonly}
+            <div class="flex gap-1">
+              {#each presets as preset (preset.label)}
+                <button
+                  type="button"
+                  onclick={() => setPart(preset.minutes)}
+                  class={[
+                    'rounded-full px-2 py-0.5 text-xs transition-all duration-200',
+                    counted === preset.minutes
+                      ? 'bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  ]}>{preset.label} · {formatMinutes(preset.minutes)}</button
+                >
+              {/each}
+            </div>
+          {/if}
+        </div>
+        {#if partProblem}<p
+            transition:reveal
+            class="pt-1.5 pl-[108px] text-xs text-amber-700 dark:text-amber-400"
+          >
+            {partProblem}
+          </p>{/if}
       </div>
-      {#if partProblem}<p class="pl-[76px] text-xs text-amber-700 dark:text-amber-400">{partProblem}</p>{/if}
     {/if}
 
     {#if mode === 'part' || mode === 'none'}
-      <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
-        <span class="w-16 shrink-0 pt-0.5 text-xs text-muted-foreground">Why</span>
-        <div class="flex min-w-0 flex-1 flex-wrap gap-1" role="radiogroup" aria-label="Why it counts less">
-          {#each reasons as reason (reason)}
-            {@const on = call.reason === reason}
-            <button
-              type="button"
-              role="radio"
-              aria-checked={on}
-              disabled={readonly}
-              onclick={() => (call = { ...call, reason, carried: false })}
-              class={[
-                'rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:cursor-default',
-                on
-                  ? 'border-transparent bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
-                  : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
-              ]}>{reason}</button
-            >
-          {/each}
+      <div transition:reveal>
+        <div class="flex flex-wrap items-start gap-x-3 gap-y-2 pt-3">
+          <span class="w-24 shrink-0 pt-0.5 text-xs text-muted-foreground">Why</span>
+          <div class="flex min-w-0 flex-1 flex-wrap gap-1" role="radiogroup" aria-label="Why it counts less">
+            {#each reasons as reason (reason)}
+              {@const on = call.reason === reason}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={readonly}
+                onclick={() => (call = { ...call, reason, carried: false })}
+                class={[
+                  'rounded-full border px-2.5 py-0.5 text-xs transition-all duration-200 disabled:cursor-default',
+                  on
+                    ? 'border-transparent bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
+                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                ]}>{reason}</button
+              >
+            {/each}
+          </div>
         </div>
+        {#if call.reason}
+          <div transition:reveal>
+            <div class="flex items-center gap-3 pt-3">
+              <span class="w-24 shrink-0 text-xs text-muted-foreground">Justification</span>
+              <input
+                bind:value={call.note}
+                disabled={readonly}
+                maxlength="1000"
+                placeholder="Optional"
+                class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-xs transition-colors"
+              />
+            </div>
+          </div>
+        {/if}
       </div>
-      {#if call.reason}
-        <div class="flex items-center gap-3">
-          <span class="w-16 shrink-0 text-xs text-muted-foreground">Note</span>
-          <input
-            bind:value={call.note}
-            disabled={readonly}
-            maxlength="1000"
-            placeholder="Anything the next reviewer should know (optional)"
-            class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-xs"
-          />
-        </div>
-      {/if}
     {/if}
   </footer>
 </article>

@@ -4,6 +4,7 @@
   import { Button } from '@/components/admin/ui/button'
   import { Textarea } from '@/components/admin/ui/textarea'
   import PersonChip from '@/components/review/PersonChip.svelte'
+  import { rise } from '@/components/review/motion'
   import { timeAgo } from '@/lib/format'
   import { reviewSubmissionNotes } from '@/routes'
   import type { ReviewerNote } from '@/types'
@@ -38,6 +39,7 @@
 </script>
 
 <div
+  transition:rise
   class="absolute top-14 right-4 z-50 flex max-h-[70vh] w-96 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-xl"
 >
   <div class="flex items-center justify-between border-b border-border px-3 py-2">

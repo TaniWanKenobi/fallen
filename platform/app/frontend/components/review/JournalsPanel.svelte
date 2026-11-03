@@ -82,7 +82,7 @@
         options={[
           { value: 'all', label: 'All', tint: 'gray' },
           { value: 'open', label: `To decide (${open})`, tint: 'amber' },
-          { value: 'cut', label: `Cut (${cut})`, tint: 'red' },
+          { value: 'cut', label: `Deflated (${cut})`, tint: 'red' },
         ]}
       />
     </div>
@@ -106,7 +106,7 @@
     {/each}
     <p class="pt-2 text-center text-xs text-muted-foreground">
       <span class="font-mono">J</span>/<span class="font-mono">K</span> move between journals,
-      <span class="font-mono">A</span> counts all of it, <span class="font-mono">R</span> less,
+      <span class="font-mono">A</span> counts all of it, <span class="font-mono">R</span> deflates,
       <span class="font-mono">X</span> none.
     </p>
   </div>

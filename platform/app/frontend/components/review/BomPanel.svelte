@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from '@/components/admin/ui/button'
   import Segmented from '@/components/review/Segmented.svelte'
+  import { pop } from '@/components/review/motion'
   import {
     itemFunded,
     itemRequested,
@@ -149,7 +150,7 @@
                   ]}
                 />
                 {#if call?.verdict === 'adjusted'}
-                  <span class="inline-flex items-center gap-1 text-xs">
+                  <span transition:pop class="inline-flex items-center gap-1 text-xs">
                     $<input
                       value={fromCents(call.cents)}
                       oninput={(e) =>
@@ -163,6 +164,7 @@
                 {/if}
                 {#if call?.verdict === 'adjusted' || call?.verdict === 'cut'}
                   <select
+                    transition:pop
                     bind:value={draft.bom[item.id].reason}
                     disabled={readonly}
                     aria-label="Why"

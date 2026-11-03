@@ -6,6 +6,7 @@
   import { Button } from '@/components/admin/ui/button'
   import { Separator } from '@/components/admin/ui/separator'
   import Segmented from '@/components/review/Segmented.svelte'
+  import { appear, reveal } from '@/components/review/motion'
   import Key from '@/components/review/Key.svelte'
   import { Textarea } from '@/components/admin/ui/textarea'
   import PersonChip from '@/components/review/PersonChip.svelte'
@@ -68,7 +69,7 @@
       : journalsLeft
         ? `Decide the ${journalsLeft} journal${journalsLeft === 1 ? '' : 's'} left`
         : journalReasonsMissing
-          ? 'Give a reason for every journal you cut'
+          ? 'Give a reason for every journal you deflate'
           : !draft.internal.trim()
             ? 'Write the internal reason'
             : null,
@@ -109,6 +110,7 @@
       >
       {#if !decided && left}
         <span
+          transition:appear
           class="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400"
           >{left} {left === 1 ? noun.replace(/s$/, '') : noun} left</span
         >
@@ -225,6 +227,7 @@
     {@const shown = Object.entries(errors).filter(([k]) => !['feedback', 'internal_reason'].includes(k))}
     {#if shown.length}
       <ul
+        transition:reveal
         class="space-y-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
       >
         {#each shown as [field, message] (field)}<li>{message}</li>{/each}
