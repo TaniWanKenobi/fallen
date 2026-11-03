@@ -98,6 +98,24 @@ class ReviewTest < ActionDispatch::IntegrationTest
     assert_nil @submission.reload.review_draft
   end
 
+  test "a reviewer can take over a submission someone left open, and the one who left it loses it" do
+    away = users(:admin)
+    SubmissionReview.claim(@submission, away)
+
+    sign_in_as @reviewer
+    props = inertia_props(review_submission_path(@submission), "Review/Submissions/Show")
+    refute props["can"]["decide"]
+    assert props["can"]["take_over"]
+
+    post take_over_review_submission_path(@submission)
+    assert_redirected_to review_submission_path(@submission)
+    assert_equal @reviewer, @submission.reload.claimed_by
+
+    sign_in_as away
+    post heartbeat_review_submission_path(@submission), as: :json
+    refute response.parsed_body["held"]
+  end
+
   test "nobody reviews their own project" do
     users(:member).update!(roles: %w[user design_reviewer])
     sign_in_as users(:member)

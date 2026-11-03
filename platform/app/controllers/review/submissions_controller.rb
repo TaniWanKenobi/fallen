@@ -41,7 +41,7 @@ class Review::SubmissionsController < Review::ApplicationController
     submission.reload if claimed
 
     policy = policy([ :review, submission ])
-    can = { decide: policy.decide? && claimed, reject: policy.reject?, flag: policy.flag?, unflag: policy.unflag?, note: policy.note? }
+    can = { decide: policy.decide? && claimed, take_over: policy.decide? && !claimed, reject: policy.reject?, flag: policy.flag?, unflag: policy.unflag?, note: policy.note? }
     render inertia: "Review/Submissions/Show", props: ReviewPageProps.new(submission, reviewer: true_user, claimed:, can:).props.merge(skip: skipped.join(","))
   end
 
@@ -76,6 +76,13 @@ class Review::SubmissionsController < Review::ApplicationController
     else
       render json: { saved: false }, status: :conflict
     end
+  end
+
+  def take_over
+    submission = find_submission
+    authorize [ :review, submission ], :decide?
+    SubmissionReview.take_over(submission, true_user)
+    redirect_to review_submission_path(submission, skip: skipped.join(",").presence), notice: "It's yours now."
   end
 
   # Skip: lets go of it and opens the next one.

@@ -109,6 +109,7 @@ Rails.application.routes.draw do
           post :heartbeat
           patch :draft
           post :release
+          post :take_over
           post :flag
           post :unflag
         end

@@ -34,6 +34,13 @@ class SubmissionReview
       .update_all(claimed_by_id: reviewer.id, claim_expires_at: CLAIM_FOR.from_now, updated_at: Time.current) == 1
   end
 
+  # Takes a submission over from whoever holds it, for when they've walked away from an open tab. Their page finds out
+  # on its next heartbeat and stops; what they had typed stays in their browser and its last save on the server.
+  def self.take_over(submission, reviewer)
+    Submission.queued.where(id: submission.id)
+      .update_all(claimed_by_id: reviewer.id, claim_expires_at: CLAIM_FOR.from_now, updated_at: Time.current) == 1
+  end
+
   def self.release(submission, reviewer)
     Submission.where(id: submission.id, claimed_by_id: reviewer.id).update_all(claimed_by_id: nil, claim_expires_at: nil)
   end

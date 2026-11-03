@@ -46,7 +46,7 @@ export interface ReviewPage {
   notes: ReviewerNote[]
   options: ReviewOptions
   claimed: boolean
-  can: { decide: boolean; reject: boolean; flag: boolean; unflag: boolean; note: boolean }
+  can: { decide: boolean; take_over: boolean; reject: boolean; flag: boolean; unflag: boolean; note: boolean }
   skip: string
 }
 

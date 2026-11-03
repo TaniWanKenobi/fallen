@@ -10,9 +10,10 @@
   import { appear, reveal } from '@/components/review/motion'
   import Key from '@/components/review/Key.svelte'
   import { Textarea } from '@/components/admin/ui/textarea'
-  import PersonChip from '@/components/review/PersonChip.svelte'
   import StatusBadge from '@/components/review/StatusBadge.svelte'
-  import { formatDateTime, formatMinutes } from '@/lib/format'
+  import { router } from '@inertiajs/svelte'
+  import { formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
+  import { takeOverReviewSubmission } from '@/routes'
   import {
     RAISED,
     RAISED_KEY,
@@ -140,11 +141,42 @@
         <p class="mt-0.5 whitespace-pre-wrap">{s.flag_reason}</p>
       </div>
     {:else if !page.can.decide}
-      <div class="rounded-md border border-border bg-muted/40 px-2.5 py-2 text-sm">
-        {#if s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date()}
-          <PersonChip person={s.claimed_by} class="font-medium" /> is reviewing this right now. You can read along.
+      {@const holder =
+        s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date() ? s.claimed_by : null}
+      <div class="rounded-md border border-border bg-muted/40 p-3 text-sm">
+        {#if holder}
+          <div class="flex items-center gap-2.5">
+            <img
+              src={holder.avatar}
+              alt=""
+              width="28"
+              height="28"
+              class="size-7 shrink-0 rounded-full bg-muted object-cover"
+            />
+            <div class="min-w-0">
+              <p class="font-medium">{holder.name} has this open</p>
+              <p class="text-xs text-muted-foreground">
+                Their hold ends {timeAgo(s.claim_expires_at!)} unless they keep working.
+              </p>
+            </div>
+          </div>
+          <p class="mt-2 text-xs text-muted-foreground">
+            You can read along. If they’ve stepped away, take it over and their page stops.
+          </p>
+          {#if page.can.take_over}
+            <Button
+              size="sm"
+              class="mt-2.5 w-full {RAISED.plain}"
+              onclick={() =>
+                router.post(
+                  takeOverReviewSubmission(s.id, { query: page.skip ? { skip: page.skip } : {} }).url,
+                )}
+            >
+              Take it over
+            </Button>
+          {/if}
         {:else}
-          You can read this, but not review it.
+          <p class="text-muted-foreground">You can read this, but not review it.</p>
         {/if}
       </div>
     {/if}
