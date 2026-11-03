@@ -16,6 +16,7 @@
   import {
     RAISED,
     RAISED_KEY,
+    itemDecided,
     journalDecided,
     journalNeedsReason,
     type Answer,
@@ -56,11 +57,11 @@
   const answered = $derived(questions.every(([key]) => draft.rubric[key]))
   const journalsLeft = $derived(page.journals.filter((j) => !journalDecided(j, draft.journals[j.id])).length)
   const journalReasonsMissing = $derived(page.journals.some((j) => journalNeedsReason(draft.journals[j.id])))
-  const itemsLeft = $derived(s.bom_items.filter((i) => !draft.bom[i.id]?.verdict).length)
+  const itemsLeft = $derived(s.bom_items.filter((i) => !itemDecided(i, draft.bom[i.id])).length)
   const itemReasonsMissing = $derived(
     s.bom_items.some((i) => {
       const call = draft.bom[i.id]
-      return (call?.verdict === 'cut' || call?.verdict === 'adjusted') && !call.reason
+      return !i.owned && (call?.verdict === 'cut' || call?.verdict === 'adjusted') && !call.reason
     }),
   )
 

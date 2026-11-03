@@ -175,16 +175,34 @@ export function itemRequested(item: { owned: boolean; total_cents: number }) {
   return item.owned ? 0 : item.total_cents
 }
 
-export function itemFunded(item: { owned: boolean; total_cents: number }, call: ItemCall | undefined) {
-  if (!call?.verdict) return null
-  if (call.verdict === 'approved') return itemRequested(item)
-  if (call.verdict === 'cut') return 0
-  return Math.min(call.cents ?? 0, itemRequested(item))
+type Line = { owned: boolean; total_cents: number }
+
+// Whether a line has a whole call: a part they already own asks for nothing, so it needs none; a lowered one needs an
+// amount between nothing and all of it.
+export function itemDecided(item: Line, call: ItemCall | undefined) {
+  if (item.owned) return true
+  if (!call?.verdict) return false
+  if (call.verdict !== 'adjusted') return true
+  return call.cents != null && call.cents > 0 && call.cents < itemRequested(item)
+}
+
+// The call the server gets for a line: owned parts go through as approved, for nothing.
+export const itemVerdict = (item: Line, call: ItemCall | undefined) =>
+  call?.verdict ?? (item.owned ? 'approved' : null)
+
+export function itemFunded(item: Line, call: ItemCall | undefined) {
+  if (item.owned) return 0
+  if (!itemDecided(item, call)) return null
+  if (call!.verdict === 'approved') return itemRequested(item)
+  if (call!.verdict === 'cut') return 0
+  return call!.cents!
 }
 
 // Fallout's raised buttons, over the admin Button's classes: a soft top-down gradient, a drop shadow and a 1px
 // highlight along the top.
 export const RAISED = {
+  plain:
+    'border-zinc-200 bg-linear-to-b from-white to-zinc-50 text-zinc-900 shadow-xs inset-shadow-2xs inset-shadow-white hover:bg-transparent hover:to-zinc-100 dark:border-zinc-700 dark:from-zinc-800 dark:to-zinc-900 dark:text-zinc-100 dark:inset-shadow-zinc-700',
   success:
     'border-emerald-700 bg-linear-to-b from-emerald-500 to-emerald-600 text-white shadow-sm inset-shadow-2xs inset-shadow-emerald-300 hover:bg-transparent hover:from-emerald-400 dark:border-emerald-500 dark:inset-shadow-emerald-400',
   warning:

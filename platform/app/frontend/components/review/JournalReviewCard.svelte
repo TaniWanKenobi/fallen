@@ -5,6 +5,7 @@
   import { lightboxImages, openLightbox } from '@/components/review/lightbox.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
+  import ReasonChips from '@/components/review/ReasonChips.svelte'
   import Morph from '@/components/admin/Morph.svelte'
   import { pop, reveal } from '@/components/review/motion'
   import { formatDateTime, formatMinutes } from '@/lib/format'
@@ -337,24 +338,13 @@
       <div transition:reveal>
         <div class="flex flex-wrap items-start gap-x-3 gap-y-2 pt-3">
           <span class="w-24 shrink-0 pt-0.5 text-xs text-muted-foreground">Why</span>
-          <div class="flex min-w-0 flex-1 flex-wrap gap-1" role="radiogroup" aria-label="Why it counts less">
-            {#each reasons as reason (reason)}
-              {@const on = call.reason === reason}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={on}
-                disabled={readonly}
-                onclick={() => (call = { ...call, reason, carried: false })}
-                class={[
-                  'rounded-full border px-2.5 py-0.5 text-xs transition-all duration-200 disabled:cursor-default',
-                  on
-                    ? 'border-transparent bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
-                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
-                ]}>{reason}</button
-              >
-            {/each}
-          </div>
+          <ReasonChips
+            {reasons}
+            value={call.reason}
+            label="Why it counts less"
+            disabled={readonly}
+            onChange={(reason) => (call = { ...call, reason, carried: false })}
+          />
         </div>
         {#if call.reason}
           <div transition:reveal>

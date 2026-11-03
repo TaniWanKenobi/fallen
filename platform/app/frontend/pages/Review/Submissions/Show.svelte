@@ -27,6 +27,8 @@
     initialDraft,
     itemFunded,
     countedMinutes as countedFor,
+    itemDecided,
+    itemVerdict,
     journalDecided,
     saveReviewDraft,
     type ReviewPage,
@@ -64,6 +66,8 @@
   let feedbackRef: HTMLTextAreaElement | null = $state(null)
   let internalRef: HTMLTextAreaElement | null = $state(null)
   let journalsPanel: JournalsPanel | undefined = $state()
+  let bomPanel: BomPanel | undefined = $state()
+  let focusedPart = $state(0)
   let topBar: ReviewTopBar | undefined = $state()
   let decision: DecisionPanel | undefined = $state()
   let repoPanel: RepoPanel | undefined = $state()
@@ -97,7 +101,7 @@
     (props.journals ?? []).filter((j) => !journalDecided(j, draft.journals[j.id])).length,
   )
   const itemsLeft = $derived(
-    (props.submission?.bom_items ?? []).filter((i) => !draft.bom[i.id]?.verdict).length,
+    (props.submission?.bom_items ?? []).filter((i) => !itemDecided(i, draft.bom[i.id])).length,
   )
 
   // Keeps the claim while the page is open. Losing it (left open past the claim, someone else took it) stops the
@@ -153,10 +157,13 @@
             ]),
           ),
           bom: Object.fromEntries(
-            Object.entries(draft.bom).map(([id, call]) => [
-              id,
-              { verdict: call.verdict, reason: call.reason, approved_cents: call.cents },
-            ]),
+            props.submission.bom_items.map((item) => {
+              const call = draft.bom[item.id]
+              return [
+                item.id,
+                { verdict: itemVerdict(item, call), reason: call?.reason, approved_cents: call?.cents },
+              ]
+            }),
           ),
         },
       },
@@ -205,7 +212,6 @@
     if (key === 'e') return router.visit(reviewSubmissions.reviewRoot().url)
     if (key === 's' && props.submission.status === 'pending') return topBar?.skip()
     if (key === 'g') return void window.open(props.submission.repo_url, '_blank', 'noopener')
-    if (tab === 'repo' && key === 'p') return repoPanel?.togglePinned()
     if (tab === 'journals') {
       if (key === 'j') return (event.preventDefault(), journalsPanel?.move(1))
       if (key === 'k') return (event.preventDefault(), journalsPanel?.move(-1))
@@ -213,12 +219,20 @@
       if (key === 'r') return (event.preventDefault(), journalsPanel?.act('part'))
       if (key === 'x') return journalsPanel?.act('none')
     }
+    if (tab === 'bom') {
+      if (key === 'j') return (event.preventDefault(), bomPanel?.move(1))
+      if (key === 'k') return (event.preventDefault(), bomPanel?.move(-1))
+      if (key === 'a') return bomPanel?.act('approved')
+      if (key === 'l') return (event.preventDefault(), bomPanel?.act('adjusted'))
+      if (key === 'x') return bomPanel?.act('cut')
+    }
   }
 
   const SHORTCUTS = [
     ['1 to 4', 'Switch tabs'],
-    ['J / K', 'Next or previous journal'],
+    ['J / K', 'Next or previous journal or part'],
     ['A / R / X', 'Journal counts all, is deflated, or counts none'],
+    ['A / L / X', 'Part approved, lowered, or cut'],
     ['P', 'Pinned repo files only'],
     ['N', 'Notes'],
     ['G', 'Open the repo'],
@@ -277,14 +291,14 @@
               bind:focused={focusedJournal}
             />
           {:else if tab === 'bom'}
-            <BomPanel page={props} bind:draft {readonly} />
+            <BomPanel bind:this={bomPanel} page={props} bind:draft {readonly} bind:focused={focusedPart} />
           {/if}
         </div>
       {/key}
       <!-- Kept once opened, so the file and its viewer are still there after looking at another tab. -->
       {#if repoOpened}
         <div class={['h-full', tab !== 'repo' && 'hidden']}>
-          <RepoPanel bind:this={repoPanel} repo={props.repo} submissionId={props.submission.id} />
+          <RepoPanel bind:this={repoPanel} repo={props.repo} />
         </div>
       {/if}
     </main>
