@@ -157,7 +157,8 @@
     inset: 0;
     padding: inherit;
   }
-  /* The real input: its text is invisible (torph shows it), its caret and selection are not. */
+  /* The real input: its letters are invisible (torph shows them), but it keeps the field's colour, so the caret
+     blinks and a selection shows. -webkit-text-fill-color hides the letters without touching `color`. */
   .number-host :global(input) {
     position: absolute;
     inset: 0;
@@ -168,7 +169,8 @@
     border: 0;
     border-radius: inherit;
     background: transparent;
-    color: transparent;
+    color: inherit;
+    -webkit-text-fill-color: transparent;
     caret-color: currentColor;
     font: inherit;
     letter-spacing: inherit;
@@ -180,7 +182,8 @@
     text-align: right;
   }
   .number-host :global(input::selection) {
-    background: color-mix(in oklch, currentColor 25%, transparent);
+    background: color-mix(in oklch, #3b82f6 35%, transparent);
+    -webkit-text-fill-color: transparent;
   }
   .number-host :global(input::placeholder) {
     color: transparent;

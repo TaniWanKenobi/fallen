@@ -277,7 +277,7 @@
           <span class="w-24 shrink-0 text-xs text-muted-foreground">Time</span>
           <div
             class={[
-              'flex h-8 items-center rounded-md border bg-background pr-2 font-mono text-sm transition-colors duration-200',
+              'flex h-8 items-center rounded-md border bg-background pr-2 font-mono text-sm transition-[border-color,box-shadow] duration-200 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50',
               partProblem ? 'border-amber-400' : 'border-input',
             ]}
           >

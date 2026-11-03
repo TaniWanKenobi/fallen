@@ -207,7 +207,7 @@
           <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span class="w-14 shrink-0 text-xs text-muted-foreground">Fund</span>
             <div
-              class="flex h-8 items-center rounded-md border border-input bg-background pl-2.5 font-mono text-sm"
+              class="flex h-8 items-center rounded-md border border-input bg-background pl-2.5 font-mono text-sm transition-[border-color,box-shadow] duration-200 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
             >
               <span class="text-muted-foreground">$</span>
               <NumberInput
