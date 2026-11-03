@@ -51,7 +51,13 @@ export type Answer = 'yes' | 'partly' | 'no'
 export type Verdict = 'approved' | 'returned' | 'rejected'
 export type ItemVerdict = 'approved' | 'adjusted' | 'cut'
 
+// How much of a journal's time counts. The choice is kept apart from the minutes, so typing a number for "part of
+// it" never flips it to all or none.
+export type JournalMode = 'full' | 'part' | 'none'
+
 export interface JournalCall {
+  mode: JournalMode | null
+  // Only read for "part": what was entered, which may be unfinished or out of range while it's being typed.
   minutes: number | null
   reason: string | null
   note: string
@@ -87,12 +93,13 @@ export function initialDraft(page: ReviewPage): ReviewDraft {
         j.id,
         j.earlier
           ? {
+              mode: modeFor(j.earlier.approved_minutes, j.duration_minutes ?? 0),
               minutes: j.earlier.approved_minutes,
               reason: j.earlier.reason,
               note: j.earlier.note ?? '',
               carried: !decided,
             }
-          : { minutes: null, reason: null, note: '', carried: false },
+          : { mode: null, minutes: null, reason: null, note: '', carried: false },
       ]),
     ),
     bom: Object.fromEntries(
@@ -111,7 +118,15 @@ export function initialDraft(page: ReviewPage): ReviewDraft {
     return {
       rubric: { ...fresh.rubric, ...saved.rubric },
       journals: Object.fromEntries(
-        Object.entries(fresh.journals).map(([id, call]) => [id, saved.journals?.[id] ?? call]),
+        Object.entries(fresh.journals).map(([id, call]) => {
+          const kept = saved.journals?.[id]
+          if (!kept) return [id, call]
+          const logged = journals.find((j) => j.id === id)?.duration_minutes ?? 0
+          return [
+            id,
+            { ...kept, mode: kept.mode ?? (kept.minutes == null ? null : modeFor(kept.minutes, logged)) },
+          ]
+        }),
       ),
       bom: Object.fromEntries(Object.entries(fresh.bom).map(([id, call]) => [id, saved.bom?.[id] ?? call])),
       feedback: saved.feedback ?? '',
@@ -134,10 +149,27 @@ export function clearReviewDraft(id: string) {
   localStorage.removeItem(key(id))
 }
 
-export const journalDecided = (call: JournalCall | undefined) =>
-  call != null && call.minutes != null && !call.carried
-export const journalDeflated = (journal: ReviewJournal, call: JournalCall | undefined) =>
-  call?.minutes != null && call.minutes < (journal.duration_minutes ?? 0)
+export const modeFor = (minutes: number, logged: number): JournalMode =>
+  minutes >= logged ? 'full' : minutes <= 0 ? 'none' : 'part'
+
+// The minutes a call counts, or null while it isn't a whole answer: no choice yet, or "part of it" with a time that
+// isn't between none and all.
+export function countedMinutes(journal: ReviewJournal, call: JournalCall | undefined): number | null {
+  const logged = journal.duration_minutes ?? 0
+  if (!call?.mode) return null
+  if (call.mode === 'full') return logged
+  if (call.mode === 'none') return 0
+  return call.minutes != null && call.minutes > 0 && call.minutes < logged ? call.minutes : null
+}
+
+export const journalDecided = (journal: ReviewJournal, call: JournalCall | undefined) =>
+  countedMinutes(journal, call) != null && !call?.carried
+export const journalDeflated = (journal: ReviewJournal, call: JournalCall | undefined) => {
+  const counted = countedMinutes(journal, call)
+  return counted != null && counted < (journal.duration_minutes ?? 0)
+}
+export const journalNeedsReason = (call: JournalCall | undefined) =>
+  (call?.mode === 'part' || call?.mode === 'none') && !call.reason
 
 export function itemRequested(item: { owned: boolean; total_cents: number }) {
   return item.owned ? 0 : item.total_cents
@@ -148,18 +180,6 @@ export function itemFunded(item: { owned: boolean; total_cents: number }, call: 
   if (call.verdict === 'approved') return itemRequested(item)
   if (call.verdict === 'cut') return 0
   return Math.min(call.cents ?? 0, itemRequested(item))
-}
-
-// "1h 30m" / "90" / "1.5h" / "1:30" -> minutes, or null.
-export function parseMinutes(text: string): number | null {
-  const s = text.trim().toLowerCase()
-  if (!s) return null
-  const clock = s.match(/^(\d+):(\d{1,2})$/)
-  if (clock) return Number(clock[1]) * 60 + Number(clock[2])
-  const parts = s.match(/^(?:(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?)?)?)?$/)
-  if (parts && (parts[1] || parts[2])) return Math.round(Number(parts[1] ?? 0) * 60 + Number(parts[2] ?? 0))
-  if (/^\d+(\.\d+)?$/.test(s)) return Math.round(Number(s) * 60)
-  return null
 }
 
 // Fallout's raised buttons, over the admin Button's classes: a soft top-down gradient, a drop shadow and a 1px

@@ -16,7 +16,7 @@
   let filter = $state<'all' | 'open' | 'cut'>('all')
   const cards: JournalReviewCard[] = $state([])
 
-  const open = $derived(page.journals.filter((j) => !journalDecided(draft.journals[j.id])).length)
+  const open = $derived(page.journals.filter((j) => !journalDecided(j, draft.journals[j.id])).length)
   const carried = $derived(page.journals.filter((j) => draft.journals[j.id]?.carried).length)
   const cut = $derived(page.journals.filter((j) => journalDeflated(j, draft.journals[j.id])).length)
   const shown = $derived(
@@ -24,7 +24,7 @@
       .map((journal, index) => ({ journal, index }))
       .filter(({ journal }) =>
         filter === 'open'
-          ? !journalDecided(draft.journals[journal.id])
+          ? !journalDecided(journal, draft.journals[journal.id])
           : filter === 'cut'
             ? journalDeflated(journal, draft.journals[journal.id])
             : true,
@@ -39,7 +39,7 @@
   }
 
   // Keyboard: the page passes A / R / X here for the journal in focus, and J / K move the focus.
-  export function act(key: 'full' | 'reduced' | 'none') {
+  export function act(key: 'full' | 'part' | 'none') {
     cards[focused]?.choose(key)
   }
 

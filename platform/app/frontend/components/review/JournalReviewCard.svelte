@@ -4,7 +4,7 @@
   import PersonChip from '@/components/review/PersonChip.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
   import { formatDateTime, formatMinutes } from '@/lib/format'
-  import { journalDeflated, parseMinutes, type JournalCall } from '@/lib/review.svelte'
+  import { countedMinutes, journalDecided, type JournalCall } from '@/lib/review.svelte'
   import type { ReviewJournal } from '@/types'
 
   // One journal and the call on how much of its time counts: all of it, some of it (with a reason from the fixed
@@ -28,33 +28,67 @@
   } = $props()
 
   const logged = $derived(journal.duration_minutes ?? 0)
-  const mode = $derived(
-    call.minutes == null ? null : call.minutes >= logged ? 'full' : call.minutes === 0 ? 'none' : 'reduced',
-  )
-  const decided = $derived(call.minutes != null && !call.carried)
+  const mode = $derived(call.mode)
+  const decided = $derived(journalDecided(journal, call))
+  const counted = $derived(countedMinutes(journal, call))
+  // What's typed in the two boxes for "part of it", kept as typed so an empty box stays empty while editing.
   // svelte-ignore state_referenced_locally
-  let typed = $state(
-    call.minutes != null && call.minutes < logged && call.minutes > 0 ? formatMinutes(call.minutes) : '',
+  let hours = $state(
+    call.mode === 'part' && call.minutes != null ? String(Math.floor(call.minutes / 60)) : '',
   )
-  let minutesInput: HTMLInputElement | undefined = $state()
+  // svelte-ignore state_referenced_locally
+  let mins = $state(call.mode === 'part' && call.minutes != null ? String(call.minutes % 60) : '')
+  let hoursInput: HTMLInputElement | undefined = $state()
   let root: HTMLElement
 
   const tracked = $derived(journal.tracked_minutes)
   const ai = $derived(journal.fraction_ai)
+  const typedMinutes = $derived(
+    hours.trim() === '' && mins.trim() === '' ? null : (Number(hours) || 0) * 60 + (Number(mins) || 0),
+  )
+  const partProblem = $derived(
+    mode !== 'part' || typedMinutes == null
+      ? null
+      : typedMinutes >= logged
+        ? `That’s all of it. Pick “All ${journal.duration_text}” instead.`
+        : typedMinutes <= 0
+          ? 'That’s none of it. Pick “None” instead.'
+          : null,
+  )
+  // Quick picks for "part of it", rounded to 5 minutes, only the ones that are really part.
+  const presets = $derived(
+    [
+      ['¾', 0.75],
+      ['½', 0.5],
+      ['¼', 0.25],
+    ]
+      .map(([label, share]) => ({
+        label: label as string,
+        minutes: Math.round((logged * (share as number)) / 5) * 5,
+      }))
+      .filter((p) => p.minutes > 0 && p.minutes < logged),
+  )
 
-  export async function choose(next: 'full' | 'reduced' | 'none') {
+  function setPart(minutes: number | null) {
+    hours = minutes == null ? '' : String(Math.floor(minutes / 60))
+    mins = minutes == null ? '' : String(minutes % 60)
+    call = { ...call, mode: 'part', minutes, carried: false }
+  }
+
+  export async function choose(next: 'full' | 'part' | 'none') {
     if (readonly) return
-    if (next === 'full') call = { ...call, minutes: logged, reason: null, carried: false }
-    else if (next === 'none') call = { ...call, minutes: 0, reason: call.reason, carried: false }
-    else {
-      const guess =
-        call.minutes != null && call.minutes > 0 && call.minutes < logged
-          ? call.minutes
-          : Math.round(logged / 2)
-      typed = formatMinutes(guess)
-      call = { ...call, minutes: guess, carried: false }
+    if (next === 'part') {
+      if (mode !== 'part') setPart(null)
       await tick()
-      minutesInput?.select()
+      hoursInput?.focus()
+      return
+    }
+    call = {
+      ...call,
+      mode: next,
+      minutes: next === 'full' ? logged : 0,
+      reason: next === 'full' ? null : call.reason,
+      carried: false,
     }
   }
 
@@ -62,10 +96,8 @@
     root?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 
-  function setTyped(value: string) {
-    typed = value
-    const minutes = parseMinutes(value)
-    if (minutes != null) call = { ...call, minutes: Math.min(Math.max(minutes, 0), logged), carried: false }
+  function typed() {
+    call = { ...call, mode: 'part', minutes: typedMinutes, carried: false }
   }
 </script>
 
@@ -90,7 +122,7 @@
         decided &&
           mode === 'full' &&
           'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
-        decided && mode === 'reduced' && 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+        decided && mode === 'part' && 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
         decided && mode === 'none' && 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
       ]}
       title={decided ? 'Decided' : 'Not decided yet'}>{index + 1}</span
@@ -190,62 +222,121 @@
     {/if}
   </div>
 
-  <footer class="space-y-2 border-t border-border bg-muted/30 px-3 py-2.5">
+  <footer class="space-y-3 border-t border-border bg-muted/30 px-3 py-3">
     {#if call.carried}
       <p class="text-xs text-sky-700 dark:text-sky-300">
-        Last review counted {formatMinutes(call.minutes ?? 0)}{call.reason
+        The last review counted {formatMinutes(counted ?? 0)}{call.reason
           ? ` (${call.reason.toLowerCase()})`
-          : ''}. Confirm or change it.
+          : ''}. Pick it again to keep it, or change it.
       </p>
     {/if}
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-xs text-muted-foreground">Counts</span>
+
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <span class="w-16 shrink-0 text-xs text-muted-foreground">Counts</span>
       <Segmented
         label="How much of this journal counts"
-        value={decided || call.carried ? mode : null}
+        value={mode}
         disabled={readonly}
         onChange={(value) => choose(value)}
         options={[
           { value: 'full', label: `All ${journal.duration_text}`, tint: 'green', title: 'All of it (A)' },
-          { value: 'reduced', label: 'Less', tint: 'amber', title: 'Less (R)' },
+          { value: 'part', label: 'Part of it', tint: 'amber', title: 'Part of it (R)' },
           { value: 'none', label: 'None', tint: 'red', title: 'None (X)' },
         ]}
       />
-      {#if mode === 'reduced'}
-        <input
-          bind:this={minutesInput}
-          value={typed}
-          oninput={(e) => setTyped(e.currentTarget.value)}
-          disabled={readonly}
-          aria-label="Time that counts"
-          placeholder="1h 30m"
-          class="h-7 w-24 rounded-md border border-input bg-background px-2 font-mono text-xs"
-        />
-        <span class="text-xs text-muted-foreground">of {journal.duration_text}</span>
-      {/if}
-      {#if mode === 'reduced' || mode === 'none'}
-        <select
-          bind:value={call.reason}
-          disabled={readonly}
-          aria-label="Why"
-          class={[
-            'h-7 rounded-md border bg-background py-0 pr-7 pl-1.5 text-xs',
-            !call.reason ? 'border-red-400 text-muted-foreground' : 'border-input',
-          ]}
-        >
-          <option value={null}>Why?</option>
-          {#each reasons as reason (reason)}<option value={reason}>{reason}</option>{/each}
-        </select>
+      {#if decided && mode !== 'full'}
+        <span class="text-xs text-muted-foreground">
+          takes off <span class="font-mono text-foreground">{formatMinutes(logged - (counted ?? 0))}</span>
+        </span>
       {/if}
     </div>
-    {#if journalDeflated(journal, call) || call.note}
-      <input
-        bind:value={call.note}
-        disabled={readonly}
-        maxlength="1000"
-        placeholder="Note for other reviewers (optional)"
-        class="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
-      />
+
+    {#if mode === 'part'}
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span class="w-16 shrink-0 text-xs text-muted-foreground">Time</span>
+        <div
+          class={[
+            'flex h-8 items-center rounded-md border bg-background pr-2 font-mono text-sm',
+            partProblem ? 'border-amber-400' : 'border-input',
+          ]}
+        >
+          <input
+            bind:this={hoursInput}
+            bind:value={hours}
+            oninput={typed}
+            disabled={readonly}
+            inputmode="numeric"
+            aria-label="Hours that count"
+            placeholder="0"
+            class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
+          />
+          <span class="text-muted-foreground">h</span>
+          <input
+            bind:value={mins}
+            oninput={typed}
+            disabled={readonly}
+            inputmode="numeric"
+            aria-label="Minutes that count"
+            placeholder="00"
+            class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
+          />
+          <span class="text-muted-foreground">m</span>
+        </div>
+        <span class="text-xs text-muted-foreground">of {journal.duration_text}</span>
+        {#if !readonly}
+          <div class="flex gap-1">
+            {#each presets as preset (preset.label)}
+              <button
+                type="button"
+                onclick={() => setPart(preset.minutes)}
+                class={[
+                  'rounded-full px-2 py-0.5 text-xs transition-colors',
+                  counted === preset.minutes
+                    ? 'bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ]}>{preset.label} · {formatMinutes(preset.minutes)}</button
+              >
+            {/each}
+          </div>
+        {/if}
+      </div>
+      {#if partProblem}<p class="pl-[76px] text-xs text-amber-700 dark:text-amber-400">{partProblem}</p>{/if}
+    {/if}
+
+    {#if mode === 'part' || mode === 'none'}
+      <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
+        <span class="w-16 shrink-0 pt-0.5 text-xs text-muted-foreground">Why</span>
+        <div class="flex min-w-0 flex-1 flex-wrap gap-1" role="radiogroup" aria-label="Why it counts less">
+          {#each reasons as reason (reason)}
+            {@const on = call.reason === reason}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={on}
+              disabled={readonly}
+              onclick={() => (call = { ...call, reason, carried: false })}
+              class={[
+                'rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:cursor-default',
+                on
+                  ? 'border-transparent bg-card font-semibold text-foreground shadow-[var(--rc-shadow-raise)]'
+                  : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+              ]}>{reason}</button
+            >
+          {/each}
+        </div>
+      </div>
+      {#if call.reason}
+        <div class="flex items-center gap-3">
+          <span class="w-16 shrink-0 text-xs text-muted-foreground">Note</span>
+          <input
+            bind:value={call.note}
+            disabled={readonly}
+            maxlength="1000"
+            placeholder="Anything the next reviewer should know (optional)"
+            class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-xs"
+          />
+        </div>
+      {/if}
     {/if}
   </footer>
 </article>

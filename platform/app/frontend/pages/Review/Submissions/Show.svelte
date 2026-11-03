@@ -24,6 +24,7 @@
     clearReviewDraft,
     initialDraft,
     itemFunded,
+    countedMinutes as countedFor,
     journalDecided,
     saveReviewDraft,
     type ReviewPage,
@@ -74,10 +75,10 @@
   })
 
   const countedMinutes = $derived(
-    (props.journals ?? []).reduce((sum, j) => {
-      const call = draft.journals[j.id]
-      return sum + (call?.minutes ?? j.duration_minutes ?? 0)
-    }, 0),
+    (props.journals ?? []).reduce(
+      (sum, j) => sum + (countedFor(j, draft.journals[j.id]) ?? j.duration_minutes ?? 0),
+      0,
+    ),
   )
   const fundedCents = $derived(
     (props.submission?.bom_items ?? []).reduce(
@@ -86,7 +87,7 @@
     ),
   )
   const journalsLeft = $derived(
-    (props.journals ?? []).filter((j) => !journalDecided(draft.journals[j.id])).length,
+    (props.journals ?? []).filter((j) => !journalDecided(j, draft.journals[j.id])).length,
   )
   const itemsLeft = $derived(
     (props.submission?.bom_items ?? []).filter((i) => !draft.bom[i.id]?.verdict).length,
@@ -134,7 +135,14 @@
           journals: Object.fromEntries(
             Object.entries(draft.journals).map(([id, call]) => [
               id,
-              { approved_minutes: call.minutes, reason: call.reason, note: call.note },
+              {
+                approved_minutes: countedFor(
+                  props.journals.find((j) => j.id === id)!,
+                  call,
+                ),
+                reason: call.reason,
+                note: call.note,
+              },
             ]),
           ),
           bom: Object.fromEntries(
@@ -192,7 +200,7 @@
       if (key === 'j') return (event.preventDefault(), journalsPanel?.move(1))
       if (key === 'k') return (event.preventDefault(), journalsPanel?.move(-1))
       if (key === 'a') return journalsPanel?.act('full')
-      if (key === 'r') return (event.preventDefault(), journalsPanel?.act('reduced'))
+      if (key === 'r') return (event.preventDefault(), journalsPanel?.act('part'))
       if (key === 'x') return journalsPanel?.act('none')
     }
   }

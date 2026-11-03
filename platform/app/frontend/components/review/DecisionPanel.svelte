@@ -15,6 +15,7 @@
     RAISED,
     RAISED_KEY,
     journalDecided,
+    journalNeedsReason,
     type Answer,
     type ReviewDraft,
     type ReviewPage,
@@ -51,13 +52,8 @@
   const decided = $derived(s.status !== 'pending')
   const questions = $derived(Object.entries(page.options.rubric))
   const answered = $derived(questions.every(([key]) => draft.rubric[key]))
-  const journalsLeft = $derived(page.journals.filter((j) => !journalDecided(draft.journals[j.id])).length)
-  const journalReasonsMissing = $derived(
-    page.journals.some((j) => {
-      const call = draft.journals[j.id]
-      return call?.minutes != null && call.minutes < (j.duration_minutes ?? 0) && !call.reason
-    }),
-  )
+  const journalsLeft = $derived(page.journals.filter((j) => !journalDecided(j, draft.journals[j.id])).length)
+  const journalReasonsMissing = $derived(page.journals.some((j) => journalNeedsReason(draft.journals[j.id])))
   const itemsLeft = $derived(s.bom_items.filter((i) => !draft.bom[i.id]?.verdict).length)
   const itemReasonsMissing = $derived(
     s.bom_items.some((i) => {
