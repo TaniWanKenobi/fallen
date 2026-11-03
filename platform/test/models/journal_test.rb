@@ -107,20 +107,35 @@ class JournalTest < ActiveSupport::TestCase
     assert_equal 30, typed.duration_minutes, "typed time stands, timelapses or not"
   end
 
-  test "hours and their timelapses are fixed once logged; the writing is not" do
+  test "hours are fixed once logged; the writing is not" do
     journal = projects(:station).journals.create!(user: users(:member), body: journal_text("x"), picked_timelapses: [ lapse_timelapses(:desk) ], images: [ photo ])
 
     assert_not journal.update(duration: "3")
     assert_equal [ "can't be changed once logged" ], journal.errors[:duration]
-    journal.reload
-    assert_not journal.update(picked_timelapses: [])
-    assert_equal [ "can't be changed once the hours are logged" ], journal.errors[:lapse_timelapses]
     journal.reload
     assert journal.update(body: journal_text("edited"), picked_timelapses: [ lapse_timelapses(:desk) ]), "the same timelapses are fine"
     assert_equal [ 90, journal.id ], [ journal.reload.duration_minutes, lapse_timelapses(:desk).reload.journal_id ]
 
     journal.update_column(:duration_minutes, nil)
     assert journal.update(duration: "1"), "a journal saved without hours can be given them"
+  end
+
+  test "a wrongly picked timelapse can be swapped, keeping the hours, until the project is approved" do
+    user = users(:member)
+    journal = projects(:station).journals.create!(user: user, body: journal_text("x"), picked_timelapses: [ lapse_timelapses(:desk) ], images: [ photo ])
+    journal.update_columns(tracked_minutes: 0, hours_self_claimed: false)
+
+    assert journal.update(picked_timelapses: [ lapse_timelapses(:hidden) ]), journal.errors.full_messages.to_sentence
+    assert_equal [ nil, journal.id ], [ lapse_timelapses(:desk).reload.journal_id, lapse_timelapses(:hidden).reload.journal_id ]
+    assert_equal 90, journal.reload.duration_minutes
+    assert journal.hours_self_claimed, "the hour-long timelapse no longer covers 1.5 hours"
+
+    other = projects(:station).journals.create!(user: user, body: journal_text("y"), picked_timelapses: [ lapse_timelapses(:desk).reload ], images: [ photo ])
+    assert_equal other.id, lapse_timelapses(:desk).reload.journal_id, "the freed one can go on the journal it belongs to"
+
+    projects(:station).update!(approved: true)
+    assert_not journal.reload.update(picked_timelapses: [])
+    assert_equal [ "can't be changed once the project is approved" ], journal.errors[:lapse_timelapses]
   end
 
   test "keeps the tracked time it was written after, and flags hours over it and over its timelapses" do

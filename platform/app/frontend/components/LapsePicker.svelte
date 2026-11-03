@@ -20,7 +20,6 @@
   let {
     lapse,
     current = [],
-    locked = false,
     selected = $bindable(),
     returnTo,
     error,
@@ -28,8 +27,6 @@
     lapse?: LapseStatus | null
     // The timelapses already on the journal being edited: selectable here though the list marks them as used.
     current?: LapseTimelapse[]
-    // Hours already logged: shows the journal's timelapses, nothing to pick or drop.
-    locked?: boolean
     selected: string[]
     returnTo: string
     error?: string
@@ -52,10 +49,9 @@
 
   // The ones that can still be picked first.
   const options = $derived(
-    (locked
-      ? current
-      : [...current, ...(lapse?.timelapses ?? []).filter((t) => !current.some((c) => c.id === t.id))]
-    ).toSorted((a, b) => Number(Boolean(blocked(a))) - Number(Boolean(blocked(b)))),
+    [...current, ...(lapse?.timelapses ?? []).filter((t) => !current.some((c) => c.id === t.id))].toSorted(
+      (a, b) => Number(Boolean(blocked(a))) - Number(Boolean(blocked(b))),
+    ),
   )
   // Same decimal hours as Duration.format on the server, which does the real sum.
   const totalMinutes = $derived(
@@ -65,14 +61,13 @@
 
   // A restored draft can still pick one another journal has taken since. Its tile can't be clicked, so drop it.
   $effect(() => {
-    if (locked) return
     const taken = options.filter((t) => blocked(t) && selected.includes(t.id)).map((t) => t.id)
     if (taken.length) untrack(() => (selected = selected.filter((id) => !taken.includes(id))))
   })
 
   // Lapse is only asked when the composer opens or on Refresh; the list itself comes from Fallen's copy.
   function sync() {
-    if (locked || !lapse?.connected || syncing) return
+    if (!lapse?.connected || syncing) return
     const before = lapse.synced_at
     syncing = true
     syncFailed = false
@@ -103,14 +98,14 @@
   })
 
   function toggle(timelapse: LapseTimelapse) {
-    if (locked || blocked(timelapse)) return
+    if (blocked(timelapse)) return
     selected = selected.includes(timelapse.id)
       ? selected.filter((id) => id !== timelapse.id)
       : [...selected, timelapse.id]
   }
 </script>
 
-<Reveal loading={lapse === undefined && !locked} class="reveal-fill">
+<Reveal loading={lapse === undefined} class="reveal-fill">
   {#snippet skeleton()}
     <div>
       <Skeleton class="skeleton-ink h-6 w-28" />
@@ -120,15 +115,15 @@
       </div>
     </div>
   {/snippet}
-  {#if !(lapse === undefined && !locked)}
-    {#if lapse?.configured || locked}
+  {#if lapse !== undefined}
+    {#if lapse?.configured || current.length > 0}
       <div class="flex flex-1 flex-col lg:min-h-0">
         <div class="flex items-baseline justify-between gap-2">
           <p class="font-display text-xl text-ink">
             Timelapses
-            {#if !locked}<span class="font-outfit text-xs text-ink-soft">(optional)</span>{/if}
+            <span class="font-outfit text-xs text-ink-soft">(optional)</span>
           </p>
-          {#if lapse?.connected && !locked}
+          {#if lapse?.connected}
             <button
               type="button"
               onclick={sync}
@@ -140,7 +135,7 @@
           {/if}
         </div>
 
-        {#if !lapse?.connected && !locked}
+        {#if !lapse?.connected}
           <div class="mt-2 rounded-xl border-2 border-dashed border-paper-edge p-3 text-center">
             <p class="font-outfit text-xs text-ink-soft">
               Recorded the session on Lapse? Connect it and pick the timelapses that back up your hours.
@@ -152,9 +147,7 @@
           </div>
         {:else}
           <p class="mb-2.5 font-outfit text-xs text-ink-soft">
-            {locked
-              ? 'These stay with the journal, like its hours.'
-              : "Pick every one from this session, so you don't get deflated."}
+            Pick every one from this session, so you don't get deflated.
             {#if syncFailed}<span class="text-red-700">Couldn't reach Lapse just now.</span>{/if}
           </p>
           {#if options.length === 0}
@@ -182,7 +175,7 @@
                     type="button"
                     role="checkbox"
                     aria-checked={active}
-                    disabled={locked || Boolean(reason)}
+                    disabled={Boolean(reason)}
                     title={reason ? `This timelapse ${reason}` : undefined}
                     onclick={() => toggle(timelapse)}
                     class={['lapse-tile', active && 'active', reason && 'blocked']}

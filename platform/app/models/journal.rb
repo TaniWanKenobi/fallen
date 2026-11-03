@@ -268,13 +268,14 @@ class Journal < ApplicationRecord
     self.hours_self_claimed = duration_minutes > [ tracked_minutes, lapse_minutes ].max + CLAIM_LEEWAY
   end
 
-  # Hours are fixed once logged, and so are the timelapses behind them: dropping one would free it for another
-  # journal. A journal saved without hours can still be given them once.
+  # Hours are fixed once logged; a journal saved without hours can still be given them once. Its timelapses can be
+  # swapped for the right ones until the project is approved. The hours stay, and mark_self_claimed flags them again
+  # if the new timelapses no longer cover them.
   def hours_unchanged
+    errors.add(:lapse_timelapses, "can't be changed once the project is approved") if project.approved? && @picked_timelapses && @picked_timelapses.map(&:id).sort != lapse_timelapses.ids.sort
     return if duration_minutes_in_database.nil?
 
     errors.add(:duration, "can't be changed once logged") if duration_minutes_changed?
-    errors.add(:lapse_timelapses, "can't be changed once the hours are logged") if @picked_timelapses && @picked_timelapses.map(&:id).sort != lapse_timelapses.ids.sort
   end
 
   # Ones already on this journal stay even if Lapse has since changed them; newly picked ones must be watchable and free.

@@ -43,7 +43,7 @@
   const draftKey = `fallen:journal-draft:${project.id}`
   // svelte-ignore state_referenced_locally
   const editing = journal !== null
-  // Hours and the timelapses behind them can't change once logged (Journal#hours_unchanged); the writing can.
+  // Hours can't change once logged (Journal#hours_unchanged); the writing and the timelapses can.
   // svelte-ignore state_referenced_locally
   const locked = editing && journal?.duration_minutes != null
 
@@ -213,7 +213,7 @@
       .transform(({ duration, lapse_timelapses, ...data }) => ({
         journal: {
           ...data,
-          ...(locked ? {} : { duration, lapse_timelapses }),
+          ...(locked ? { lapse_timelapses } : { duration, lapse_timelapses }),
           images: photos.map((i) => i.id),
         },
         ...(checkId ? { writing_check: checkId, insisted } : {}),
@@ -346,16 +346,13 @@
 
       <aside class="mt-6 flex flex-col lg:mt-0 lg:min-h-0">
         <div class="flex flex-1 flex-col gap-5 lg:min-h-0">
-          {#if !locked || form.lapse_timelapses.length > 0}
-            <LapsePicker
-              {lapse}
-              {locked}
-              current={journal?.lapse_timelapses}
-              bind:selected={form.lapse_timelapses}
-              returnTo={`${projectRoute(project.id).url}#write`}
-              error={form.errors.lapse_timelapses}
-            />
-          {/if}
+          <LapsePicker
+            {lapse}
+            current={journal?.lapse_timelapses}
+            bind:selected={form.lapse_timelapses}
+            returnTo={`${projectRoute(project.id).url}#write`}
+            error={form.errors.lapse_timelapses}
+          />
 
           <div class="shrink-0">
             <div class="flex items-center justify-between gap-3">
