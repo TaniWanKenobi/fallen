@@ -144,10 +144,11 @@
 
 /* A Reveal that fills a flex column and lets its content shrink to it, so a list inside can scroll instead of
    spilling over what comes after. skullet puts two divs between it and the content, so the column is carried through
-   them. Unlayered like the rule above, since skullet's own pane display would beat a utility. */
+   them. Unlayered like the rule above, since skullet's own pane display would beat a utility. The pane also holds
+   skullet's inline <script>, which must stay hidden or its source shows as text. */
 .reveal-fill,
 .reveal-fill > [skullet-pane],
-.reveal-fill > [skullet-pane] > * {
+.reveal-fill > [skullet-pane] > :not(script) {
   display: flex;
   min-height: 0;
   flex: 1 1 0%;
