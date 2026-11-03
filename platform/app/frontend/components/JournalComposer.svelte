@@ -169,7 +169,7 @@
     return (locked ? Math.min(needed, journal?.images.length ?? 0) : needed) || null
   })
   const photosMissing = $derived(photosNeeded === null ? 0 : Math.max(photosNeeded - photos.length, 0))
-  // Why the button is greyed out, shown under it. Typed hours always count. With timelapses picked and nothing typed,
+  // Why the button is greyed out, shown on hovering it. Typed hours always count. With timelapses picked and nothing typed,
   // the server takes their recorded time.
   const blocker = $derived(
     form.body.trim().length === 0
@@ -422,17 +422,23 @@
         </div>
 
         <!-- Room for the button's press-down edge and focus ring, which the scrolling grid would clip. -->
-        <div class="mt-4 border-t-2 border-dashed border-paper-edge/70 px-1.5 pt-4 pb-2">
+        <!-- Why it's greyed out shows on hovering the wrapper, since disabled buttons don't get hovered in every
+             browser. Our own tooltip, not `title`: that one takes a second to appear and looks like the OS. -->
+        <div class="group relative mt-4 border-t-2 border-dashed border-paper-edge/70 px-1.5 pt-4 pb-2">
           <SubmitButton
             busy={form.processing || checking || hoursCheck || reminder !== null}
             disabled={!canSubmit}
             busyLabel={editing ? 'Saving' : 'Logging'}
             label={uploading ? 'Waiting for photos…' : editing ? 'Save journal' : 'Log journal'}
           />
-          <!-- Why it's greyed out, in words: a hover tooltip never shows on a phone and is easy to miss anywhere. -->
-          <p class="mt-2 min-h-4 text-center font-outfit text-xs text-ink-soft" aria-live="polite">
-            {#if blocker && !form.processing && !checking}{blocker}{/if}
-          </p>
+          {#if blocker && !form.processing && !checking}
+            <span
+              role="tooltip"
+              class="pointer-events-none invisible absolute bottom-full left-1/2 z-10 mb-1 w-max max-w-64 -translate-x-1/2 rounded-md bg-ink px-2.5 py-1.5 text-center font-outfit text-xs text-paper opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+            >
+              {blocker}
+            </span>
+          {/if}
         </div>
       </aside>
     </div>
