@@ -1,5 +1,6 @@
 import { DirectUpload, type Blob } from '@rails/activestorage'
 import { csrfToken } from '@/lib/csrf'
+import { photoChecks } from '@/routes'
 
 export interface UploadedImage {
   id: string
@@ -67,4 +68,36 @@ export async function uploadImage(
     url: `/rails/active_storage/blobs/redirect/${data.signed_id}/${encodeURIComponent(data.filename)}`,
     filename: data.filename,
   }
+}
+
+// PhotoChecksController: which of these photos can't go on the journal any more, because another journal has them.
+// Not knowing (offline, an error) counts as none, and the save says what's wrong instead.
+export async function takenPhotos(ids: string[], journalId?: string): Promise<string[]> {
+  if (ids.length === 0) return []
+  try {
+    const response = await fetch(photoChecks.create().url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken(),
+      },
+      body: JSON.stringify({ ids, journal: journalId }),
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    return Array.isArray(data.taken) ? data.taken : []
+  } catch {
+    return []
+  }
+}
+
+// The writing without the photos `ids` (Markdown images whose URL holds the signed id).
+export function withoutPhotos(markdown: string, ids: string[]): string {
+  const escaped = ids.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  return markdown
+    .replace(new RegExp(`!\\[[^\\]]*\\]\\([^)]*(?:${escaped})[^)]*\\)`, 'g'), '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }

@@ -17,7 +17,7 @@
     writtenLength,
   } from '@/lib/markdown'
   import { trackedHours } from '@/lib/timer.svelte'
-  import type { UploadedImage } from '@/lib/uploads'
+  import { takenPhotos, withoutPhotos, type UploadedImage } from '@/lib/uploads'
   import { checkWriting, type WritingCheckMode } from '@/lib/writingCheck'
   import { journals, project as projectRoute, projectJournals } from '@/routes'
   import type { Journal, Project } from '@/types'
@@ -59,6 +59,8 @@
   let uploadError: string | null = $state(null)
   let uploading = $state(0)
   let draftRestored = $state(false)
+  // How many photos were taken out for being on another journal already (dropTakenPhotos).
+  let dropped = $state(0)
   // While Pangram reads the writing the button looks the same as while posting. A flagged check, or pasted text
   // without Pangram, waits on the dialog.
   let checking = $state(false)
@@ -104,6 +106,7 @@
         form.images = parsed.images ?? []
         pasted = parsed.pasted ?? false
         draftRestored = true
+        if (form.images.length) void dropTakenPhotos()
       }
     } catch {
       /* no draft */
@@ -190,6 +193,7 @@
 
   function addImage(image: UploadedImage) {
     uploadError = null
+    dropped = 0
     form.images = [...form.images, image]
   }
 
@@ -216,7 +220,19 @@
     else post(check?.id)
   }
 
-  function post(checkId?: string, insisted = false) {
+  // A photo goes on one journal only, and a draft kept in the browser can hold one that has gone out on another
+  // journal since (posted from another tab). Nobody could work that out from a refusal, so take it out here.
+  async function dropTakenPhotos() {
+    const ids = photos.filter((i) => !unembedded.has(i.id)).map((i) => i.id)
+    const taken = await takenPhotos(ids, journal?.id)
+    if (closing.signal.aborted || taken.length === 0) return 0
+    form.images = form.images.filter((i) => !taken.includes(i.id))
+    form.body = withoutPhotos(form.body, taken)
+    dropped = taken.length
+    return taken.length
+  }
+
+  function post(checkId?: string, insisted = false, retried = false) {
     const target = editing && journal ? journals.update(journal.id) : projectJournals(project.id)
     form
       .transform(({ duration, lapse_timelapses, ...data }) => ({
@@ -229,6 +245,15 @@
       }))
       .submit(target, {
         preserveScroll: true,
+        // Refused for a photo another journal has (Journal#images_are_new_uploads): take it out and try once more.
+        onError: (errors) => {
+          if (!errors.images || retried) return
+          void dropTakenPhotos().then((count) => {
+            if (!count) return
+            form.clearErrors('images')
+            if (blocker === null) post(checkId, insisted, true)
+          })
+        },
         onSuccess: () => {
           try {
             localStorage.removeItem(draftKey)
@@ -324,6 +349,7 @@
               {#if form.errors.body}<span class="text-red-700">{form.errors.body}</span>
               {:else if form.errors.images}<span class="text-red-700">{form.errors.images}</span>
               {:else if uploadError}<span class="text-red-700">{uploadError}</span>
+              {:else if dropped}Took out {dropped === 1 ? 'a photo' : `${dropped} photos`} already on another journal.
               {:else if draftRestored}Draft restored.{/if}
             </span>
             <span class="flex shrink-0 gap-3 tabular-nums">

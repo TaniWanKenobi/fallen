@@ -53,6 +53,8 @@ Rails.application.routes.draw do
   resource :huddle_prompt, only: :create
   resource :huddle_pause, only: %i[create destroy]
   resources :uploads, only: %i[create update]
+  # Which photos in a journal draft are already on another journal (PhotoChecksController).
+  resources :photo_checks, only: :create
   # The AI-writing check the journal composer runs before posting (WritingCheck).
   resources :writing_checks, only: %i[create show]
 
