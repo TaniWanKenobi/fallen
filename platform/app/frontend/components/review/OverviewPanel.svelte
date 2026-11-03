@@ -1,5 +1,6 @@
 <script lang="ts">
   import Morph from '@/components/admin/Morph.svelte'
+  import { openLightbox } from '@/components/review/lightbox.svelte'
   import Key from '@/components/review/Key.svelte'
   import CollapsibleCard from '@/components/review/CollapsibleCard.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
@@ -98,21 +99,31 @@
   {#if s.screenshots.length}
     <section class="grid grid-cols-2 gap-2 md:grid-cols-3">
       {#each s.screenshots as shot, i (shot.id)}
-        <a
-          href={shot.url}
-          target="_blank"
-          rel="noopener"
+        <button
+          type="button"
+          aria-label="Open screenshot {i + 1}"
+          onclick={(event) => {
+            const thumbs = [...event.currentTarget.parentElement!.querySelectorAll('img')]
+            openLightbox(
+              s.screenshots.map((shot, n) => ({
+                url: shot.url,
+                alt: `Screenshot ${n + 1}`,
+                from: thumbs[n],
+              })),
+              i,
+            )
+          }}
           class={[
-            'block overflow-hidden rounded-md border border-border bg-muted',
+            'block cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted',
             i === 0 && 'col-span-2 row-span-2',
           ]}
         >
           <img
             src={shot.url}
             alt="Screenshot {i + 1}"
-            class="aspect-[4/3] h-full w-full object-cover transition-transform hover:scale-[1.02]"
+            class="aspect-[4/3] h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
           />
-        </a>
+        </button>
       {/each}
     </section>
   {/if}

@@ -21,6 +21,7 @@
   import RepoPanel from '@/components/review/RepoPanel.svelte'
   import ReviewTopBar from '@/components/review/ReviewTopBar.svelte'
   import { swap } from '@/components/review/motion'
+  import Lightbox from '@/components/review/Lightbox.svelte'
   import {
     clearReviewDraft,
     initialDraft,
@@ -237,12 +238,7 @@
   <ReviewTabBar tabs={TABS} value={tab} onChange={(id) => (tab = id as Tab)} />
 {/snippet}
 
-<div
-  class={[
-    'flex h-screen flex-col overflow-hidden border-t-3',
-    decided ? 'border-zinc-400' : 'border-purple-500',
-  ]}
->
+<div class="flex h-screen flex-col overflow-hidden">
   <ReviewTopBar
     bind:this={topBar}
     page={props}
@@ -310,6 +306,8 @@
     </aside>
   </div>
 </div>
+
+<Lightbox />
 
 <Dialog.Root bind:open={helpOpen}>
   <Dialog.Content class="max-w-sm">

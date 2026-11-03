@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import Markdown from '@/components/Markdown.svelte'
   import NumberInput from '@/components/NumberInput.svelte'
+  import { lightboxImages, openLightbox } from '@/components/review/lightbox.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
   import Morph from '@/components/admin/Morph.svelte'
@@ -177,19 +178,32 @@
   </header>
 
   <div class="space-y-3 px-3 py-3">
-    <Markdown source={journal.body} photos={journal.images.map((i) => i.id)} admin />
+    <div {@attach lightboxImages}>
+      <Markdown source={journal.body} photos={journal.images.map((i) => i.id)} admin />
+    </div>
 
     {#if journal.images.length}
       <div class="flex flex-wrap gap-1.5">
-        {#each journal.images as image (image.id)}
-          <a
-            href={image.url}
-            target="_blank"
-            rel="noopener"
-            class="block size-20 overflow-hidden rounded border border-border bg-muted"
+        {#each journal.images as image, i (image.id)}
+          <button
+            type="button"
+            aria-label="Open {image.filename}"
+            onclick={(event) => {
+              const thumbs = [...event.currentTarget.parentElement!.querySelectorAll('img')]
+              openLightbox(
+                journal.images.map((photo, n) => ({ url: photo.url, alt: photo.filename, from: thumbs[n] })),
+                i,
+              )
+            }}
+            class="block size-20 cursor-zoom-in overflow-hidden rounded border border-border bg-muted"
           >
-            <img src={image.url} alt={image.filename} loading="lazy" class="h-full w-full object-cover" />
-          </a>
+            <img
+              src={image.url}
+              alt={image.filename}
+              loading="lazy"
+              class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+            />
+          </button>
         {/each}
       </div>
     {/if}

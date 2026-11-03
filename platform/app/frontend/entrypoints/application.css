@@ -725,7 +725,7 @@
     @apply bg-transparent p-0;
   }
   & img {
-    @apply my-3 max-h-80 rounded-md;
+    @apply my-3 max-h-80 cursor-zoom-in rounded-md;
   }
   & blockquote {
     @apply my-2 border-l-2 border-border pl-3 text-muted-foreground;
