@@ -20,7 +20,7 @@
   import OverviewPanel from '@/components/review/OverviewPanel.svelte'
   import RepoPanel from '@/components/review/RepoPanel.svelte'
   import ReviewTopBar from '@/components/review/ReviewTopBar.svelte'
-  import { rise } from '@/components/review/motion'
+  import { swap } from '@/components/review/motion'
   import {
     clearReviewDraft,
     initialDraft,
@@ -65,6 +65,11 @@
   let journalsPanel: JournalsPanel | undefined = $state()
   let topBar: ReviewTopBar | undefined = $state()
   let decision: DecisionPanel | undefined = $state()
+  let repoPanel: RepoPanel | undefined = $state()
+  let repoOpened = $state(false)
+  $effect(() => {
+    if (tab === 'repo') repoOpened = true
+  })
 
   const decided = $derived(props.submission?.status !== 'pending')
   const readonly = $derived(decided || !props.can.decide)
@@ -175,6 +180,8 @@
   }
 
   function onKeydown(event: KeyboardEvent) {
+    // The repo tree's search box is inside a shadow root, so the event's target is its host.
+    const target = event.composedPath()[0] ?? event.target
     const mod = event.metaKey || event.ctrlKey
     if (mod && !event.shiftKey && !event.altKey) {
       const key = event.key.toLowerCase()
@@ -185,11 +192,11 @@
       return
     }
     if (event.key === 'Escape') {
-      if (typing(event.target)) (event.target as HTMLElement).blur()
+      if (typing(target)) (target as HTMLElement).blur()
       else notesOpen = false
       return
     }
-    if (typing(event.target) || event.altKey || mod) return
+    if (typing(target) || event.altKey || mod) return
     const key = event.key
     if (key >= '1' && key <= '4') return (tab = TABS[Number(key) - 1].id)
     if (key === 'n') return (notesOpen = !notesOpen)
@@ -197,6 +204,7 @@
     if (key === 'e') return router.visit(reviewSubmissions.reviewRoot().url)
     if (key === 's' && props.submission.status === 'pending') return topBar?.skip()
     if (key === 'g') return void window.open(props.submission.repo_url, '_blank', 'noopener')
+    if (tab === 'repo' && key === 'p') return repoPanel?.togglePinned()
     if (tab === 'journals') {
       if (key === 'j') return (event.preventDefault(), journalsPanel?.move(1))
       if (key === 'k') return (event.preventDefault(), journalsPanel?.move(-1))
@@ -210,6 +218,7 @@
     ['1 to 4', 'Switch tabs'],
     ['J / K', 'Next or previous journal'],
     ['A / R / X', 'Journal counts all, is deflated, or counts none'],
+    ['P', 'Pinned repo files only'],
     ['N', 'Notes'],
     ['G', 'Open the repo'],
     ['S', 'Skip to the next submission'],
@@ -260,7 +269,7 @@
   <div class="flex min-h-0 flex-1">
     <main class="min-w-0 flex-1 overflow-y-auto">
       {#key tab}
-        <div in:rise>
+        <div in:swap>
           {#if tab === 'overview'}
             <OverviewPanel page={props} {countedMinutes} {fundedCents} />
           {:else if tab === 'journals'}
@@ -273,11 +282,15 @@
             />
           {:else if tab === 'bom'}
             <BomPanel page={props} bind:draft {readonly} />
-          {:else}
-            <RepoPanel repo={props.repo} />
           {/if}
         </div>
       {/key}
+      <!-- Kept once opened, so the file and its viewer are still there after looking at another tab. -->
+      {#if repoOpened}
+        <div class={['h-full', tab !== 'repo' && 'hidden']}>
+          <RepoPanel bind:this={repoPanel} repo={props.repo} submissionId={props.submission.id} />
+        </div>
+      {/if}
     </main>
     <div class="w-px shrink-0 bg-border"></div>
     <aside class="w-80 shrink-0 overflow-y-auto">

@@ -19,6 +19,8 @@ function curve(options: Spring) {
 const SETTLE = curve({ stiffness: 380, damping: 39 })
 // Small things: a little bounce.
 const BOUNCE = curve({ stiffness: 520, damping: 30 })
+// Swapping one tab's view for another: quick, and no bounce in the fade.
+const QUICK = curve({ stiffness: 1800, damping: 85 })
 
 const still = (): TransitionConfig => ({ duration: 0 })
 
@@ -52,6 +54,12 @@ export function appear(node: Element): TransitionConfig {
     ...BOUNCE,
     css: (t) => `opacity: ${Math.min(t, 1)}; transform: scale(${0.9 + 0.1 * t}); transform-origin: ${origin}`,
   }
+}
+
+// A tab's view coming in: it fades in where it is, without moving.
+export function swap(_node: Element): TransitionConfig {
+  if (prefersReducedMotion()) return still()
+  return { ...QUICK, css: (t) => `opacity: ${Math.min(t, 1)}` }
 }
 
 export function rise(_node: Element): TransitionConfig {
