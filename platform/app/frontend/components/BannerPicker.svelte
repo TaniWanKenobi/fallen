@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IMAGE_TYPES, uploadImage } from '@/lib/uploads'
+  import { IMAGE_TYPES, pastedPageImage, uploadImage } from '@/lib/uploads'
 
   // Click, drop or paste an image; it goes straight to storage and `value` becomes `{ id, url }`.
   let {
@@ -35,9 +35,9 @@
     void take(event.dataTransfer?.files[0])
   }
 
-  // Pasting an image anywhere on the page sets the banner.
+  // Pasting an image anywhere on the page, outside a text box, sets the banner.
   function onPaste(event: ClipboardEvent) {
-    const file = [...(event.clipboardData?.files ?? [])].find((f) => IMAGE_TYPES.includes(f.type))
+    const file = pastedPageImage(event)
     if (file) {
       event.preventDefault()
       void take(file)

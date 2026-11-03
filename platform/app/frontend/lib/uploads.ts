@@ -10,6 +10,18 @@ export interface UploadedImage {
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
+// The image in a paste meant for the page as a whole, like a banner: not one going into a text box, an editor or a
+// dialog (the journal composer), which takes its own.
+export function pastedPageImage(event: ClipboardEvent): File | undefined {
+  const target = event.target instanceof Element ? event.target : null
+  if (
+    event.defaultPrevented ||
+    target?.closest('input, textarea, [contenteditable], dialog, [role="dialog"]')
+  )
+    return
+  return [...(event.clipboardData?.files ?? [])].find((f) => IMAGE_TYPES.includes(f.type))
+}
+
 // DirectUpload reads the token from the <meta> tag, which Inertia never re-renders.
 function refreshCsrfMeta() {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')

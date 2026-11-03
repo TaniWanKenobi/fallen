@@ -1,6 +1,6 @@
 <script lang="ts">
   import { router } from '@inertiajs/svelte'
-  import { IMAGE_TYPES, uploadImage } from '@/lib/uploads'
+  import { IMAGE_TYPES, pastedPageImage, uploadImage } from '@/lib/uploads'
   import { projects } from '@/routes'
   import type { Project } from '@/types'
   import defaultBanner from '@/assets/hero/default-banner.jpg'
@@ -37,7 +37,7 @@
 
   function onPaste(event: ClipboardEvent) {
     if (!editable) return
-    const file = [...(event.clipboardData?.files ?? [])].find((f) => IMAGE_TYPES.includes(f.type))
+    const file = pastedPageImage(event)
     if (file) {
       event.preventDefault()
       void take(file)
