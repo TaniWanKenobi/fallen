@@ -48,6 +48,7 @@ class RepoSnapshot < ApplicationRecord
 
   belongs_to :project
   belongs_to :user
+  has_many :repo_files, dependent: :destroy
 
   validates :status, inclusion: { in: STATUSES }
   validates :url, presence: true

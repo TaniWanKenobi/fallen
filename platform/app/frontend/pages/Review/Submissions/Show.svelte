@@ -246,6 +246,7 @@
     if (key === 'e') return router.visit(reviewSubmissions.reviewRoot().url)
     if (key === 's' && props.submission.status === 'pending') return topBar?.skip()
     if (key === 'g') return void window.open(props.submission.repo_url, '_blank', 'noopener')
+    if (tab === 'repo' && key === 'p') return repoPanel?.togglePinned()
     if (tab === 'journals') {
       if (key === 'j') return (event.preventDefault(), journalsPanel?.move(1))
       if (key === 'k') return (event.preventDefault(), journalsPanel?.move(-1))
@@ -332,7 +333,7 @@
       <!-- Kept once opened, so the file and its viewer are still there after looking at another tab. -->
       {#if repoOpened}
         <div class={['h-full', tab !== 'repo' && 'hidden']}>
-          <RepoPanel bind:this={repoPanel} repo={props.repo} />
+          <RepoPanel bind:this={repoPanel} repo={props.repo} submissionId={props.submission.id} />
         </div>
       {/if}
     </main>

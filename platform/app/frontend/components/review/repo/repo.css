@@ -1,0 +1,207 @@
+/* The review page's Repo tab, after Fallout's repo viewer surfaces (admin.css) and its .markdown-content. */
+
+.repo-checker {
+  background-color: var(--muted);
+  background-image:
+    linear-gradient(45deg, var(--border) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--border) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--border) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--border) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+.repo-gerber-board {
+  background: oklch(0.2 0.03 265);
+}
+.repo-gerber-board svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* highlight.js ships one theme per stylesheet (github.css, loaded with the code viewer); re-skin it for dark. */
+.admin.dark .hljs {
+  background: var(--background);
+  color: var(--foreground);
+}
+.admin.dark .hljs-comment,
+.admin.dark .hljs-quote {
+  color: oklch(0.65 0 0);
+}
+.admin.dark .hljs-keyword,
+.admin.dark .hljs-selector-tag,
+.admin.dark .hljs-meta {
+  color: oklch(0.78 0.14 350);
+}
+.admin.dark .hljs-string,
+.admin.dark .hljs-attr,
+.admin.dark .hljs-regexp {
+  color: oklch(0.8 0.1 230);
+}
+.admin.dark .hljs-number,
+.admin.dark .hljs-literal,
+.admin.dark .hljs-variable {
+  color: oklch(0.8 0.12 200);
+}
+.admin.dark .hljs-title,
+.admin.dark .hljs-section,
+.admin.dark .hljs-name {
+  color: oklch(0.78 0.13 300);
+}
+.admin.dark .hljs-built_in,
+.admin.dark .hljs-type {
+  color: oklch(0.82 0.11 80);
+}
+
+/* Fallout's .markdown-content, in the admin theme's colours. */
+.repo-markdown {
+  --md-rule: color-mix(in oklch, var(--foreground) 15%, transparent);
+  --md-wash: color-mix(in oklch, var(--foreground) 6%, transparent);
+  min-width: 0;
+  max-width: 48rem;
+  padding: 1.5rem;
+  overflow-wrap: anywhere;
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: var(--foreground);
+}
+.repo-markdown h1,
+.repo-markdown h2,
+.repo-markdown h3,
+.repo-markdown h4 {
+  font-weight: 600;
+  line-height: 1.1;
+}
+.repo-markdown h1 {
+  font-size: 2.75rem;
+  margin: 0 0 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--md-rule);
+}
+.repo-markdown h2 {
+  font-size: 1.875rem;
+  margin: 2rem 0 1.25rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--md-rule);
+}
+.repo-markdown h3 {
+  font-size: 1.5rem;
+  margin: 1.5rem 0 1rem;
+}
+.repo-markdown h4 {
+  font-size: 1.25rem;
+  margin: 1.75rem 0 0.75rem;
+}
+.repo-markdown p {
+  margin-bottom: 0.875rem;
+}
+.repo-markdown strong {
+  font-weight: 600;
+}
+.repo-markdown a {
+  color: #1a6fa0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 2px;
+}
+.repo-markdown a:hover {
+  background: rgba(26, 111, 160, 0.08);
+  border-radius: 3px;
+}
+.admin.dark .repo-markdown a {
+  color: #6db8e0;
+}
+.admin.dark .repo-markdown a:hover {
+  background: rgba(109, 184, 224, 0.1);
+}
+.repo-markdown ul,
+.repo-markdown ol {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+}
+.repo-markdown ul {
+  list-style-type: disc;
+}
+.repo-markdown ol {
+  list-style-type: decimal;
+}
+.repo-markdown li {
+  margin-bottom: 0.125rem;
+}
+.repo-markdown li > ul,
+.repo-markdown li > ol {
+  margin-top: 0.125rem;
+  margin-bottom: 0;
+}
+.repo-markdown blockquote {
+  background: var(--md-wash);
+  border-left: 4px solid var(--md-rule);
+  margin: 1.5em 0;
+  padding: 1.25rem;
+}
+.repo-markdown blockquote p {
+  display: inline;
+  margin-bottom: 0;
+}
+.repo-markdown code {
+  background-color: var(--md-wash);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: var(--font-mono, monospace);
+}
+.repo-markdown pre {
+  background-color: var(--md-wash);
+  padding: 1rem;
+  margin: 0.75rem 0;
+  border-radius: 3px;
+  max-width: 100%;
+  white-space: pre-wrap;
+  line-height: 1.25;
+}
+.repo-markdown pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.9rem;
+}
+.repo-markdown table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.repo-markdown th {
+  border-bottom: 1px solid var(--md-rule);
+  padding: 0.75rem 1.5rem 0.75rem 0;
+  text-align: left;
+  font-weight: 600;
+}
+.repo-markdown td {
+  padding: 0.75rem 1.5rem 0.75rem 0;
+  vertical-align: top;
+}
+.repo-markdown hr {
+  border: none;
+  border-top: 1px solid var(--md-rule);
+  margin: 1.5rem 0;
+}
+.repo-markdown img {
+  display: inline;
+  max-height: 30rem;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 3px;
+}
+.repo-markdown img[data-repo-src]:not([src]) {
+  min-width: 2rem;
+  min-height: 2rem;
+  background: var(--muted);
+}
+.repo-markdown summary {
+  cursor: pointer;
+}

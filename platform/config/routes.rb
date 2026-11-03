@@ -112,6 +112,7 @@ Rails.application.routes.draw do
           post :unflag
         end
         resources :notes, only: :create
+        resources :repo_files, only: :create
       end
     end
   end

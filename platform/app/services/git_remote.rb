@@ -11,12 +11,19 @@
 #   submodule, attribute or filter in the repo ever runs.
 # - Only the file list comes over at first (a blobless, one-commit clone). The README and BOM are fetched one blob
 #   at a time and refused past MAX_FILE_BYTES.
+# - The review page's file viewers (read_files) get other files at the submitted commit, a few at a time, each
+#   refused past MAX_BLOB_BYTES before it is read into memory.
 module GitRemote
   class Error < StandardError; end
 
   MAX_URL_LENGTH = 300
   MAX_TREE_ENTRIES = 5_000
   MAX_FILE_BYTES = 512.kilobytes
+  # The most one file read for the review page's viewers may be: room for CAD models, Gerber zips and datasheets.
+  MAX_BLOB_BYTES = 25.megabytes
+  # Files one read_files call may ask for, so one job can't be made to download a whole repository.
+  MAX_FILES_PER_READ = 20
+  COMMIT_SHA = /\A\h{40}(?:\h{24})?\z/
   TIMEOUT = 40
   # The most any one git process may write to disk, so a huge pack can't fill it.
   MAX_DISK_BYTES = 64.megabytes
@@ -79,6 +86,28 @@ module GitRemote
 
       Snapshot.new(url:, host:, branch:, commit_sha: sha, tree:, tree_truncated: truncated, readme_path:,
         readme: readme_path && files[oids[readme_path]], bom_path:, bom_csv: bom_path && files[oids[bom_path]])
+    end
+  end
+
+  # Files of the repository as they are at `commit_sha`, by path: each one's bytes (binary), or an Error saying why
+  # that file couldn't be read (not in the commit, too big, refused by the server). Raises Error when the repository
+  # or the commit can't be read at all. Slow (a network fetch): call it from a job.
+  def read_files(input, commit_sha, paths, limit: MAX_BLOB_BYTES)
+    url = normalize(input)
+    raise Error, "That isn't a commit" unless commit_sha.to_s.match?(COMMIT_SHA)
+
+    paths = paths.map(&:to_s).uniq
+    raise Error, "Ask for at most #{MAX_FILES_PER_READ} files at once" if paths.size > MAX_FILES_PER_READ
+    return {} if paths.empty?
+
+    host = URI.parse(url).host
+    address = public_address(host)
+    Dir.mktmpdir("repo") do |dir|
+      git = ->(*args, **opts, &on_error) { run(dir, host, address, *args, **opts, &on_error) }
+      repo = File.join(dir, "repo.git")
+      git.call("init", "--quiet", "--bare", repo)
+      fetch_commit(git, repo, url, commit_sha)
+      files_at(git, repo, commit_sha, paths, limit:)
     end
   end
 
@@ -200,12 +229,53 @@ module GitRemote
     raise Error, clone_error(error)
   end
 
+  # Just the commit's trees, with the same ".git" retry as clone.
+  def fetch_commit(git, repo, url, sha)
+    error = nil
+    [ url, "#{url}.git" ].each_with_index do |attempt, i|
+      git.call("remote", i.zero? ? "add" : "set-url", "origin", attempt, repo:)
+      failed = false
+      git.call("fetch", "--quiet", "--no-tags", "--no-write-fetch-head", "--recurse-submodules=no", "--depth=1", "--filter=blob:none", "origin", sha, repo:) { |stderr| failed = true; error = stderr }
+      return unless failed
+      break unless redirected?(error)
+    end
+    raise Error, error.to_s.match?(/not our ref|unadvertised|no such remote ref|couldn't find remote ref/i) ? "That commit isn't in the repository any more" : clone_error(error)
+  end
+
+  # Each path's bytes at the commit. The blobs come in one fetch; when that fails (one of them is too big, say) each
+  # is fetched alone, so only the bad one fails.
+  def files_at(git, repo, sha, paths, limit:)
+    _tree, _truncated, oids = list_tree(git.call("ls-tree", "-r", "-z", "--full-tree", sha, repo:))
+    wanted = paths.filter_map { |path| oids[path] }.uniq
+    fetch_blobs(git, repo, wanted) { nil } if wanted.any?
+    paths.index_with do |path|
+      oid = oids[path]
+      next Error.new("That file isn't in this commit") unless oid
+
+      read_blob(git, repo, oid, limit:)
+    end
+  end
+
+  def read_blob(git, repo, oid, limit:)
+    unless git.call("--no-lazy-fetch", "cat-file", "-e", oid, repo:) { nil }
+      fetch_blobs(git, repo, [ oid ]) { return Error.new("The server wouldn't send this file, or it's too big") }
+    end
+    size = git.call("--no-lazy-fetch", "cat-file", "-s", oid, repo:).to_i
+    return Error.new("This file is over #{ActiveSupport::NumberHelper.number_to_human_size(limit)}, too big to show here") if size > limit
+
+    git.call("--no-lazy-fetch", "cat-file", "blob", oid, repo:).b
+  end
+
+  def fetch_blobs(git, repo, oids, &on_error)
+    git.call("-c", "fetch.negotiationAlgorithm=noop", "fetch", "--quiet", "--no-tags", "--no-write-fetch-head", "--recurse-submodules=no", "--filter=blob:none", "origin", *oids, repo:, &on_error)
+  end
+
   # The files' text by object id, in one fetch. Servers send a blob asked for by id whatever its size, so a huge
   # one is stopped by MAX_DISK_BYTES and the text is cut at MAX_FILE_BYTES.
   def read_blobs(git, repo, oids)
     return {} if oids.empty?
 
-    git.call("-c", "fetch.negotiationAlgorithm=noop", "fetch", "--quiet", "--no-tags", "--no-write-fetch-head", "--recurse-submodules=no", "--filter=blob:none", "origin", *oids, repo:) { return {} }
+    fetch_blobs(git, repo, oids) { return {} }
     oids.index_with do |oid|
       present = git.call("--no-lazy-fetch", "cat-file", "-e", oid, repo:) { nil }
       present && git.call("--no-lazy-fetch", "cat-file", "blob", oid, repo:).byteslice(0, MAX_FILE_BYTES).force_encoding(Encoding::UTF_8).scrub

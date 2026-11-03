@@ -453,6 +453,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
     t.index ["user_id"], name: "index_projects_on_user_id"
   end
 
+  create_table "repo_files", force: :cascade do |t|
+    t.bigint "repo_snapshot_id", null: false
+    t.string "path", null: false
+    t.string "status", default: "pending", null: false
+    t.text "error"
+    t.bigint "byte_size"
+    t.datetime "fetched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["repo_snapshot_id", "path"], name: "index_repo_files_on_repo_snapshot_id_and_path", unique: true
+  end
+
   create_table "repo_snapshots", force: :cascade do |t|
     t.bigint "project_id", null: false
     t.bigint "user_id", null: false
@@ -904,6 +916,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
   add_foreign_key "project_transfers", "users"
   add_foreign_key "project_transfers", "users", column: "reviewer_id"
   add_foreign_key "projects", "users"
+  add_foreign_key "repo_files", "repo_snapshots", on_delete: :cascade
   add_foreign_key "repo_snapshots", "projects"
   add_foreign_key "repo_snapshots", "users"
   add_foreign_key "reviewer_notes", "projects"

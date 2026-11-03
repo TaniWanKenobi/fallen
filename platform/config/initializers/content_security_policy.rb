@@ -30,6 +30,9 @@ Rails.application.configure do
                    "https://cdn.hackclub.com", "https://user-cdn.hackclub-assets.com", # ...where Hack Club's CDN redirects to its asset host
                    "https://i.ytimg.com", *r2_host
     policy.frame_src "https://www.youtube-nocookie.com"
+    # The review page's STEP viewer runs OpenCascade in a worker. Built, it is a file of ours; Vite's dev server only
+    # serves it as a module, so in development it starts from a blob: (components/review/repo/viewers/stepClient.ts).
+    policy.worker_src :self, *([ :blob ] if vite)
     # The landing page asks Hack Club Auth whether the person is already signed in there.
     policy.connect_src :self, "https://auth.hackclub.com", "https://cloudflareinsights.com", *r2_host, *("https://#{sentry.host}" if sentry), *([ "ws://#{vite}", "http://#{vite}" ] if vite)
     policy.report_uri "https://#{sentry.host}/api#{sentry.path}/security/?sentry_key=#{sentry.user}" if sentry

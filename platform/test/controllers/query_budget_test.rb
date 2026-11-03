@@ -71,6 +71,11 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(14) { load_deferred(review_submissions_path, "Review/Submissions/Index", "submissions", "pagy", "counts") }
     # Claims it, then everything the review needs, the same count whatever the number of journals or parts.
     assert_query_budget(30) { get review_submission_path(submission) }
+    # A file for the repo viewer: the session, the submission and its snapshot, then finding or making the file.
+    # Polling a done one reads its attachment and blob instead of writing.
+    assert_query_budget(6) { post review_submission_repo_files_path(submission), params: { path: "board.kicad_pcb" }, as: :json }
+    RepoFile.last.store("(kicad_pcb)")
+    assert_query_budget(6) { post review_submission_repo_files_path(submission), params: { path: "board.kicad_pcb" }, as: :json }
 
     # The project page with a submission on it: that, its parts, its payout and its screenshots, the same five queries
     # whatever their number, on top of a fresh sign-in's two.

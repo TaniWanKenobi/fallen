@@ -58,4 +58,38 @@ class GitRemoteTest < ActiveSupport::TestCase
     assert_equal "https://github.com/a/b/blob/abc/pcb/x.kicad_pcb", GitRemote.file_url("https://github.com/a/b", "abc", "pcb/x.kicad_pcb")
     assert_nil GitRemote.file_url("https://git.example.org/a/b", "abc", "x")
   end
+
+  test "reading files refuses a bad commit, too many paths or an unsafe link before touching the network" do
+    stub_method(Resolv, :getaddresses, []) do
+      assert_raises(GitRemote::Error) { GitRemote.read_files("https://github.com/a/b", "main", [ "x" ]) }
+      assert_raises(GitRemote::Error) { GitRemote.read_files("https://github.com/a/b", "a" * 40, Array.new(GitRemote::MAX_FILES_PER_READ + 1) { "f#{it}" }) }
+      assert_raises(GitRemote::Error) { GitRemote.read_files("https://127.0.0.1/a/b", "a" * 40, [ "x" ]) }
+      assert_equal({}, GitRemote.read_files("https://github.com/a/b", "a" * 40, []))
+    end
+  end
+
+  test "reads only files in the commit's tree, and refuses one over the size cap before reading it" do
+    Dir.mktmpdir do |dir|
+      work = File.join(dir, "work")
+      system("git", "init", "--quiet", work, exception: true)
+      File.write(File.join(work, "small.txt"), "hello")
+      File.write(File.join(work, "big.bin"), "x" * 2_000)
+      git = ->(*args) { system("git", "-C", work, "-c", "user.name=t", "-c", "user.email=t@t", *args, out: File::NULL, exception: true) }
+      git.("add", ".")
+      git.("commit", "--quiet", "-m", "x")
+      sha = `git -C #{work} rev-parse HEAD`.strip
+      runner = ->(*args, repo: nil, &on_error) do
+        out, _err, status = Open3.capture3("git", "--git-dir=#{repo}", *args.reject { it.start_with?("--no-lazy-fetch") })
+        status.success? ? out : (on_error ? on_error.("") : raise(GitRemote::Error, "failed"))
+      end
+
+      files = GitRemote.files_at(runner, File.join(work, ".git"), sha, [ "small.txt", "big.bin", "../small.txt", "missing" ], limit: 1_000)
+
+      assert_equal "hello", files["small.txt"]
+      assert_equal Encoding::BINARY, files["small.txt"].encoding
+      assert_match "too big", files["big.bin"].message
+      assert_match "isn't in this commit", files["../small.txt"].message
+      assert_match "isn't in this commit", files["missing"].message
+    end
+  end
 end

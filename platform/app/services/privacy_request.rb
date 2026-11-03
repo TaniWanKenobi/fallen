@@ -132,6 +132,10 @@ class PrivacyRequest
     result["submissions"] = forget(Submission.where(id: submission_ids))
     snapshots = RepoSnapshot.where(user_id: ids).or(RepoSnapshot.where(project_id: project_ids))
     Submission.where(repo_snapshot_id: snapshots.select(:id)).update_all(repo_snapshot_id: nil)
+    files = RepoFile.where(repo_snapshot_id: snapshots.select(:id))
+    files.includes(:content_attachment).find_each { |file| file.content.purge_later } if commit?
+    ActiveStorage::Attachment.where(record_type: "RepoFile", record_id: files.select(:id)).delete_all
+    result["repo_files"] = forget(files)
     result["repo_snapshots"] = forget(snapshots)
     Submission.where(reviewer_id: ids).update_all(reviewer_id: nil)
     Submission.where(claimed_by_id: ids).update_all(claimed_by_id: nil, claim_expires_at: nil)

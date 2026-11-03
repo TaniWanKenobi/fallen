@@ -57,34 +57,3 @@ export function countWords(markdown: string): number {
     .replace(/[#*_`>~-]/g, ' ')
   return text.split(/\s+/).filter(Boolean).length
 }
-
-// A repository's README on the review page. Its pictures live on hosts we don't control, so each becomes a link
-// rather than loading from there; relative links point at the file on the repo's host (`base`), when we know how.
-export function renderReadme(markdown: string, base: string | null): string {
-  const html = marked.parse(markdown, { async: false }) as string
-  const fragment = DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, RETURN_DOM_FRAGMENT: true })
-  const resolve = (url: string | null) => {
-    if (!url) return null
-    if (/^https?:\/\//i.test(url)) return url
-    if (!base || url.startsWith('#') || /^[a-z]+:/i.test(url)) return null
-    return base + url.replace(/^\.?\//, '')
-  }
-  for (const img of fragment.querySelectorAll('img')) {
-    const link = document.createElement('a')
-    const href = resolve(img.getAttribute('src'))
-    if (href) link.setAttribute('href', href)
-    link.textContent = `[image${img.getAttribute('alt') ? `: ${img.getAttribute('alt')}` : ''}]`
-    img.replaceWith(link)
-  }
-  for (const a of fragment.querySelectorAll('a')) {
-    const href = resolve(a.getAttribute('href'))
-    if (href) {
-      a.setAttribute('href', href)
-      a.setAttribute('target', '_blank')
-      a.setAttribute('rel', 'noopener noreferrer')
-    } else a.removeAttribute('href')
-  }
-  const container = document.createElement('div')
-  container.append(fragment)
-  return container.innerHTML
-}
