@@ -3,7 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { Link, router, usePoll } from '@inertiajs/svelte'
+  import { router, usePoll } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import ArrowLeft from '@lucide/svelte/icons/arrow-left'
   import Gauge from '@lucide/svelte/icons/gauge'
   import LoaderCircle from '@lucide/svelte/icons/loader-circle'

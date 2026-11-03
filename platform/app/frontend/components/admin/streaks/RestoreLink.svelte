@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import ArrowRight from '@lucide/svelte/icons/arrow-right'
   import { adminUser } from '@/routes'
 

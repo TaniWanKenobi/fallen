@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import { pages } from '@/lib/pages'
   import { project as projectRoute } from '@/routes'
   import * as sfx from '@/lib/sfx'

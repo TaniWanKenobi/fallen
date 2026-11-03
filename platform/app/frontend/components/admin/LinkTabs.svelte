@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import type { Snippet } from 'svelte'
 
   type Tab = { value: string; label: string; href: string }

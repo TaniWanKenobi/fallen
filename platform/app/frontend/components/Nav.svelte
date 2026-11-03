@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Link, router } from '@inertiajs/svelte'
+  import { router } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import Wordmark from '@/components/Wordmark.svelte'
   import { adminRoot, home, root, signIn, signOut } from '@/routes'
   import { shared } from '@/lib/shared.svelte'

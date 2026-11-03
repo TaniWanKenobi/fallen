@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte'
-  import { Link, page } from '@inertiajs/svelte'
+  import { page } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import Toaster from '@/components/Toaster.svelte'
   import OnboardingOverlay from '@/components/onboarding/OnboardingOverlay.svelte'
   import HatchOverlay from '@/components/hatch/HatchOverlay.svelte'

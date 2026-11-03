@@ -3,7 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { Link, router } from '@inertiajs/svelte'
+  import { router } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import EditProjectModal from '@/components/EditProjectModal.svelte'
   import JournalComposer from '@/components/JournalComposer.svelte'
   import JournalItem from '@/components/JournalItem.svelte'

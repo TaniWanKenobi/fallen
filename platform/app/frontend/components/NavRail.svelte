@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Link, page } from '@inertiajs/svelte'
+  import { page } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import SolarHome from '@/components/icons/SolarHome.svelte'
   import SolarDocument from '@/components/icons/SolarDocument.svelte'
   import SolarSettings from '@/components/icons/SolarSettings.svelte'

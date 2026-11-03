@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Link, router } from '@inertiajs/svelte'
+  import { router } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import Pause from '@lucide/svelte/icons/pause'
   import Play from '@lucide/svelte/icons/play'
   import { Badge } from '@/components/admin/ui/badge'

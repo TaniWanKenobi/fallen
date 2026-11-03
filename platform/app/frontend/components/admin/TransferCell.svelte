@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import { Badge } from '@/components/admin/ui/badge'
   import { adminTransfer } from '@/routes'
   import type { AdminProjectTransfer } from '@/types'

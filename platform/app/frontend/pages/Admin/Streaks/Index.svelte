@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import type { ColumnDef } from '@tanstack/table-core'
   import Megaphone from '@lucide/svelte/icons/megaphone'
   import DataTable from '@/components/admin/DataTable.svelte'

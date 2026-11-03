@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right'
   import ActivityChart from '@/components/admin/ActivityChart.svelte'
   import Morph from '@/components/admin/Morph.svelte'

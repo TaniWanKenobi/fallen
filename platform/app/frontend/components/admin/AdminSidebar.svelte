@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Link, page, usePage } from '@inertiajs/svelte'
+  import { page, usePage } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import ChevronsLeft from '@lucide/svelte/icons/chevrons-left'
   import ChevronsRight from '@lucide/svelte/icons/chevrons-right'
   import LogOut from '@lucide/svelte/icons/log-out'

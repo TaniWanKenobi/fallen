@@ -3,7 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { Link, router, useForm } from '@inertiajs/svelte'
+  import { router, useForm } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import { timeAgo } from '@/lib/format'
   import { shared } from '@/lib/shared.svelte'
   import { dev, devSignInAs, devUsers, signOut } from '@/routes'

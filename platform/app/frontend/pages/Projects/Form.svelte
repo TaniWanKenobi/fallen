@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import '@/components/dialog/dialog.css'
   import ProjectFields from '@/components/ProjectFields.svelte'
   import { projectForm, saveProject } from '@/lib/projectForm'

@@ -3,7 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { Link, router, useForm } from '@inertiajs/svelte'
+  import { router, useForm } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import ArrowLeft from '@lucide/svelte/icons/arrow-left'
   import Ban from '@lucide/svelte/icons/ban'
   import VenetianMask from '@lucide/svelte/icons/venetian-mask'

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import { formatMinutes } from '@/lib/format'
   import { pages } from '@/lib/pages'
   import AvatarStack from '@/components/team/AvatarStack.svelte'

@@ -3,7 +3,8 @@
 </script>
 
 <script lang="ts">
-  import { Link, router, usePoll } from '@inertiajs/svelte'
+  import { router, usePoll } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import Trophy from '@lucide/svelte/icons/trophy'
   import LinkTabs from '@/components/admin/LinkTabs.svelte'
   import Morph from '@/components/admin/Morph.svelte'

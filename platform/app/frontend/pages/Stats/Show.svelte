@@ -5,7 +5,7 @@
 <script lang="ts">
   import type { ComponentProps } from 'svelte'
   import { BitsConfig } from 'bits-ui'
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import ProgramStats from '@/components/admin/ProgramStats.svelte'
   import Wordmark from '@/components/Wordmark.svelte'
   import { adminDark } from '@/lib/adminDark.svelte'

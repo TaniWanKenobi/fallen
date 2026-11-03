@@ -42,6 +42,11 @@
     onSortingChange: (updater) => {
       sorting = typeof updater === 'function' ? updater(sorting) : updater
     },
+    // Key rows by record so polling or a new search doesn't rebuild rows that are still there.
+    getRowId: (row, index) => {
+      const id = (row as { id?: unknown }).id
+      return id == null ? `#${index}` : String(id)
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })

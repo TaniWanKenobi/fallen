@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Link } from '@inertiajs/svelte'
+  import Link from '@/components/Link.svelte'
   import { adminJob } from '@/routes'
   import type { AdminJob } from '@/types'
 
