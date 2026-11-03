@@ -56,10 +56,10 @@ export function appear(node: Element): TransitionConfig {
   }
 }
 
-// A tab's view coming in: it fades in where it is, without moving.
+// A tab's view coming in: it fades from half to full where it is, without moving.
 export function swap(_node: Element): TransitionConfig {
   if (prefersReducedMotion()) return still()
-  return { ...QUICK, css: (t) => `opacity: ${Math.min(t, 1)}` }
+  return { ...QUICK, css: (t) => `opacity: ${0.5 + 0.5 * Math.min(t, 1)}` }
 }
 
 export function rise(_node: Element): TransitionConfig {
