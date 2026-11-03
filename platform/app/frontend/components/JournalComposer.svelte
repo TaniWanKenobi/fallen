@@ -169,7 +169,7 @@
     return (locked ? Math.min(needed, journal?.images.length ?? 0) : needed) || null
   })
   const photosMissing = $derived(photosNeeded === null ? 0 : Math.max(photosNeeded - photos.length, 0))
-  // Why the button is greyed out, shown on hover. Typed hours always count. With timelapses picked and nothing typed,
+  // Why the button is greyed out, shown under it. Typed hours always count. With timelapses picked and nothing typed,
   // the server takes their recorded time.
   const blocker = $derived(
     form.body.trim().length === 0
@@ -422,17 +422,17 @@
         </div>
 
         <!-- Room for the button's press-down edge and focus ring, which the scrolling grid would clip. -->
-        <!-- The reason sits on the wrapper because disabled buttons don't get hovered in every browser. -->
-        <div
-          class="mt-4 border-t-2 border-dashed border-paper-edge/70 px-1.5 pt-4 pb-2"
-          title={form.processing || checking ? undefined : (blocker ?? undefined)}
-        >
+        <div class="mt-4 border-t-2 border-dashed border-paper-edge/70 px-1.5 pt-4 pb-2">
           <SubmitButton
             busy={form.processing || checking || hoursCheck || reminder !== null}
             disabled={!canSubmit}
             busyLabel={editing ? 'Saving' : 'Logging'}
             label={uploading ? 'Waiting for photos…' : editing ? 'Save journal' : 'Log journal'}
           />
+          <!-- Why it's greyed out, in words: a hover tooltip never shows on a phone and is easy to miss anywhere. -->
+          <p class="mt-2 min-h-4 text-center font-outfit text-xs text-ink-soft" aria-live="polite">
+            {#if blocker && !form.processing && !checking}{blocker}{/if}
+          </p>
         </div>
       </aside>
     </div>

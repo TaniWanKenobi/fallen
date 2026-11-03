@@ -176,7 +176,6 @@
                     role="checkbox"
                     aria-checked={active}
                     disabled={Boolean(reason)}
-                    title={reason ? `This timelapse ${reason}` : undefined}
                     onclick={() => toggle(timelapse)}
                     class={['lapse-tile', active && 'active', reason && 'blocked']}
                   >
