@@ -110,7 +110,8 @@
   // Changes made from outside (a quick pick, a CSV import) go into the input as well as the display. One that is the
   // same number as what's typed is the parent echoing it back in its own format ("1.3" as "1.30"), and is left alone,
   // so it never rewrites the field under someone mid-number.
-  const same = (a: string, b: string) => a === b || (a.trim() !== '' && b.trim() !== '' && Number(a) === Number(b))
+  const same = (a: string, b: string) =>
+    a === b || (a.trim() !== '' && b.trim() !== '' && Number(a) === Number(b))
   $effect(() => {
     const next = value ?? ''
     if (!numora || same(numora.getValue(), next)) return
