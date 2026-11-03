@@ -40,6 +40,7 @@
     "marked": "^18.1.0",
     "motion": "^13.5.1",
     "node-datachannel": "^0.33.4",
+    "numora": "^4.0.0",
     "protobufjs": "^8.8.1",
     "skullet": "^0.0.3",
     "svelte": "^5.57.2",

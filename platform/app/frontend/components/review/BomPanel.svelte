@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from '@/components/admin/ui/button'
   import Segmented from '@/components/review/Segmented.svelte'
+  import NumberInput from '@/components/NumberInput.svelte'
   import Morph from '@/components/admin/Morph.svelte'
   import { pop } from '@/components/review/motion'
   import {
@@ -152,13 +153,13 @@
                 />
                 {#if call?.verdict === 'adjusted'}
                   <span transition:pop class="inline-flex items-center gap-1 text-xs">
-                    $<input
+                    $<NumberInput
                       value={fromCents(call.cents)}
-                      oninput={(e) =>
-                        (draft.bom[item.id] = { ...call, cents: toCents(e.currentTarget.value) })}
+                      onchange={(value) => (draft.bom[item.id] = { ...call, cents: toCents(value) })}
+                      max={itemRequested(item) / 100}
+                      separators
                       disabled={readonly}
-                      inputmode="decimal"
-                      aria-label="Lowered amount"
+                      label="Lowered amount"
                       class="h-7 w-20 rounded-md border border-input bg-background px-1.5 font-mono"
                     />
                   </span>

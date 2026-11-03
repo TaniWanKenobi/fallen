@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import Markdown from '@/components/Markdown.svelte'
+  import NumberInput from '@/components/NumberInput.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import Segmented from '@/components/review/Segmented.svelte'
   import Morph from '@/components/admin/Morph.svelte'
@@ -265,25 +266,29 @@
               partProblem ? 'border-amber-400' : 'border-input',
             ]}
           >
-            <input
-              bind:this={hoursInput}
+            <NumberInput
+              bind:ref={hoursInput}
               bind:value={hours}
-              oninput={typed}
+              onchange={typed}
+              decimals={0}
+              max={Math.floor(logged / 60)}
               disabled={readonly}
-              inputmode="numeric"
-              aria-label="Hours that count"
+              label="Hours that count"
               placeholder="0"
-              class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
+              align="right"
+              class="h-full w-9 px-2"
             />
             <span class="text-muted-foreground">h</span>
-            <input
+            <NumberInput
               bind:value={mins}
-              oninput={typed}
+              onchange={typed}
+              decimals={0}
+              max={59}
               disabled={readonly}
-              inputmode="numeric"
-              aria-label="Minutes that count"
+              label="Minutes that count"
               placeholder="00"
-              class="w-9 border-0 bg-transparent px-2 py-0 text-right focus:ring-0"
+              align="right"
+              class="h-full w-9 px-2"
             />
             <span class="text-muted-foreground">m</span>
           </div>

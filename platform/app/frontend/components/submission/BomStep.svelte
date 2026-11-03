@@ -1,4 +1,5 @@
 <script lang="ts">
+  import NumberInput from '@/components/NumberInput.svelte'
   import { docs } from '@/routes'
   import {
     blankItem,
@@ -215,34 +216,35 @@
               </td>
               <td class="px-1 py-1.5">
                 {#if item.kind === 'part'}
-                  <input
-                    aria-label="Quantity"
-                    type="number"
-                    min="1"
-                    max="10000"
-                    bind:value={item.quantity}
-                    class="bom-cell tabular-nums"
+                  <NumberInput
+                    label="Quantity"
+                    value={item.quantity ? String(item.quantity) : ''}
+                    onchange={(value) => (item.quantity = Number(value))}
+                    decimals={0}
+                    max={10000}
+                    placeholder="1"
+                    class="bom-cell"
                   />
                 {/if}
               </td>
               <td class="px-1 py-1.5">
                 {#if item.kind === 'part'}
-                  <input
-                    aria-label="Price each"
-                    inputmode="decimal"
+                  <NumberInput
+                    label="Price each"
                     bind:value={item.unit}
+                    separators
                     placeholder="0.00"
-                    class="bom-cell tabular-nums"
+                    class="bom-cell"
                   />
                 {/if}
               </td>
               <td class="px-1 py-1.5">
-                <input
-                  aria-label="Line total"
-                  inputmode="decimal"
+                <NumberInput
+                  label="Line total"
                   bind:value={item.total}
+                  separators
                   placeholder={placeholderTotal(item)}
-                  class="bom-cell tabular-nums"
+                  class="bom-cell"
                 />
               </td>
               <td class="px-1 py-1.5">
@@ -337,7 +339,8 @@
 />
 
 <style>
-  .bom-cell {
+  /* Global so the number fields (NumberInput) get it too; their focus is on the input inside, hence focus-within. */
+  :global(.bom-cell) {
     display: block;
     width: 100%;
     border: 1px solid transparent;
@@ -347,13 +350,13 @@
     font-size: inherit;
     color: inherit;
   }
-  .bom-cell::placeholder {
+  :global(.bom-cell::placeholder) {
     color: color-mix(in oklab, var(--color-ink-soft) 50%, transparent);
   }
-  .bom-cell:hover {
+  :global(.bom-cell:hover) {
     background: var(--color-paper-well);
   }
-  .bom-cell:focus {
+  :global(.bom-cell:focus-within) {
     border-color: #1cb0f6;
     background: #fff;
     outline: none;
