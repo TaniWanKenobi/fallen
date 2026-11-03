@@ -19,15 +19,17 @@ module Mcp
 
       class GetStats < Mcp::Tool
         description "What /admin/stats shows over a range: who is active, the daily series, the signup funnel and the " \
-                    "AI-writing checks. Days are New York days. Ask for only the sections you need."
+                    "AI-writing checks. Days are New York days. `from` and `to` (YYYY-MM-DD, both) pick the days instead of `range`. " \
+                    "Ask for only the sections you need."
         arguments({ range: { type: "string", enum: ProgramStats::RANGES.keys },
+                    from: { type: "string", format: "date" }, to: { type: "string", format: "date" },
                     sections: { type: "array", items: { type: "string", enum: %w[active daily funnel writing] } } })
         reads!
 
-        def self.run(ctx, range: nil, sections: %w[active funnel writing])
+        def self.run(ctx, range: nil, from: nil, to: nil, sections: %w[active funnel writing])
           ctx.authorize!([ :admin, :stats ], :show?)
-          stats = ProgramStats.new(range:)
-          { range: stats.range, **sections.uniq.to_h { [ it.to_sym, stats.public_send(it) ] } }
+          stats = ProgramStats.new(range:, from:, to:)
+          { range: stats.range, **stats.dates, **sections.uniq.to_h { [ it.to_sym, stats.public_send(it) ] } }
         end
       end
 

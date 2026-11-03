@@ -17,6 +17,13 @@ class AdminStatsTest < ActionDispatch::IntegrationTest
     assert props["daily"]["days"].any?
   end
 
+  test "picks a custom range by its first and last day" do
+    sign_in_as users(:admin)
+    path = admin_stats_path(from: "2026-01-01", to: "2026-01-07")
+    assert_equal [ "custom", "2026-01-01", "2026-01-07" ], inertia_props(path, "Admin/Stats/Show").values_at("range", "from", "to")
+    assert_equal 7, load_deferred(path, "Admin/Stats/Show", "daily")["daily"]["days"].size
+  end
+
   test "members are turned away" do
     sign_in_as users(:member)
     get admin_stats_path

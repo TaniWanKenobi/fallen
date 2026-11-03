@@ -4,10 +4,11 @@ class Admin::StatsController < Admin::ApplicationController
 
   def show
     authorize [ :admin, :stats ]
-    stats = ProgramStats.new(range: params[:range], milestones: true)
+    stats = ProgramStats.new(range: params[:range], from: params[:from], to: params[:to], milestones: true)
 
     render inertia: "Admin/Stats/Show", props: {
       range: stats.range,
+      **stats.dates,
       ranges: ProgramStats::RANGES.keys,
       active: InertiaRails.defer(group: "active") { stats.active },
       daily: InertiaRails.defer(group: "daily") { stats.daily },

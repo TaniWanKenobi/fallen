@@ -7,9 +7,13 @@
   import ProgramStats from '@/components/admin/ProgramStats.svelte'
   import { adminStats } from '@/routes'
 
-  let props: Omit<ComponentProps<typeof ProgramStats>, 'url'> = $props()
+  let props: Omit<ComponentProps<typeof ProgramStats>, 'url' | 'datesUrl'> = $props()
 </script>
 
 <svelte:head><title>Stats · Fallen Admin</title></svelte:head>
 
-<ProgramStats {...props} url={(range) => adminStats.show({ query: range === '30d' ? {} : { range } }).url} />
+<ProgramStats
+  {...props}
+  url={(range) => adminStats.show({ query: range === '30d' ? {} : { range } }).url}
+  datesUrl={(from, to) => adminStats.show({ query: { from, to } }).url}
+/>

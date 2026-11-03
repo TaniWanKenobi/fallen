@@ -8,6 +8,8 @@
   import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import * as ToggleGroup from '@/components/admin/ui/toggle-group'
+  import { Button } from '@/components/admin/ui/button'
+  import { Input } from '@/components/admin/ui/input'
   import { formatCount } from '@/lib/format'
 
   type Day = {
@@ -34,31 +36,41 @@
   }
   type Source = { source: string | null; signups: number; builders: number }
 
-  // The panels of /stats and /admin/stats (ProgramStats). `url` is the page's own URL for a range.
+  // The panels of /stats and /admin/stats (ProgramStats). `url` is the page's own URL for a range; with `datesUrl`, the
+  // first and last day shown (`from`, `to`) can be picked too.
   let {
     range,
     ranges,
+    from,
+    to,
     active,
     daily,
     funnel,
     sources,
     writing,
     url,
+    datesUrl,
   }: {
     range: string
     ranges: string[]
+    from?: string
+    to?: string
     active?: { day: number; week: number; month: number }
     daily?: { days: Day[]; totals: Totals }
     funnel?: { key: string; label: string; count: number }[]
     sources?: Source[]
     writing?: Writing
     url: (range: string) => string
+    datesUrl?: (from: string, to: string) => string
   } = $props()
 
   let loading = $state(false)
+  // Follow the days shown, until edited.
+  let pickedFrom = $derived(from ?? '')
+  let pickedTo = $derived(to ?? '')
 
-  function visit(next: string) {
-    router.visit(url(next), {
+  function visit(href: string) {
+    router.visit(href, {
       preserveState: true,
       preserveScroll: true,
       onStart: () => (loading = true),
@@ -146,12 +158,38 @@
     variant="outline"
     size="sm"
     value={range}
-    onValueChange={(value) => value && visit(value)}
+    onValueChange={(value) => value && visit(url(value))}
   >
     {#each ranges as option (option)}
       <ToggleGroup.Item value={option} class="px-3 tabular-nums">{option}</ToggleGroup.Item>
     {/each}
   </ToggleGroup.Root>
+  {#if datesUrl}
+    <form
+      class="flex items-center gap-1.5"
+      onsubmit={(event) => {
+        event.preventDefault()
+        if (pickedFrom && pickedTo) visit(datesUrl(pickedFrom, pickedTo))
+      }}
+    >
+      <Input
+        type="date"
+        aria-label="From"
+        class="h-8 w-auto"
+        bind:value={pickedFrom}
+        max={pickedTo}
+        required
+      />
+      <span class="text-muted-foreground">–</span>
+      <Input type="date" aria-label="To" class="h-8 w-auto" bind:value={pickedTo} min={pickedFrom} required />
+      <Button
+        type="submit"
+        size="sm"
+        variant={range === 'custom' ? 'default' : 'outline'}
+        disabled={pickedFrom === from && pickedTo === to && range === 'custom'}>Show</Button
+      >
+    </form>
+  {/if}
 </div>
 
 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">

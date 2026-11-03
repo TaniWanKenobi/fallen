@@ -25,6 +25,7 @@ class ProgramStatsTest < ActiveSupport::TestCase
     session(admin, joined_at: Time.utc(2026, 10, 21, 7), left_at: Time.utc(2026, 10, 21, 9), mode: "chilling")
     # Before the range.
     admin.timer_sessions.create!(started_at: 40.days.ago, stopped_at: 40.days.ago + 1.hour)
+    Journal.update_all(created_at: 1.hour.ago) # Fixtures are dated by the real clock, after this frozen one.
 
     daily = ProgramStats.new(range: "7d").daily
     days = daily[:days].index_by { it[:date] }
@@ -36,6 +37,29 @@ class ProgramStatsTest < ActiveSupport::TestCase
     assert_equal 1, days["2026-10-20"][:builders]
     assert_equal 1, daily[:totals][:builders], "the member journaled today too, and counts once"
     assert_equal 150, daily[:totals][:logged_minutes]
+  end
+
+  test "a custom range counts only its own days, and stops at today" do
+    member = users(:member)
+    session(member, joined_at: Time.utc(2026, 10, 15, 14), left_at: Time.utc(2026, 10, 15, 15))
+    # Runs past the end of the range, so only its first day counts.
+    member.timer_sessions.create!(started_at: Time.utc(2026, 10, 17, 3), stopped_at: Time.utc(2026, 10, 17, 6))
+    member.timer_sessions.create!(started_at: Time.utc(2026, 10, 19, 14), stopped_at: Time.utc(2026, 10, 19, 15))
+    User.update_all(created_at: Time.utc(2026, 10, 20, 14))
+    users(:newcomer).update_columns(created_at: Time.utc(2026, 10, 15, 14))
+
+    stats = ProgramStats.new(range: "7d", from: "2026-10-15", to: "2026-10-16")
+    assert_equal "custom", stats.range
+    assert_equal({ from: "2026-10-15", to: "2026-10-16" }, stats.dates)
+    daily = stats.daily
+    assert_equal %w[2026-10-15 2026-10-16], daily[:days].map { it[:date] }
+    assert_equal 60 + 60, daily[:totals][:tracked_minutes], "an hour on the 15th, and the timer up to New York's midnight"
+    assert_equal 1, daily[:totals][:signups]
+    assert_equal 1, stats.funnel.first[:count]
+
+    assert_equal({ from: "2026-10-20", to: "2026-10-21" }, ProgramStats.new(range: nil, from: "2026-10-20", to: "2027-01-01").dates)
+    assert_equal({ from: "2026-10-21", to: "2026-10-21" }, ProgramStats.new(range: nil, from: "2026-12-01", to: "2026-10-01").dates)
+    assert_equal "30d", ProgramStats.new(range: nil, from: "2026-10-20", to: "nope").range, "half a range is no range"
   end
 
   test "active counts builders by when they last tracked time or journaled, and visitors by day" do

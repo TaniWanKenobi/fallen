@@ -64,21 +64,35 @@ class ProgramStats
   # Pangram bills each request by the 100 words, rounded up; failed and unfinished ones may have been billed too.
   BILLED_HUNDREDS = "COALESCE(SUM(CEIL(#{WritingCheck::WORDS_SQL} / 100.0)) FILTER (WHERE billed AND status IN ('pending', 'done', 'failed')), 0)"
 
+  # A range picked by its first and last day rather than one of RANGES.
+  CUSTOM = "custom"
+
   attr_reader :range
 
-  # `milestones` adds the checkpoints on the way to qualifying to the funnel (QualifyingPace), for /admin/stats.
-  def initialize(range:, now: Time.current, milestones: false)
-    @range = RANGES.key?(range) ? range : DEFAULT_RANGE
+  # `milestones` adds the checkpoints on the way to qualifying to the funnel (QualifyingPace), for /admin/stats. `from`
+  # and `to` (ISO dates, both or neither) pick the days instead of `range`; a day after today is cut to today.
+  def initialize(range:, from: nil, to: nil, now: Time.current, milestones: false)
     @now = now
     @milestones = milestones
+    first, last = [ from, to ].map { Date.iso8601(it.to_s) rescue nil }
+    if first && last
+      @range = CUSTOM
+      first = [ first, @now.in_time_zone(ZONE).to_date ].min
+      @days = first..last.clamp(first, @now.in_time_zone(ZONE).to_date)
+    else
+      @range = RANGES.key?(range) ? range : DEFAULT_RANGE
+    end
   end
+
+  # The first and last day shown, as ISO dates.
+  def dates = { from: days.first.iso8601, to: days.last.iso8601 }
 
   # Builders (tracked time or wrote a journal) in the last day, week and 30 days, whatever the range.
   def active
     spans = { day: 1.day, week: 7.days, month: 30.days }
     since = @now - spans[:month]
     last_built = Journal.kept.written_here.where(created_at: since..).group(:user_id).maximum(:created_at)
-    tracked_stretches(since).each do |user_id, stretches|
+    tracked_stretches(since, @now).each do |user_id, stretches|
       finish = stretches.filter_map { |start, to| to if to > start }.max or next
       last_built[user_id] = [ last_built[user_id], finish ].compact.max
     end
@@ -99,13 +113,13 @@ class ProgramStats
     end
 
     logged = Hash.new(0)
-    Journal.kept.written_here.where(created_at: from..).pluck(Arel.sql(LOCAL_DATE.("created_at")), :user_id, :duration_minutes).each do |day, user_id, minutes|
+    Journal.kept.written_here.where(created_at: from...upto).pluck(Arel.sql(LOCAL_DATE.("created_at")), :user_id, :duration_minutes).each do |day, user_id, minutes|
       logged[day] += minutes.to_i
       builders[day] << user_id
     end
 
     visitors = ActiveDay.where(day: days).group(:day).count
-    signups = User.kept.where(created_at: from..).group(Arel.sql(LOCAL_DATE.("created_at"))).count
+    signups = User.kept.where(created_at: from...upto).group(Arel.sql(LOCAL_DATE.("created_at"))).count
 
     {
       days: days.map do |day|
@@ -121,7 +135,7 @@ class ProgramStats
 
   def funnel
     steps, reached = @milestones ? [ FUNNEL + MILESTONES, ADMIN_FUNNEL_REACHED ] : [ FUNNEL, FUNNEL_REACHED ]
-    people = User.kept.where(is_banned: false, created_at: from..).group(Arel.sql(reached)).count
+    people = User.kept.where(is_banned: false, created_at: from...upto).group(Arel.sql(reached)).count
     counts = steps.each_index.map { |i| people.sum { |got, count| got > i ? count : 0 } }
     this_week = QualifyingPace.checkpoint(QualifyingPace.today(@now))
     steps.zip(counts).filter_map { |(key, label, _, due), count| { key:, label:, count: } unless due && due > this_week }
@@ -130,7 +144,7 @@ class ProgramStats
   # Signups by source, most first, and how many of them tracked time or journaled. No source is "", and the small ones are
   # summed under nil.
   def sources
-    rows = User.kept.where(is_banned: false, created_at: from..).group(Arel.sql(SOURCE))
+    rows = User.kept.where(is_banned: false, created_at: from...upto).group(Arel.sql(SOURCE))
       .pluck(Arel.sql(SOURCE), *SOURCE_COUNTS.map { Arel.sql(it) })
     named, rest = rows.sort_by { |source, signups| [ -signups, source ] }.partition { |source, signups| source.empty? || signups >= SOURCE_MIN_SIGNUPS }
     rest += named.slice!(SOURCE_ROWS..) || []
@@ -141,7 +155,7 @@ class ProgramStats
   # Checks a day and how many were flagged, plus the range's totals and what Pangram billed for them.
   def writing
     selects = WRITING_COUNTS.values.map { Arel.sql("COUNT(*) FILTER (WHERE #{it})") } << Arel.sql(BILLED_HUNDREDS)
-    rows = WritingCheck.where(created_at: from..).group(Arel.sql(LOCAL_DATE.("created_at"))).pluck(Arel.sql(LOCAL_DATE.("created_at")), *selects)
+    rows = WritingCheck.where(created_at: from...upto).group(Arel.sql(LOCAL_DATE.("created_at"))).pluck(Arel.sql(LOCAL_DATE.("created_at")), *selects)
     by_day = rows.to_h { |day, *counts| [ day, WRITING_COUNTS.keys.zip(counts).to_h.merge(hundreds: counts.last.to_i) ] }
     totals = (WRITING_COUNTS.keys + [ :hundreds ]).index_with { |key| by_day.values.sum { it[key] } }
 
@@ -162,24 +176,26 @@ class ProgramStats
   end
 
   def from = days.first.in_time_zone(ZONE)
+  # The end of the last day.
+  def upto = days.last.next_day.in_time_zone(ZONE)
 
-  # Everyone's tracked time that ends after `since`, by user id, before overlaps are joined.
-  def tracked_stretches(since = from)
-    sessions = ending_after(HuddleSession.counting.where.not(user_id: nil), :left_at, since).select(:user_id, :joined_at, :left_at, :deducted_seconds).group_by(&:user_id)
-    pauses = ending_after(HuddlePause.all, :ended_at, since).select(:user_id, :started_at, :ended_at).group_by(&:user_id)
-    timers = ending_after(TimerSession.all, :stopped_at, since).select(:user_id, :started_at, :stopped_at, :deducted_seconds).group_by(&:user_id)
+  # Everyone's tracked time between `since` and `before`, by user id, before overlaps are joined.
+  def tracked_stretches(since = from, before = upto)
+    sessions = between(HuddleSession.counting.where.not(user_id: nil), :joined_at, :left_at, since, before).select(:user_id, :joined_at, :left_at, :deducted_seconds).group_by(&:user_id)
+    pauses = between(HuddlePause.all, :started_at, :ended_at, since, before).select(:user_id, :started_at, :ended_at).group_by(&:user_id)
+    timers = between(TimerSession.all, :started_at, :stopped_at, since, before).select(:user_id, :started_at, :stopped_at, :deducted_seconds).group_by(&:user_id)
 
     (sessions.keys | timers.keys).index_with do |user_id|
       TrackedTime.huddle_stretches(sessions.fetch(user_id, []), pauses.fetch(user_id, []), @now) + TrackedTime.timer_stretches(timers.fetch(user_id, []), @now)
     end
   end
 
-  def ending_after(scope, column, since) = scope.where(column => nil).or(scope.where(column => since..))
+  def between(scope, start, finish, since, before) = scope.where(start => ...before).and(scope.where(finish => nil).or(scope.where(finish => since..)))
 
   # Splits a stretch, cut to the range, at midnights in ZONE.
   def each_day(start, finish)
     start = [ start, from ].max
-    finish = [ finish, @now ].min
+    finish = [ finish, upto, @now ].min
     while start < finish
       day = start.in_time_zone(ZONE).to_date
       upto = [ finish, day.next_day.in_time_zone(ZONE) ].min
