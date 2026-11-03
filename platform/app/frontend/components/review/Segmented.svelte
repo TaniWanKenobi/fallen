@@ -41,7 +41,12 @@
       shown = false
       return
     }
-    const box = { left: `${target.offsetLeft}px`, width: `${target.offsetWidth}px`, opacity: 1, scale: 1 }
+    const box = {
+      left: `${track.offsetLeft + target.offsetLeft}px`,
+      width: `${target.offsetWidth}px`,
+      opacity: 1,
+      scale: 1,
+    }
     if (!shown || prefersReducedMotion()) {
       Object.assign(pill.style, { left: box.left, width: box.width })
       move = animate(pill, { opacity: 1, scale: 1 }, { duration: prefersReducedMotion() ? 0 : 0.18 })
