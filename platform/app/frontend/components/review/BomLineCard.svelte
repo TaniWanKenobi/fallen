@@ -84,15 +84,18 @@
 
   // The asked amount, struck through under the funding while a line funds less than it asks. Its space is always
   // kept, so it fades in and out on a spring without the card changing height.
+  // The amount is centred in the card; while the struck price shows under it, both rise by half its height so the
+  // pair stays centred.
   const lowered = $derived(funded != null && funded < asked)
   let was: HTMLElement
+  let fundsBox: HTMLElement
   $effect(() => {
     const on = lowered
-    animate(
-      was,
-      { opacity: on ? 1 : 0, y: on ? 0 : -4 },
-      prefersReducedMotion() ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 34 },
-    )
+    const spring = prefersReducedMotion()
+      ? { duration: 0 }
+      : ({ type: 'spring', stiffness: 520, damping: 34 } as const)
+    animate(was, { opacity: on ? 1 : 0, y: on ? 0 : -4 }, spring)
+    animate(fundsBox, { y: on ? -was.offsetHeight / 2 : 0 }, spring)
   })
 
   let root: HTMLElement
@@ -179,7 +182,7 @@
       </p>
     </div>
 
-    <div class="flex shrink-0 items-center gap-4">
+    <div class="flex shrink-0 items-center gap-4 self-center">
       {#if item.owned}
         <span class="w-[13.5rem] text-right text-xs text-muted-foreground">Asks for nothing</span>
       {:else}
@@ -197,7 +200,7 @@
           />
         </div>
       {/if}
-      <div class="w-24 text-right">
+      <div bind:this={fundsBox} class="relative w-24 text-right">
         <p class="text-[10px] tracking-wide text-muted-foreground uppercase">Funds</p>
         <p class={['font-mono text-sm', funded == null ? 'text-muted-foreground' : 'font-semibold']}>
           {#if funded == null}
@@ -206,11 +209,11 @@
             <Morph text={money(funded)} />
           {/if}
         </p>
-        <!-- Always there, so the card keeps its height; it only fades in when the line funds less than asked. -->
+        <!-- Under the amount but out of the layout, so the card never changes height. -->
         <p
           bind:this={was}
           aria-hidden={!lowered}
-          class="font-mono text-[11px] text-muted-foreground line-through"
+          class="absolute top-full right-0 font-mono text-[11px] text-muted-foreground line-through"
           style:opacity={0}
         >
           {money(asked)}
