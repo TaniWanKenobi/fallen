@@ -11,15 +11,16 @@ export interface UploadedImage {
 export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 
-// The image in a paste meant for the page as a whole, like a banner: not one going into a text box, an editor or a
-// dialog (the journal composer), which takes its own.
-export function pastedPageImage(event: ClipboardEvent): File | undefined {
+// The image in a paste aimed at a drop zone like a banner: only while the pointer is over it or it has focus, so a
+// photo pasted anywhere else on the page (a journal, a text box) never replaces it.
+export function pastedImageFor(event: ClipboardEvent, zone: Element | undefined, hovering: boolean) {
+  if (!zone || event.defaultPrevented) return
+  if (!hovering && !zone.contains(document.activeElement)) return
   const target = event.target instanceof Element ? event.target : null
-  if (
-    event.defaultPrevented ||
-    target?.closest('input, textarea, [contenteditable], dialog, [role="dialog"]')
-  )
-    return
+  if (target?.closest('input, textarea, [contenteditable]')) return
+  // A dialog over the page (the journal composer) can sit on top of a banner the pointer was last over.
+  const dialog = target?.closest('dialog, [role="dialog"]')
+  if (dialog && !dialog.contains(zone)) return
   return [...(event.clipboardData?.files ?? [])].find((f) => IMAGE_TYPES.includes(f.type))
 }
 

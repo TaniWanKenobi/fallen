@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { IMAGE_TYPES, pastedPageImage, uploadImage } from '@/lib/uploads'
+  import { IMAGE_TYPES, pastedImageFor, uploadImage } from '@/lib/uploads'
 
   // Click, drop or paste an image; it goes straight to storage and `value` becomes `{ id, url }`.
   let {
@@ -13,6 +13,8 @@
   let input: HTMLInputElement
   let uploading = $state(false)
   let dragging = $state(false)
+  let zone: HTMLDivElement | undefined = $state()
+  let hovering = false
   let uploadError: string | null = $state(null)
 
   async function take(file: File | undefined) {
@@ -35,9 +37,9 @@
     void take(event.dataTransfer?.files[0])
   }
 
-  // Pasting an image anywhere on the page, outside a text box, sets the banner.
+  // Pasting an image while pointing at the banner, or with it focused, sets it.
   function onPaste(event: ClipboardEvent) {
-    const file = pastedPageImage(event)
+    const file = pastedImageFor(event, zone, hovering)
     if (file) {
       event.preventDefault()
       void take(file)
@@ -50,8 +52,11 @@
 <div>
   <!-- summer-of-making's banner drop zone: dashed, filled, "Upload a banner" fades in on hover. -->
   <div
+    bind:this={zone}
     role="button"
     tabindex="0"
+    onpointerenter={() => (hovering = true)}
+    onpointerleave={() => (hovering = false)}
     aria-label={value ? 'Replace banner' : 'Upload a banner'}
     onclick={() => input.click()}
     onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), input.click())}

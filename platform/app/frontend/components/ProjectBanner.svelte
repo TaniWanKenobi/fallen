@@ -1,12 +1,12 @@
 <script lang="ts">
   import { router } from '@inertiajs/svelte'
-  import { IMAGE_TYPES, pastedPageImage, uploadImage } from '@/lib/uploads'
+  import { IMAGE_TYPES, pastedImageFor, uploadImage } from '@/lib/uploads'
   import { projects } from '@/routes'
   import type { Project } from '@/types'
   import defaultBanner from '@/assets/hero/default-banner.jpg'
 
   // The top of the project page, after summer-of-making's: the picture fades into the glass below it, and the owner
-  // can click, drag or paste an image onto it to replace the banner.
+  // can click or drag an image onto it, or paste one while pointing at it, to replace the banner.
   let {
     project,
     editable,
@@ -15,6 +15,8 @@
 
   let input: HTMLInputElement | undefined = $state()
   let dragging = $state(false)
+  let zone: HTMLDivElement | undefined = $state()
+  let hovering = false
   let uploading = $state(false)
   let error: string | null = $state(null)
 
@@ -37,7 +39,7 @@
 
   function onPaste(event: ClipboardEvent) {
     if (!editable) return
-    const file = pastedPageImage(event)
+    const file = pastedImageFor(event, zone, hovering)
     if (file) {
       event.preventDefault()
       void take(file)
@@ -58,8 +60,11 @@
 {#if editable}
   <div
     class="group relative isolate h-52 cursor-pointer overflow-hidden rounded-t-[4px] outline-none md:h-72"
+    bind:this={zone}
     role="button"
     tabindex="0"
+    onpointerenter={() => (hovering = true)}
+    onpointerleave={() => (hovering = false)}
     aria-label="Upload a new banner"
     onclick={() => input?.click()}
     onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), input?.click())}
