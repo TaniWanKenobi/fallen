@@ -48,7 +48,9 @@ class SubmissionChecks
       *(@made_with.include?("pcb") ? pcb_checks(paths) : []),
       *(@made_with.include?("cad") ? cad_checks(paths) : []),
       (check("firmware", "Firmware is in the repo", paths.any? { |p| p.match?(FIRMWARE) }, "Add your firmware's source code.") if @made_with.include?("firmware")),
-      check("repo_bom", "bom.csv is in the repo", @snapshot.bom_path.present?, "Commit your bom.csv too, so the repo has everything.", level: "warn")
+      check("repo_bom", "bom.csv is in the repo", @snapshot.bom_path.present? && @snapshot.bom_csv.present?,
+        @snapshot.bom_path.present? ? "#{@snapshot.bom_path} in your repo is empty. Commit the parts list there too." : "Commit your bom.csv too, so the repo has everything.",
+        level: "warn")
     ]
   end
 

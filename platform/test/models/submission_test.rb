@@ -100,6 +100,17 @@ class SubmissionTest < ActiveSupport::TestCase
     assert_match "what you changed", second.errors[:note].join
   end
 
+  test "an empty bom.csv in the repo is a warning, not a pass" do
+    project = projects(:station)
+    project.journals.kept.needing_hours.update_all(duration_minutes: 30)
+    snapshot = read_snapshot(project)
+    snapshot.update!(bom_csv: "")
+    check = SubmissionChecks.new(project:, snapshot:, made_with: [], screenshots: 1, items: bom_rows.map { BomItem.new(it) }).run.find { it["key"] == "repo_bom" }
+
+    assert_equal "warn", check["status"]
+    assert_match "is empty", check["detail"]
+  end
+
   test "a bad parts list is refused row by row" do
     project = projects(:station)
     project.journals.kept.needing_hours.update_all(duration_minutes: 30)
