@@ -162,65 +162,6 @@ export function parseMinutes(text: string): number | null {
   return null
 }
 
-// Feedback written from the review itself, so what the person reads matches what was decided.
-export function draftFeedback(page: ReviewPage, draft: ReviewDraft): string {
-  const lines: string[] = []
-  const PHRASES: Record<string, Record<'partly' | 'no', string>> = {
-    complete: { partly: 'The design isn’t quite finished yet.', no: 'The design isn’t finished yet.' },
-    works: {
-      partly: 'Some parts of the design might not work as drawn.',
-      no: 'The design as it is wouldn’t work.',
-    },
-    original: {
-      partly: 'Parts of it follow a guide closely. Make it more your own.',
-      no: 'It looks copied rather than designed by you.',
-    },
-    documented: {
-      partly: 'The README and repo are missing a few things someone would need to build it.',
-      no: 'Someone couldn’t build it from the repo and README yet.',
-    },
-    journals: {
-      partly: 'Some journals don’t show the work behind their hours.',
-      no: 'The journals don’t show the work it took.',
-    },
-  }
-  for (const [question, answer] of Object.entries(draft.rubric)) {
-    if (answer === 'partly' || answer === 'no')
-      lines.push(`- ${PHRASES[question]?.[answer] ?? page.options.rubric[question]}`)
-  }
-  const deflated = page.journals.filter((j) => journalDeflated(j, draft.journals[j.id]))
-  if (deflated.length) {
-    lines.push('', 'Journals:')
-    for (const j of deflated) {
-      const call = draft.journals[j.id]
-      const date = new Date(j.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      lines.push(
-        `- ${date}: counted ${fmt(call.minutes ?? 0)} of ${fmt(j.duration_minutes ?? 0)} (${call.reason?.toLowerCase()})`,
-      )
-    }
-  }
-  const changed = page.submission.bom_items.filter((item) => {
-    const call = draft.bom[item.id]
-    return call?.verdict === 'cut' || call?.verdict === 'adjusted'
-  })
-  if (changed.length) {
-    lines.push('', 'Parts list:')
-    for (const item of changed) {
-      const call = draft.bom[item.id]
-      lines.push(
-        `- ${item.name}: ${call.verdict === 'cut' ? 'cut' : 'lowered'} (${call.reason?.toLowerCase()})`,
-      )
-    }
-  }
-  return lines.join('\n').trim()
-}
-
-const fmt = (minutes: number) => {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return [h && `${h}h`, (m || !h) && `${m}m`].filter(Boolean).join(' ')
-}
-
 // Fallout's raised buttons, over the admin Button's classes: a soft top-down gradient, a drop shadow and a 1px
 // highlight along the top.
 export const RAISED = {

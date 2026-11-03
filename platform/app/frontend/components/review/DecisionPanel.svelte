@@ -2,7 +2,6 @@
   import Check from '@lucide/svelte/icons/check'
   import CornerDownLeft from '@lucide/svelte/icons/corner-down-left'
   import Loader from '@lucide/svelte/icons/loader'
-  import WandSparkles from '@lucide/svelte/icons/wand-sparkles'
   import * as AlertDialog from '@/components/admin/ui/alert-dialog'
   import { Button } from '@/components/admin/ui/button'
   import { Separator } from '@/components/admin/ui/separator'
@@ -13,7 +12,6 @@
   import StatusBadge from '@/components/review/StatusBadge.svelte'
   import { formatDateTime, formatMinutes } from '@/lib/format'
   import {
-    draftFeedback,
     RAISED,
     RAISED_KEY,
     journalDecided,
@@ -90,11 +88,6 @@
   const returnBlocker = $derived(
     common ?? (!draft.feedback.trim() ? 'Write feedback so they know what to change' : null),
   )
-
-  function writeFeedback() {
-    const text = draftFeedback(page, draft)
-    draft.feedback = draft.feedback.trim() ? `${draft.feedback.trim()}\n\n${text}` : text
-  }
 
   export const blockers = () => ({ approve: approveBlocker, return: returnBlocker })
 </script>
@@ -192,15 +185,6 @@
         placeholder="What they did well, and what to change..."
         class="h-32 resize-y text-sm"
       />
-      {#if page.can.decide}
-        <button
-          type="button"
-          onclick={writeFeedback}
-          class="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <WandSparkles class="size-3.5" /> Write it from my calls
-        </button>
-      {/if}
     {/if}
     {#if errors.feedback}<p class="text-xs text-red-600">{errors.feedback}</p>{/if}
   </div>
