@@ -98,9 +98,10 @@ Rails.application.routes.draw do
   post "mcp" => "mcp#handle", as: :mcp, format: false
   match "mcp" => "mcp#not_allowed", via: %i[get put patch delete], format: false
 
-  # The design review queue (SubmissionReview), for design reviewers and admins.
+  # The design review queue (SubmissionReview), part of the admin panel but open to design reviewers too, so it's
+  # routed before the admins-only constraint below.
   constraints Constraints::DesignReviewer.new do
-    namespace :review do
+    namespace :review, path: "admin/reviews" do
       root "submissions#index"
       get "next" => "submissions#next", as: :next
       resources :submissions, only: %i[index show update] do

@@ -11,8 +11,8 @@
   import Morph from '@/components/admin/Morph.svelte'
   import Wordmark from '@/components/Wordmark.svelte'
   import { adminDark, toggleAdminDark } from '@/lib/adminDark.svelte'
-  import { adminNav, isActive } from '@/lib/adminNav'
-  import { home, adminRoot } from '@/routes'
+  import { isActive, navFor, panelHome } from '@/lib/adminNav'
+  import { home } from '@/routes'
   import type { AdminSharedProps } from '@/types'
 
   let { onSearch, collapsed = $bindable() }: { onSearch: () => void; collapsed?: boolean } = $props()
@@ -69,7 +69,7 @@
   <div class="flex items-center border-b border-sidebar-border px-2.5 py-3">
     {#if !collapsed}
       <Link
-        href={adminRoot()}
+        href={panelHome(user)}
         class="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold tracking-tight whitespace-nowrap"
       >
         <Wordmark class="h-9" />
@@ -102,7 +102,7 @@
   </div>
 
   <nav class="flex-1 overflow-y-auto px-1.5 py-2">
-    {#each adminNav as section, i (section.title)}
+    {#each navFor(user) as section, i (section.title)}
       {#if i > 0}<div class="mx-2 my-2 border-t border-sidebar-border"></div>{/if}
       <div class="space-y-0.5">
         {#each section.items as item (item.href)}

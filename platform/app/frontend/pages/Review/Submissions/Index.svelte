@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  export { default as layout } from '@/layouts/ReviewLayout.svelte'
+  export { default as layout } from '@/layouts/AdminLayout.svelte'
 </script>
 
 <script lang="ts">
@@ -18,8 +18,7 @@
   import StatusBadge from '@/components/review/StatusBadge.svelte'
   import { timeAgo } from '@/lib/format'
   import { money } from '@/lib/submission'
-  import { shared } from '@/lib/shared.svelte'
-  import { adminRoot, reviewNext, reviewSubmissions } from '@/routes'
+  import { reviewNext, reviewSubmissions } from '@/routes'
   import type { Pagy, ReviewQueueRow } from '@/types'
 
   let {
@@ -33,8 +32,6 @@
     counts?: { queue: number; flagged: number; mine: number; decided: number; oldest: string | null }
     tab: string
   } = $props()
-
-  const isAdmin = $derived(shared().auth.user?.is_admin ?? false)
 
   const tabs = [
     { value: 'queue', label: 'Queue' },
@@ -91,9 +88,9 @@
   ])
 </script>
 
-<svelte:head><title>Design review · Fallen</title></svelte:head>
+<svelte:head><title>Design review · Fallen Admin</title></svelte:head>
 
-<div class="mx-auto max-w-6xl p-6">
+<div>
   <div class="mb-6 flex flex-wrap items-end gap-4">
     <div class="min-w-0 flex-1">
       <h1 class="text-2xl font-semibold tracking-tight">Design review</h1>
@@ -108,9 +105,6 @@
         {/if}
       </p>
     </div>
-    {#if isAdmin}
-      <Button variant="ghost" size="sm" href={adminRoot().url}>Admin</Button>
-    {/if}
     <Button size="lg" href={reviewNext().url} class="px-4">
       <Play data-icon="inline-start" /> Start reviewing
     </Button>

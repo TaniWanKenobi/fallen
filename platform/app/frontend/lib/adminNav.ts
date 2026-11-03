@@ -37,6 +37,8 @@ export type AdminNavItem = {
   statKey?: keyof AdminStats
   // The count is a problem to look at, not a total, so it stands out (and hides at zero).
   alert?: boolean
+  // Design reviewers see it too; everything else is for admins only (the server refuses them either way).
+  reviewers?: boolean
 }
 
 export type AdminNavSection = { title: string; items: AdminNavItem[] }
@@ -59,7 +61,12 @@ export const adminNav: AdminNavSection[] = [
       { label: 'Users', href: adminUsers.index().url, icon: Users, statKey: 'users_count' },
       { label: 'Transfers', href: adminTransfers.index().url, icon: ArrowLeftRight },
       { label: 'Streaks', href: adminStreaks.index().url, icon: Flame },
-      { label: 'Design review', href: reviewSubmissions.reviewRoot().url, icon: ClipboardCheck },
+      {
+        label: 'Design review',
+        href: reviewSubmissions.reviewRoot().url,
+        icon: ClipboardCheck,
+        reviewers: true,
+      },
       { label: 'Grants', href: adminGrants.index().url, icon: Banknote },
     ],
   },
@@ -79,6 +86,18 @@ export const adminNav: AdminNavSection[] = [
     ],
   },
 ]
+
+// The panel as someone sees it: admins get all of it, design reviewers only what they can open.
+export function navFor(user: { is_admin: boolean } | null | undefined): AdminNavSection[] {
+  if (user?.is_admin) return adminNav
+  return adminNav
+    .map((section) => ({ ...section, items: section.items.filter((item) => item.reviewers) }))
+    .filter((section) => section.items.length > 0)
+}
+
+// Where the panel's logo goes: the dashboard for admins, the review queue for everyone else.
+export const panelHome = (user: { is_admin: boolean } | null | undefined) =>
+  user?.is_admin ? adminRoot().url : reviewSubmissions.reviewRoot().url
 
 export function isActive(item: AdminNavItem, pathname: string): boolean {
   const root = adminRoot().url

@@ -4,7 +4,8 @@
   import Sun from '@lucide/svelte/icons/sun'
   import * as Command from '@/components/admin/ui/command'
   import { adminDark, toggleAdminDark } from '@/lib/adminDark.svelte'
-  import { adminNav, type AdminNavItem } from '@/lib/adminNav'
+  import { navFor, type AdminNavItem } from '@/lib/adminNav'
+  import { shared } from '@/lib/shared.svelte'
 
   let { open = $bindable(false) }: { open?: boolean } = $props()
 
@@ -32,7 +33,7 @@
   <Command.Input placeholder="Go to..." />
   <Command.List>
     <Command.Empty>No results found.</Command.Empty>
-    {#each adminNav as section (section.title)}
+    {#each navFor(shared().auth.user) as section (section.title)}
       <Command.Group heading={section.title}>
         {#each section.items as item (item.href)}
           <Command.Item value={item.label} onSelect={() => go(item)}>
