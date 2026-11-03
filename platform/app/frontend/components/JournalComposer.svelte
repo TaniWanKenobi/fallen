@@ -434,9 +434,14 @@
           {#if blocker && !form.processing && !checking}
             <span
               role="tooltip"
-              class="pointer-events-none invisible absolute bottom-full left-1/2 z-10 mb-1 w-max max-w-64 -translate-x-1/2 rounded-md bg-ink px-2.5 py-1.5 text-center font-outfit text-xs text-paper opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+              class="pointer-events-none invisible absolute bottom-full left-1/2 z-10 mb-1.5 w-max max-w-64 -translate-x-1/2 rounded-md bg-ink px-2.5 py-1.5 text-center font-outfit text-xs text-paper opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
             >
               {blocker}
+              <!-- The arrow, pointing down at the button -->
+              <span
+                aria-hidden="true"
+                class="absolute top-full left-1/2 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-ink"
+              ></span>
             </span>
           {/if}
         </div>
