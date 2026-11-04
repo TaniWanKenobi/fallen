@@ -12,7 +12,7 @@
 </script>
 
 <div>
-  <div class="overflow-hidden rounded-md border border-border">
+  <div class="overflow-hidden t-table">
     <Table.Root>
       <Table.Header>
         <Table.Row>

@@ -7,7 +7,7 @@
   let { workers }: { workers: JobProcess[] } = $props()
 </script>
 
-<div class="overflow-x-auto rounded-md border border-border">
+<div class="overflow-x-auto t-table">
   <Table.Root>
     <Table.Header>
       <Table.Row>

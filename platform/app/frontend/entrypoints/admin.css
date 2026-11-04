@@ -216,18 +216,20 @@
   overflow-x: clip;
 }
 
-/* Clickable cards lift a little on hover. */
+/* Clickable cards: a step darker on hover, a small squeeze when pressed. */
 .admin .t-card-lift {
   transition:
-    transform 240ms var(--page-slide-ease),
-    box-shadow 240ms var(--page-slide-ease);
+    transform 150ms var(--ease-out),
+    background-color 150ms var(--ease-out);
 }
-.admin .t-card-lift:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.12);
+@media (hover: hover) and (pointer: fine) {
+  .admin .t-card-lift:hover {
+    background-color: var(--hover-fill);
+  }
 }
-.admin.dark .t-card-lift:hover {
-  box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.5);
+.admin a:active > .t-card-lift,
+.admin .t-card-lift:active {
+  transform: scale(0.99);
 }
 
 /* Table rows stagger in when data arrives. */
@@ -289,6 +291,181 @@
 }
 .admin .t-nav-badge {
   animation: admin-badge-pop var(--badge-pop-dur) var(--badge-pop-ease) both;
+}
+
+/* Tactile layer. The vendored components (components/admin/ui) stay as generated; this restyles them by their
+   data-slot and variant classes so buttons, cards, tables, menus and dialogs read as raised things you can press.
+   Light raises with a 1px ring and a crisp 1px drop; dark raises by being lighter, with one solid 0.5px outline
+   and a black drop. Unlayered on purpose, so it wins over the components' own ring and shadow utilities. */
+.admin {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --shadow-ink: 10 10 10;
+  --control-fill: var(--background);
+  --hover-fill: oklch(0.975 0 0);
+  --shadow-button: 0 1px 2px 0 rgb(var(--shadow-ink) / 0.12), 0 0 0 1px rgb(var(--shadow-ink) / 0.08);
+  --shadow-primary: 0 0 0 1px var(--background);
+  --shadow-card:
+    0 0 0 1px rgb(var(--shadow-ink) / 0.07), 0 1px 2px 0 rgb(var(--shadow-ink) / 0.12),
+    0 3px 4px -2px rgb(var(--shadow-ink) / 0.08);
+  --shadow-table: 0 1px 2px 0 rgb(var(--shadow-ink) / 0.12);
+  --shadow-menu:
+    0 0 0 1px rgb(var(--shadow-ink) / 0.08), 0 1px 2px 0 rgb(var(--shadow-ink) / 0.12),
+    0 4px 8px -4px rgb(var(--shadow-ink) / 0.16);
+  --shadow-modal:
+    0 0 0 1px rgb(var(--shadow-ink) / 0.07), 0 1px 2px 0 rgb(var(--shadow-ink) / 0.14),
+    0 6px 8px -4px rgb(var(--shadow-ink) / 0.14);
+  --line: var(--border);
+  --backdrop: rgb(0 0 0 / 0.3);
+}
+.admin.dark {
+  /* Controls sit two steps above their ground, cards one; outlines are a fixed step above the fill. */
+  --control-fill: var(--secondary);
+  --hover-fill: oklch(0.235 0 0);
+  --shadow-button: 0 0 0 0.5px oklch(0.37 0 0), 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-primary: 0 0 0 0.5px var(--primary), 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-card: 0 0 0 0.5px oklch(0.3 0 0), 0 1px 2px 0 rgb(0 0 0 / 0.5), 0 3px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-table: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-menu: 0 0 0 0.5px oklch(0.34 0 0), 0 1px 2px 0 rgb(0 0 0 / 0.5), 0 4px 8px -4px rgb(0 0 0 / 0.5);
+  --shadow-modal: 0 0 0 0.5px oklch(0.34 0 0), 0 1px 2px 0 rgb(0 0 0 / 0.5), 0 6px 8px -4px rgb(0 0 0 / 0.5);
+  --line: oklch(0.27 0 0);
+  --backdrop: rgb(0 0 0 / 0.9);
+}
+/* A control on a card or overlay in dark is a step higher than on the page, so its outline is too. */
+.admin.dark :is([data-slot='card'], [data-slot$='dialog-content'], [data-slot='popover-content']) {
+  --control-fill: oklch(0.3 0 0);
+  --hover-fill: oklch(0.25 0 0);
+  --shadow-button: 0 0 0 0.5px oklch(0.4 0 0), 0 1px 2px 0 rgb(0 0 0 / 0.5);
+}
+
+/* Buttons. Every variant, Button or buttonVariants on a link, carries group/button. */
+.admin .group\/button {
+  transition-property: transform, translate, background-color, box-shadow, color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+.admin .group\/button:not(.underline-offset-4, :disabled, [aria-disabled='true']):active {
+  translate: none;
+  transform: scale(0.97);
+}
+.admin .group\/button:is(.size-6, .h-6):not(:disabled):active {
+  transform: scale(0.94);
+}
+.admin .group\/button.bg-primary {
+  box-shadow: var(--shadow-primary);
+}
+@media (hover: hover) and (pointer: fine) {
+  .admin .group\/button.bg-primary:hover {
+    background-color: color-mix(in oklch, var(--primary), var(--primary-foreground) 12%);
+  }
+}
+/* Outline, secondary and destructive buttons are all raised: the surface colour, edged by the shadow, no border. */
+.admin .group\/button:is(.bg-background, .bg-secondary, .bg-destructive\/10) {
+  border-color: transparent;
+  background-color: var(--control-fill);
+  box-shadow: var(--shadow-button);
+}
+@media (hover: hover) and (pointer: fine) {
+  .admin .group\/button:is(.bg-background, .bg-secondary):hover,
+  .admin .group\/button:is(.bg-background, .bg-secondary)[aria-expanded='true'] {
+    background-color: color-mix(in oklch, var(--control-fill), var(--foreground) 4%);
+  }
+  .admin .group\/button.bg-destructive\/10:hover {
+    background-color: color-mix(in oklch, var(--control-fill), var(--destructive) 6%);
+  }
+}
+
+/* Cards: one crisp shadow ladder instead of a flat ring. */
+.admin [data-slot='card'] {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+/* Tables: a 0.5px frame with the button's drop under it, 0.5px rules, a quiet row hover. */
+.admin .t-table {
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 0.5px var(--line),
+    var(--shadow-table);
+}
+.admin .t-table [data-slot='table-row'] {
+  border-bottom-width: 0.5px;
+  border-color: var(--line);
+  transition: background-color 150ms var(--ease-out);
+}
+.admin .t-table [data-slot='table-row']:hover {
+  background-color: var(--hover-fill);
+}
+.admin .t-table [data-slot='table-header'] [data-slot='table-row']:hover {
+  background-color: transparent;
+}
+
+/* Chart tooltips float like menus. */
+.admin [data-slot='chart'] .shadow-xl {
+  border-color: transparent;
+  border-radius: calc(var(--radius) - 2px);
+  box-shadow: var(--shadow-menu);
+}
+
+/* Menus and popovers: the ring is the edge; open from the trigger with a short squeeze and fade. */
+.admin [data-slot$='menu-content'],
+.admin [data-slot='popover-content'] {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-menu);
+  --tw-enter-scale: 0.97;
+  --tw-exit-scale: 0.97;
+  --tw-enter-translate-y: 0;
+  --tw-enter-translate-x: 0;
+  animation-timing-function: var(--ease-out);
+}
+.admin :is([data-slot$='menu-content'], [data-slot='popover-content'])[data-state='open'] {
+  animation-duration: 150ms;
+}
+.admin :is([data-slot$='menu-content'], [data-slot='popover-content'])[data-state='closed'] {
+  animation-duration: 120ms;
+}
+.admin [data-slot$='menu-item'] {
+  transition: background-color 150ms var(--ease-out);
+}
+
+/* Dialogs: modal shadow, a dimmer backdrop, and a short rise with a little blur instead of a zoom. */
+.admin [data-slot$='dialog-overlay'] {
+  background-color: var(--backdrop);
+  backdrop-filter: blur(2px);
+}
+.admin [data-slot$='dialog-content'] {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-modal);
+  --tw-enter-scale: 1;
+  --tw-exit-scale: 1;
+  --tw-enter-translate-y: 16px;
+  --tw-exit-translate-y: 8px;
+  --tw-enter-blur: 4px;
+  animation-timing-function: var(--ease-out);
+}
+.admin [data-slot$='dialog-content'][data-state='open'] {
+  animation-duration: 240ms;
+}
+.admin [data-slot$='dialog-content'][data-state='closed'],
+.admin [data-slot$='dialog-overlay'][data-state='closed'] {
+  animation-duration: 200ms;
+}
+.admin [data-slot$='dialog-overlay'][data-state='open'] {
+  animation-duration: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin .group\/button:active,
+  .admin .t-card-lift:active,
+  .admin a:active > .t-card-lift {
+    transform: none !important;
+  }
+  .admin :is([data-slot$='menu-content'], [data-slot='popover-content'], [data-slot$='dialog-content']) {
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-blur: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
