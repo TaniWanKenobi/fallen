@@ -77,7 +77,7 @@ class ProgressStatusTest < ActiveSupport::TestCase
 
   def decide(verdict, feedback: "Keep it up", todos: verdict == "check_back" ? [ "Add photos" ] : [], **rest)
     status = @project.reload.progress_status
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict:, feedback:, todos:, checks: ProgressReview::CHECKS.keys.index_with { true }, **rest)
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict:, feedback:, todos:, **rest)
     assert review.persisted?, review.errors.full_messages.to_sentence
     status.reload
   end
@@ -129,7 +129,7 @@ class ProgressStatusTest < ActiveSupport::TestCase
     user = @project.user
     log(FIRST, at: 2.days.ago)
     status = @project.reload.progress_status
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", feedback: "Hi", checks: {})
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", feedback: "Hi")
     assert review.errors[:todos].any?
 
     decide("check_back", feedback: "Great sketches!", todos: [ "Say why you picked the BME280", "Add a photo of the wiring" ])
@@ -209,7 +209,7 @@ class ProgressStatusTest < ActiveSupport::TestCase
     assert_match "already waiting", ProgressStatus.request_blocker(other)
 
     status = other.reload.progress_status
-    ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved", checks: ProgressReview::CHECKS.keys.index_with { true })
+    ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved")
     refute status.reload.due?
     assert_match "ask again", ProgressStatus.request_blocker(other)
     travel(ProgressStatus::REQUEST_COOLDOWN + 1.minute) { assert_nil ProgressStatus.request_blocker(other) }
@@ -253,20 +253,18 @@ class ProgressStatusTest < ActiveSupport::TestCase
     assert status.due?
   end
 
-  test "approving needs the must-have checks; check back needs feedback; not on your own team" do
+  test "check back needs feedback; not on your own team" do
     log(FIRST)
     status = @project.reload.progress_status
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved", checks: { "hours" => true })
-    assert review.errors[:checks].any?
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", checks: {}, todos: [ "x" ])
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", todos: [ "x" ])
     assert review.errors[:feedback].any?
     review = ProgressReview.decide(status, reviewer: @project.user, verdict: "check_back", feedback: "Hi", todos: [ "x" ])
     refute review.persisted?
     review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "dismissed")
     refute review.persisted?, "dismiss is only for a check back"
     assert status.reload.due?
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved", checks: ProgressReview::REQUIRED_CHECKS.index_with { true })
-    assert review.persisted?, "the other checks are only noted"
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved")
+    assert review.persisted?, review.errors.full_messages.to_sentence
   end
 
   test "a banned owner's project leaves the queue and comes back when the ban is lifted" do

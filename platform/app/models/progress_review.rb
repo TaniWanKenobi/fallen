@@ -2,9 +2,10 @@
 # design review (SubmissionReview), and it changes no hours: it checks the journals are good enough and tells the
 # team what to do better. The feedback goes to the project's Slack thread and its page.
 #
-# Approving takes the must-have checks (REQUIRED_CHECKS) ticked; the rest are kept for reviewers to compare, never
-# shown to the team. "Check back" takes feedback, since it's for when something needs fixing. The first check back in a
-# row is a warning; a second one in a row holds XP back until it's fixed (ProgressXpHold).
+# "Check back" takes feedback and something to fix. The feedback is Markdown, shown on the site and turned into
+# Slack's own formatting for Slack (SlackMessages.mrkdwn). Notes on particular journals are for reviewers only.
+# `checks` holds the boxes older reviews ticked; reviews no longer tick any. The first check back in a row is a
+# warning; a second one in a row holds XP back until it's fixed (ProgressXpHold).
 # "Dismissed" isn't a review: it puts a check back off until one more journal comes in, with nothing sent.
 # ProgressStatus works out when the project comes back.
 # == Schema Information
@@ -43,25 +44,6 @@ class ProgressReview < ApplicationRecord
   has_paper_trail
 
   VERDICTS = %w[approved check_back dismissed].freeze
-  # What a reviewer looks for, kept on each review as ticked or not so reviews can be compared. Only for reviewers.
-  CHECKS = {
-    "hours" => "The hours logged fit the work written up",
-    "evidence" => "Photos or timelapses back up the work",
-    "explained" => "Journals say what was done and why, not just a list",
-    "this_project" => "The work is on this project",
-    "own_words" => "Written by them, not by AI"
-  }.freeze
-  # The must-haves: an approval can't go out without them. The others are only noted.
-  REQUIRED_CHECKS = %w[hours this_project own_words].freeze
-  # Links a reviewer can drop into their feedback with one click: the guides beginners most often need pointing to.
-  # Pages under /docs are named by slug; anything else is a full URL.
-  RESOURCES = [
-    { label: "How to write a good journal", page: "journaling" },
-    { label: "Submission guidelines (README, repo)", page: "submitting" },
-    { label: "Start here: the steps of Fallen", page: "start-here" },
-    { label: "Project funding", page: "project-funding" },
-    { label: "Ask for help in #fallen", url: "https://hackclub.enterprise.slack.com/archives/C0BNNV3ASNP" }
-  ].freeze
   MAX_FEEDBACK = 5_000
   # How much of the XP a person's journals earned since the last review a second check back in a row holds until it's
   # fixed (ProgressXpHold).
@@ -77,9 +59,7 @@ class ProgressReview < ApplicationRecord
   validates :verdict, inclusion: { in: VERDICTS }
   validates :feedback, length: { maximum: MAX_FEEDBACK }
   validates :feedback, presence: { message: "is needed so they know what to change" }, if: -> { verdict == "check_back" }
-  validate :checks_known
   validate :journal_notes_fit
-  validate :must_haves_checked, if: -> { verdict == "approved" }
 
   scope :reviews, -> { where.not(verdict: "dismissed") }
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
@@ -90,9 +70,8 @@ class ProgressReview < ApplicationRecord
   # `journal_notes` maps a journal's public id to a note on it; blank ones are dropped. A check back adds `todos` (what
   # to fix) and reopens the to-dos in `reopen` (public ids) the team ticked but didn't really fix, and has to leave at
   # least one open; an approval resolves them all.
-  def self.decide(status, reviewer:, verdict:, checks: {}, feedback: nil, journal_notes: {}, todos: [], reopen: [])
+  def self.decide(status, reviewer:, verdict:, feedback: nil, journal_notes: {}, todos: [], reopen: [])
     review = new(project: status.project, reviewer:, verdict: verdict.to_s, feedback: feedback.to_s.strip.presence,
-      checks: CHECKS.keys.index_with { |key| ActiveModel::Type::Boolean.new.cast(checks.to_h.stringify_keys[key]) || false },
       journal_notes: verdict.to_s == "dismissed" ? {} : journal_notes.to_h.to_h { |id, note| [ id.to_s, note.to_s.strip ] }.compact_blank)
     review.errors.add(:base, "You can't review a project you're on") if status.project.on_team?(reviewer)
     todos = review.verdict == "check_back" ? Array(todos).map { it.to_s.strip }.compact_blank : []
@@ -113,17 +92,8 @@ class ProgressReview < ApplicationRecord
     review
   end
 
-  # RESOURCES with full links, since they're read in Slack as well as on the site.
-  def self.resources
-    RESOURCES.map do |resource|
-      url = resource[:url] || Rails.application.routes.url_helpers.docs_url(page: resource[:page], host: ENV.fetch("APP_URL", "http://localhost:3000"))
-      { label: resource[:label], url: }
-    end
-  end
-
   # Approvals and check backs go to the team; a dismissal is the reviewers' own business.
   def sent? = verdict != "dismissed"
-  def unchecked = CHECKS.keys.reject { checks[it] }
 
   # A check back straight after an approval (or as the first review) only warns; one after another check back holds
   # XP. Dismissals don't count either way.
@@ -160,19 +130,11 @@ class ProgressReview < ApplicationRecord
 
   private
 
-  def checks_known
-    errors.add(:checks, "has an unknown box") if (checks.keys - CHECKS.keys).any?
-  end
-
   def journal_notes_fit
     return if journal_notes.blank?
 
     errors.add(:journal_notes, "are each at most #{MAX_JOURNAL_NOTE} characters") if journal_notes.values.any? { it.length > MAX_JOURNAL_NOTE }
     known = Journal.where_public_ids(journal_notes.keys).where(project:).kept.count
     errors.add(:journal_notes, "can only be on this project's journals") if known != journal_notes.size
-  end
-
-  def must_haves_checked
-    errors.add(:checks, "need every must-have ticked to approve") if REQUIRED_CHECKS.any? { !checks[it] }
   end
 end

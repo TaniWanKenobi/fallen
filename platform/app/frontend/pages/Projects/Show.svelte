@@ -78,18 +78,6 @@
     }
   } = $props()
 
-  // Notes journal reviewers left on particular journals, by journal id, newest review first.
-  const reviewNotes = $derived(
-    (journal_review?.reviews ?? []).reduce<Record<string, { note: string; at: string }[]>>(
-      (byJournal, review) => {
-        for (const [id, note] of Object.entries(review.journal_notes))
-          (byJournal[id] ??= []).push({ note, at: review.created_at })
-        return byJournal
-      },
-      {},
-    ),
-  )
-
   let composer: { open: boolean; journal: Journal | null } = $state({ open: false, journal: null })
   let editing = $state(false)
   let inviting = $state(false)
@@ -267,7 +255,6 @@
                     editable={journal.author.id === me}
                     onEdit={write}
                     onMove={(journal) => (moving = journal)}
-                    reviewNotes={reviewNotes[journal.id]}
                   />
                 </li>
               {/each}

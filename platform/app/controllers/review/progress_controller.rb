@@ -6,7 +6,7 @@ class Review::ProgressController < Review::ApplicationController
   TABS = %w[queue mine decided].freeze
   # How far back the queue page's "reviews take about…" looks.
   TURNAROUND_OVER = 7.days
-  NOTICES = { "approved" => "approved", "check_back" => "we'll check back after their next journal", "dismissed" => "waiting for one more journal" }.freeze
+  NOTICES = { "approved" => "feedback sent", "check_back" => "we'll check back after their next journal", "dismissed" => "waiting for one more journal" }.freeze
 
   def index
     tab = TABS.include?(params[:tab]) ? params[:tab] : "queue"
@@ -60,15 +60,15 @@ class Review::ProgressController < Review::ApplicationController
     can = { decide: policy.decide? && claimed, take_over: policy.decide? && !claimed, flag: policy.flag?, unflag: policy.unflag?,
             star: policy.star?, dismiss: policy.decide? && claimed && status.due_reason == "check_back", own: status.project.on_team?(true_user) }
     render inertia: "Review/Progress/Show", props: ProgressPageProps.new(status, claimed:, can:).props.merge(
-      skip: skipped.join(","), people: InertiaRails.defer { ProgressPageProps.people(status.project) })
+      skip: skipped.join(","))
   end
 
   def update
     status = find_status
     authorize [ :review, status ], :decide?
-    fields = params.expect(review: [ :verdict, :feedback, checks: {}, journal_notes: {}, todos: [], reopen: [] ])
+    fields = params.expect(review: [ :verdict, :feedback, journal_notes: {}, todos: [], reopen: [] ])
     review = ProgressReview.decide(status, reviewer: true_user, verdict: fields[:verdict], feedback: fields[:feedback],
-      checks: fields[:checks]&.to_unsafe_h || {}, journal_notes: fields[:journal_notes]&.to_unsafe_h || {},
+      journal_notes: fields[:journal_notes]&.to_unsafe_h || {},
       todos: fields[:todos] || [], reopen: fields[:reopen] || [])
     if review.persisted?
       redirect_to journal_review_next_path(skip: skipped.join(",").presence), notice: "#{status.project.title}: #{NOTICES.fetch(review.verdict)}."

@@ -1,16 +1,14 @@
 <script lang="ts">
-  import { tick } from 'svelte'
   import { router } from '@inertiajs/svelte'
-  import Check from '@lucide/svelte/icons/check'
   import Loader from '@lucide/svelte/icons/loader'
-  import Plus from '@lucide/svelte/icons/plus'
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw'
+  import Send from '@lucide/svelte/icons/send'
   import { Button } from '@/components/admin/ui/button'
   import { Checkbox } from '@/components/admin/ui/checkbox'
   import { Separator } from '@/components/admin/ui/separator'
-  import { Textarea } from '@/components/admin/ui/textarea'
+  import Markdown from '@/components/Markdown.svelte'
   import Key from '@/components/review/Key.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
+  import FeedbackEditor from '@/components/review/progress/FeedbackEditor.svelte'
   import TodosEditor from '@/components/review/progress/TodosEditor.svelte'
   import VerdictBadge from '@/components/review/progress/VerdictBadge.svelte'
   import { reveal } from '@/components/review/motion'
@@ -19,12 +17,12 @@
   import { RAISED } from '@/lib/review.svelte'
   import { takeOverJournalReviewProject } from '@/routes'
 
-  // The right-hand column of the journal review page: where the project stands, the quality checks, the feedback for
+  // The right-hand column of the journal review page: where the project stands, the feedback for
   // the team and the decision, then the reviews before this one and the reviewers' notes.
   let {
     page,
-    checks = $bindable(),
     feedback = $bindable(),
+    needsFix = $bindable(),
     todos = $bindable(),
     reopen = $bindable(),
     journalNotes,
@@ -32,11 +30,11 @@
     pending,
     errors,
     onDecide,
-    feedbackRef = $bindable(),
   }: {
     page: ProgressPage
-    checks: Record<string, boolean>
     feedback: string
+    // Ticked, the review goes out as a check back; unticked, as an approval.
+    needsFix: boolean
     todos: string[]
     reopen: string[]
     // How many journals this review has a note on.
@@ -45,15 +43,10 @@
     pending: ProgressVerdict | null
     errors: Record<string, string>
     onDecide: (verdict: ProgressVerdict) => void
-    feedbackRef?: HTMLTextAreaElement | null
   } = $props()
 
   const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
   const s = $derived(page.status)
-  const unchecked = $derived(page.required_checks.filter((key) => !checks[key]).length)
-  const approveBlocker = $derived(
-    unchecked ? `Tick the ${unchecked} must-have${unchecked === 1 ? '' : 's'} left` : null,
-  )
   // A check back needs something left to fix: a new to-do, a reopened one, or an old one they haven't ticked.
   const somethingToFix = $derived(
     todos.some((t) => t.trim()) || reopen.length > 0 || page.todos.some((t) => !t.done),
@@ -68,28 +61,15 @@
   const holder = $derived(
     s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date() ? s.claimed_by : null,
   )
-  const afterApprove = $derived(
-    page.project.submitted
-      ? 'It’s been submitted, so this is its last journal review.'
-      : `Approving brings it back at ${formatMinutes(s.logged_minutes + s.next_gap_minutes)} logged (${formatMinutes(s.next_gap_minutes)} more).`,
-  )
 
-  export const blockers = () => ({ approve: approveBlocker, check_back: checkBackBlocker })
+  const verdict = $derived<ProgressVerdict>(needsFix ? 'check_back' : 'approved')
+  const blocker = $derived(needsFix ? checkBackBlocker : null)
 
-  // Puts a resource's link into the feedback where the cursor is (at the end if it isn't in there), on its own line.
-  async function addResource(resource: { label: string; url: string }) {
-    const at =
-      document.activeElement === feedbackRef
-        ? (feedbackRef?.selectionStart ?? feedback.length)
-        : feedback.length
-    const before = feedback.slice(0, at)
-    const after = feedback.slice(at)
-    const line = `${before && !before.endsWith('\n') ? '\n' : ''}${resource.label}: ${resource.url}${after.startsWith('\n') ? '' : '\n'}`
-    feedback = before + line + after
-    await tick()
-    feedbackRef?.focus()
-    feedbackRef?.setSelectionRange(before.length + line.length, before.length + line.length)
-  }
+  // Why a check back can't go out yet; an approval always can.
+  export const blockerFor = (v: ProgressVerdict) => (v === 'check_back' ? checkBackBlocker : null)
+
+  let feedbackEditor: FeedbackEditor | undefined = $state()
+  export const focusFeedback = () => feedbackEditor?.focus()
 </script>
 
 <div class="space-y-4 p-4">
@@ -111,32 +91,6 @@
         <dd>{timeAgo(s.due_since).replace(' ago', '')}</dd>
       {/if}
     </dl>
-  </div>
-
-  <div class="space-y-1.5">
-    <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Who's building</h3>
-    {#if page.people}
-      <ul class="space-y-1 text-sm">
-        {#each page.people as record (record.person.id)}
-          <li class="flex flex-wrap items-baseline gap-x-1.5">
-            <PersonChip person={record.person} class="font-medium" />
-            <span class="text-xs text-muted-foreground">
-              {#if record.other_projects === 0}
-                <span class="font-medium text-sky-700 dark:text-sky-300">First project</span>
-              {:else}
-                {record.other_projects} other {record.other_projects === 1
-                  ? 'project'
-                  : 'projects'}{#if record.approved + record.check_backs}, {record.approved} approved / {record.check_backs}
-                  checked back there{:else}, never journal reviewed{/if}
-              {/if}
-              · joined {formatDate(record.joined_at)}
-            </span>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <p class="text-xs text-muted-foreground">Loading...</p>
-    {/if}
   </div>
 
   {#if s.added}
@@ -202,73 +156,54 @@
 
   {#if page.can.decide}
     <div class="space-y-2">
-      <p class="text-xs text-muted-foreground">
-        Checks <span class="text-muted-foreground/60">(only reviewers see these)</span>
-      </p>
-      {#each Object.entries(page.checks) as [key, text] (key)}
-        {@const required = page.required_checks.includes(key)}
-        <label class="flex cursor-pointer items-start gap-2 text-[13px] leading-snug">
-          <Checkbox
-            checked={checks[key] ?? false}
-            onCheckedChange={(value) => (checks[key] = value === true)}
-            class="mt-0.5"
-          />
-          <span
-            >{text}{#if required}<span
-                class="ml-1 rounded bg-muted px-1 py-px text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
-                >must</span
-              >{/if}</span
-          >
-        </label>
-      {/each}
-      <p class="text-xs text-muted-foreground/80">
-        Approving needs the must-haves. Leave the others unticked to note what could be better; it doesn't
-        block.
-      </p>
-    </div>
-
-    <div class="space-y-2">
-      <label for="feedback" class="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <!-- The editor isn't a form field, so the label names it by id and focuses it on click. -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+      <label
+        id="feedback-label"
+        class="flex items-start gap-1.5 text-xs text-muted-foreground"
+        onclick={focusFeedback}
+      >
         Feedback <span class="text-muted-foreground/60">(posted in their thread and on the project page)</span
         >
         <Key>{mod}F</Key>
       </label>
-      <Textarea
-        id="feedback"
-        bind:ref={feedbackRef}
+      <FeedbackEditor
+        bind:this={feedbackEditor}
+        labelledby="feedback-label"
         bind:value={feedback}
         placeholder="Start with one thing they did well. Then what to do better in the next journals..."
-        class="h-32 resize-y text-sm"
       />
-      <p class="text-xs text-muted-foreground">
-        Start with one thing they did well: beginners keep going when they hear what's working.
-      </p>
       {#if errors.feedback}<p class="text-xs text-red-600">{errors.feedback}</p>{/if}
-      {#if page.resources.length}
-        <div class="space-y-1">
-          <p class="text-xs text-muted-foreground">Add a resource</p>
-          <div class="flex flex-wrap gap-1">
-            {#each page.resources as resource (resource.url)}
-              <button
-                type="button"
-                title={resource.url}
-                onclick={() => addResource(resource)}
-                class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
-              >
-                <Plus class="size-3" />{resource.label}
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
       <p class="text-xs text-muted-foreground">
         {journalNotes
-          ? `Plus your notes on ${journalNotes} ${journalNotes === 1 ? 'journal' : 'journals'}, sent with it.`
-          : 'Add a note on a particular journal from its card (M).'}
+          ? `Plus your notes on ${journalNotes} ${journalNotes === 1 ? 'journal' : 'journals'}, kept for reviewers.`
+          : 'Add a note for reviewers on a particular journal from its card (M). The team doesn’t see it.'}
       </p>
     </div>
 
-    <TodosEditor {page} bind:todos bind:reopen />
+    <label
+      class={[
+        'flex cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-3 transition-colors',
+        needsFix
+          ? 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40'
+          : 'border-border hover:border-foreground/30',
+      ]}
+    >
+      <Checkbox
+        checked={needsFix}
+        onCheckedChange={(value) => (needsFix = value === true)}
+        class="size-6 [&_svg]:size-5"
+      />
+      <span class="min-w-0">
+        <span class="block text-sm font-medium">Check back next journal</span>
+        <span class="block text-xs text-muted-foreground">If the journal needs many changes</span>
+      </span>
+      <Key class="ml-auto">{mod}E</Key>
+    </label>
+
+    {#if needsFix}
+      <div transition:reveal><TodosEditor {page} bind:todos bind:reopen /></div>
+    {/if}
 
     {@const shown = Object.entries(errors).filter(([key]) => key !== 'feedback')}
     {#if shown.length}
@@ -281,36 +216,27 @@
     {/if}
 
     <div class="space-y-2 pt-1">
-      <div class="grid grid-cols-2 gap-2">
-        <Button
-          class={RAISED.success}
-          disabled={submitting || !!approveBlocker}
-          title={approveBlocker ?? undefined}
-          onclick={() => onDecide('approved')}
-        >
-          {#if submitting && pending === 'approved'}<Loader
-              class="animate-spin"
-              data-icon="inline-start"
-            />{:else}<Check data-icon="inline-start" />{/if}
-          Approve
-        </Button>
-        <Button
-          class={RAISED.warning}
-          disabled={submitting || !!checkBackBlocker}
-          title={checkBackBlocker ?? undefined}
-          onclick={() => onDecide('check_back')}
-        >
-          {#if submitting && pending === 'check_back'}<Loader
-              class="animate-spin"
-              data-icon="inline-start"
-            />{:else}<RotateCcw data-icon="inline-start" />{/if}
-          Check back
-        </Button>
-      </div>
+      <Button
+        class="w-full cursor-pointer {needsFix ? RAISED.warning : RAISED.success}"
+        disabled={submitting || !!blocker}
+        title={blocker ?? undefined}
+        onclick={() => onDecide(verdict)}
+      >
+        {#if submitting && pending !== 'dismissed'}<Loader
+            class="animate-spin"
+            data-icon="inline-start"
+          />{:else}<Send data-icon="inline-start" />{/if}
+        Give feedback
+      </Button>
       <p class="text-center text-xs text-muted-foreground">
-        {approveBlocker ? `${approveBlocker}.` : afterApprove}
-        {#if !page.project.submitted}Checking back brings it back with their next journal.{/if}
-        <span class="block pt-1">{mod}P approves, {mod}E checks back.</span>
+        {#if blocker}<span class="block pb-1">{blocker}.</span>
+        {:else if !needsFix && page.todos.length}<span class="block pb-1"
+            >Without a check back, this clears their {page.todos.length} open to-do{page.todos.length === 1
+              ? ''
+              : 's'}{#if page.held_xp}
+              and gives back the {page.held_xp} XP held{/if}.</span
+          >{/if}
+        {mod}Enter to send
       </p>
       {#if page.can.dismiss}
         <Button
@@ -330,7 +256,7 @@
   {#if page.history.length}
     <Separator />
     <div class="space-y-3">
-      <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Earlier reviews</h3>
+      <h3 class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Past reviews</h3>
       {#each page.history as review (review.id)}
         <div class="space-y-1 text-sm">
           <div class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
@@ -339,18 +265,13 @@
             <span>at {formatMinutes(review.logged_minutes)}</span>
             {#if review.reviewer}<PersonChip person={review.reviewer} />{/if}
           </div>
-          {#if review.verdict !== 'dismissed'}
-            {@const missed = Object.entries(page.checks).filter(([key]) => !review.checks[key])}
-            {#if missed.length}
-              <ul class="text-xs text-amber-700 dark:text-amber-400">
-                {#each missed as [key, text] (key)}<li>✗ {text}</li>{/each}
-              </ul>
-            {/if}
-          {/if}
           {#if review.feedback}
-            <p class="border-l-2 border-border pl-2 text-[13px] whitespace-pre-wrap text-muted-foreground">
-              {review.feedback}
-            </p>
+            <Markdown
+              source={review.feedback}
+              photos={[]}
+              admin
+              class="border-l-2 border-border pl-2 text-[13px] text-muted-foreground [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+            />
           {/if}
         </div>
       {/each}

@@ -10,8 +10,8 @@
   import type { ReviewJournal } from '@/types'
 
   // One journal on the journal review page: who wrote it and when, the hours it states and what backs them, whether
-  // it's new since the last review, notes earlier reviews left on it, and this review's note on it, which goes to
-  // the team with the feedback.
+  // it's new since the last review, notes earlier reviews left on it, and this review's note on it, which only
+  // reviewers see.
   let {
     journal,
     index,
@@ -146,7 +146,8 @@
         {#if open}
           <label class="block space-y-1">
             <span class="text-xs text-muted-foreground"
-              >Your note on this journal <span class="text-muted-foreground/60">(sent to the team)</span
+              >Your note on this journal <span class="text-muted-foreground/60"
+                >(only reviewers see this)</span
               ></span
             >
             <textarea

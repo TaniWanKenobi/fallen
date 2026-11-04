@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import { router } from '@inertiajs/svelte'
+  import Markdown from '@/components/Markdown.svelte'
   import { formatDate } from '@/lib/format'
   import * as sfx from '@/lib/sfx'
   import { projectReviewRequest, reviewTodo } from '@/routes'
@@ -38,9 +39,6 @@
   let note = $state('')
   let sending = $state(false)
   const teammate = $derived(can_request || request_blocker != null)
-
-  // Reviewers paste links to guides into their feedback; split on them (capturing) so they render as links.
-  const LINK = /(https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)\]])/
 
   function tick(id: string, done: boolean) {
     sfx.select()
@@ -143,27 +141,16 @@
               </span>
               · {formatDate(review.created_at)}
             </p>
-            {#if Object.keys(review.journal_notes).length}
-              <p class="mt-1 font-outfit text-xs text-sky-ice/60">
-                Plus notes on {Object.keys(review.journal_notes).length}
-                {Object.keys(review.journal_notes).length === 1 ? 'journal' : 'journals'}, shown under each
-                one below.
-              </p>
-            {/if}
             {#if review.feedback}
-              <blockquote
+              <Markdown
+                source={review.feedback}
+                photos={[]}
+                glass
                 class={[
-                  'mt-1.5 border-l-2 pl-3 font-outfit text-sm whitespace-pre-wrap text-pale-blue',
+                  'mt-1.5 border-l-2 pl-3 text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0',
                   review.verdict === 'approved' ? 'border-white/25' : 'border-saffron/60',
-                ]}
-              >
-                {#each review.feedback.split(LINK) as part, i (i)}{#if i % 2}<a
-                      href={part}
-                      target="_blank"
-                      rel="noopener"
-                      class="underline decoration-white/40 hover:decoration-white">{part}</a
-                    >{:else}{part}{/if}{/each}
-              </blockquote>
+                ].join(' ')}
+              />
             {/if}
           </li>
         {/each}

@@ -98,8 +98,6 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(10) { load_deferred(journal_review_root_path, "Review/Progress/Index", "projects", "pagy", "counts") }
     # Claims it, then everything the review needs, the same count whatever the number of journals.
     assert_query_budget(20) { get journal_review_project_path(project) }
-    # The claim and the project, then three for every teammate's other projects and their reviews.
-    assert_query_budget(13) { load_deferred(journal_review_project_path(project), "Review/Progress/Show", "people") }
     project.progress_status.update!(starred_at: Time.current, starred_by: reviewer)
     assert_query_budget(8) { load_deferred(starred_projects_path, "Review/MarkedProjects/Index", "projects", "pagy") }
     ProgressReview.decide(project.progress_status, reviewer:, verdict: "check_back", feedback: "More photos", todos: [ "Photos" ])

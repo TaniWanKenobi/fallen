@@ -20,12 +20,13 @@
   import { heartbeatJournalReviewProject, journalReviewProject, journalReviewRoot } from '@/routes'
 
   // One project's journal review, laid out like design review: its journals on the left, the decision on the right.
-  // The checks and feedback are kept in this browser until sent, and the claim is renewed while the page is open.
+  // The feedback and notes are kept in this browser until sent, and the claim is renewed while the page is open.
   let props: ProgressPage = $props()
 
   type Draft = {
-    checks: Record<string, boolean>
     feedback: string
+    // Ticked, the review goes out as a check back; otherwise as an approval.
+    needs_fix: boolean
     journal_notes: Record<string, string>
     todos: string[]
     reopen: string[]
@@ -45,7 +46,6 @@
   const ASIDE_MIN = 280
   const ASIDE_MAX = 720
   let asideWidth = $state(ASIDE_DEFAULT)
-  let feedbackRef: HTMLTextAreaElement | null = $state(null)
   let topBar: TopBar | undefined = $state()
   let decision: DecisionPanel | undefined = $state()
   const cards: JournalCard[] = $state([])
@@ -79,7 +79,13 @@
   const noted = $derived(Object.values(draft.journal_notes).filter((note) => note.trim()).length)
 
   function loadDraft(): Draft {
-    const fresh: Draft = { checks: {}, feedback: '', journal_notes: {}, todos: [], reopen: [] }
+    const fresh: Draft = {
+      feedback: '',
+      needs_fix: false,
+      journal_notes: {},
+      todos: [],
+      reopen: [],
+    }
     try {
       const saved = localStorage.getItem(storageKey)
       if (saved) return { ...fresh, ...JSON.parse(saved) }
@@ -124,9 +130,7 @@
 
   function decide(verdict: ProgressVerdict) {
     if (!props.can.decide) return
-    const blockers = decision?.blockers()
-    const blocker =
-      verdict === 'approved' ? blockers?.approve : verdict === 'check_back' ? blockers?.check_back : null
+    const blocker = decision?.blockerFor(verdict)
     if (blocker) return toast.error(blocker)
     submitting = true
     pending = verdict
@@ -136,7 +140,6 @@
       {
         review: {
           verdict,
-          checks: draft.checks,
           feedback: draft.feedback,
           journal_notes: draft.journal_notes,
           todos: draft.todos,
@@ -177,9 +180,11 @@
     const mod = event.metaKey || event.ctrlKey
     if (mod && !event.shiftKey && !event.altKey) {
       const key = event.key.toLowerCase()
-      if (key === 'p' && props.can.decide) return (event.preventDefault(), decide('approved'))
-      if (key === 'e' && props.can.decide) return (event.preventDefault(), decide('check_back'))
-      if (key === 'f') return (event.preventDefault(), feedbackRef?.focus())
+      if (key === 'enter' && props.can.decide)
+        return (event.preventDefault(), decide(draft.needs_fix ? 'check_back' : 'approved'))
+      if (key === 'e' && props.can.decide)
+        return (event.preventDefault(), (draft.needs_fix = !draft.needs_fix))
+      if (key === 'f') return (event.preventDefault(), decision?.focusFeedback())
       return
     }
     if (event.key === 'Escape' && typing(event.target)) return (event.target as HTMLElement).blur()
@@ -203,8 +208,8 @@
     ['S', 'Skip to the next project'],
     ['E', 'End the session'],
     ['Ctrl/⌘ F', 'Feedback'],
-    ['Ctrl/⌘ P', 'Approve'],
-    ['Ctrl/⌘ E', 'Check back'],
+    ['Ctrl/⌘ E', 'Tick or untick “Check back next journal”'],
+    ['Ctrl/⌘ Enter', 'Give feedback'],
   ]
 </script>
 
@@ -287,8 +292,8 @@
       <DecisionPanel
         bind:this={decision}
         page={props}
-        bind:checks={draft.checks}
         bind:feedback={draft.feedback}
+        bind:needsFix={draft.needs_fix}
         bind:todos={draft.todos}
         bind:reopen={draft.reopen}
         journalNotes={noted}
@@ -296,7 +301,6 @@
         {pending}
         {errors}
         onDecide={decide}
-        bind:feedbackRef
       />
     </aside>
   </div>

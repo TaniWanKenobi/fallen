@@ -20,8 +20,6 @@ export interface ProgressPage {
     reviews_count: number
     // The logged time that brings it back after an approval; null while it waits on a journal instead.
     next_due_minutes: number | null
-    // How much more logged time approving now would wait for.
-    next_gap_minutes: number
     waiting_since: string | null
     last_reviewed_at: string | null
     flagged_at: string | null
@@ -39,12 +37,7 @@ export interface ProgressPage {
   journals: ReviewJournal[]
   history: ProgressReviewRow[]
   notes: ReviewerNote[]
-  // Every check, by key; only `required_checks` block an approval, the rest are noted for reviewers.
-  checks: Record<string, string>
-  required_checks: string[]
   max_journal_note: number
-  // Links the reviewer can drop into their feedback (ProgressReview::RESOURCES).
-  resources: { label: string; url: string }[]
   // What earlier check backs asked to fix and the team hasn't had resolved yet, ticked or not.
   todos: ReviewTodo[]
   // XP held back from the team until a reviewer sees the fixes; approving gives it back.
@@ -66,16 +59,6 @@ export interface ProgressPage {
     own: boolean
   }
   skip: string
-  // Deferred: each teammate's record outside this project (ProgressPageProps.people).
-  people?: PersonRecord[]
-}
-
-export interface PersonRecord {
-  person: Person
-  joined_at: string
-  other_projects: number
-  approved: number
-  check_backs: number
 }
 
 export type ProgressVerdict = 'approved' | 'check_back' | 'dismissed'

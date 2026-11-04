@@ -32,6 +32,25 @@ class SlackMessagesTest < ActiveSupport::TestCase
     assert_includes text, "<https://fallen.hackclub.com|ok>"
   end
 
+  test "journal review feedback is Markdown, quoted in Slack's own formatting and still can't ping" do
+    review = ProgressReview.new(project: projects(:station), verdict: "approved",
+      feedback: "**Great** wiring, *keep* it up\n- [How to journal](https://example.com/docs)\n- <!channel> @here")
+
+    text = SlackMessages.progress_reviewed(review)[:text]
+    assert_match "> *Great* wiring, _keep_ it up", text
+    assert_match "> • <https://example.com/docs|How to journal>", text
+    assert_no_match MENTION, text
+  end
+
+  test "what Markdown escaped reaches Slack as written, unformatted" do
+    assert_equal "snake_case 2*3 *bold* [not a link]", SlackMessages.mrkdwn("snake\\_case 2\\*3 **bold** \\[not a link\\]")
+  end
+
+  test "nested Markdown lists stay nested in Slack" do
+    text = SlackMessages.mrkdwn("- Wiring\n  - Add a photo\n    - Of the back\n1. First\n2) Second")
+    assert_equal "• Wiring\n\u2003◦ Add a photo\n\u2003\u2003▪ Of the back\n1. First\n2. Second", text
+  end
+
   test "text Slack handed over loses its broadcasts and group pings" do
     text = SlackMessages.quote("look <!channel> <!here|here> <!subteam^S1|@devs> @everyone", 100)
 

@@ -27,8 +27,6 @@ class ProgressPageProps
       journals: -> { ReviewJournalSerializer.render(page.journals, writing: page.writing_scores(page.journals.map(&:id))) },
       history: -> { ProgressReviewRowSerializer.render(page.history) },
       notes: -> { ReviewerNoteSerializer.render(project.reviewer_notes.includes(:user).order(:created_at, :id)) },
-      checks: ProgressReview::CHECKS,
-      required_checks: ProgressReview::REQUIRED_CHECKS,
       max_journal_note: ProgressReview::MAX_JOURNAL_NOTE,
       todos: -> { ReviewTodoSerializer.render(project.review_todos.unresolved.ordered.includes(:done_by)) },
       held_xp: -> { ProgressXpHold.where(project:).held.sum(:amount) },
@@ -36,7 +34,6 @@ class ProgressPageProps
       # A check back now would hold XP: the last review was one too (ProgressReview#warning?).
       check_back_holds: -> { !page.submitted? && page.history.find(&:sent?)&.verdict == "check_back" },
       max_todo: ReviewTodo::MAX_BODY,
-      resources: ProgressReview.resources,
       claimed: @claimed,
       can: @can
     }
@@ -50,24 +47,6 @@ class ProgressPageProps
   # The latest AI share Pangram gave each journal, by id.
   def writing_scores(ids) = WritingCheck.where(journal_id: ids, status: "done").order(:created_at, :id).pluck(:journal_id, :fraction_ai).to_h
 
-  # Each teammate's track record outside this project, so a reviewer pitches feedback to a first-timer differently from
-  # someone on their fourth build: their other projects and the journal reviews those had. Three queries for any team.
-  def self.people(project)
-    team = project.teammates.uniq
-    ids = team.map(&:id)
-    others = Project.kept.where(user_id: ids).where.not(id: project.id).pluck(:user_id, :id) +
-             ProjectMember.joins(:project).merge(Project.kept).where(user_id: ids).where.not(project_id: project.id).pluck(:user_id, :project_id)
-    by_person = others.group_by(&:first).transform_values { |rows| rows.map(&:last).uniq }
-    verdicts = ProgressReview.reviews.where(project_id: by_person.values.flatten.uniq).group(:project_id, :verdict).count
-    team.map do |person|
-      projects = by_person.fetch(person.id, [])
-      counts = verdicts.select { |(project_id, _), _| projects.include?(project_id) }
-      { person: PersonSerializer.render(person), joined_at: person.created_at, other_projects: projects.size,
-        approved: counts.sum { |(_, verdict), n| verdict == "approved" ? n : 0 },
-        check_backs: counts.sum { |(_, verdict), n| verdict == "check_back" ? n : 0 } }
-    end
-  end
-
   private
 
   def status_props
@@ -76,7 +55,6 @@ class ProgressPageProps
       due_reason: s.due_reason, due_label: s.due_label, due_since: s.due_since, logged_minutes: s.logged_minutes,
       approvals_count: s.approvals_count, reviews_count: s.reviews_count, next_due_minutes: s.next_due_minutes,
       waiting_since: s.waiting_since, last_reviewed_at: s.last_reviewed_at,
-      next_gap_minutes: ProgressStatus.gap_after(s.approvals_count + 1),
       flagged_at: s.flagged_at, flag_reason: s.flag_reason, flagged_by: s.flagged_by && PersonSerializer.render(s.flagged_by),
       starred: s.starred?, starred_by: s.starred_by && PersonSerializer.render(s.starred_by),
       claimed_by: s.claimed_by && PersonSerializer.render(s.claimed_by), claim_expires_at: s.claim_expires_at,

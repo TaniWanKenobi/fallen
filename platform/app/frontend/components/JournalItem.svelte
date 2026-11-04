@@ -1,7 +1,7 @@
 <script lang="ts">
   import { router } from '@inertiajs/svelte'
   import Markdown from '@/components/Markdown.svelte'
-  import { formatDate, formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
+  import { formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
   import * as sfx from '@/lib/sfx'
   import { journals } from '@/routes'
   import type { Journal } from '@/types'
@@ -13,14 +13,11 @@
     editable,
     onEdit,
     onMove,
-    reviewNotes = [],
   }: {
     journal: Journal
     editable: boolean
     onEdit: (journal: Journal) => void
     onMove: (journal: Journal) => void
-    // What journal reviewers said about this journal in particular (ProgressReview#journal_notes), newest first.
-    reviewNotes?: { note: string; at: string }[]
   } = $props()
 
   // Photos the writing doesn't already show (Slack journals, and older ones from before photos went inline).
@@ -173,11 +170,4 @@
       {/each}
     </div>
   {/if}
-
-  {#each reviewNotes as review (review.at)}
-    <div class="mt-4 rounded-[4px] border-l-2 border-saffron/60 bg-black/10 px-3 py-2 font-outfit text-sm">
-      <p class="text-xs text-sky-ice/60">Reviewer note · {formatDate(review.at)}</p>
-      <p class="mt-0.5 whitespace-pre-wrap text-pale-blue">{review.note}</p>
-    </div>
-  {/each}
 </article>

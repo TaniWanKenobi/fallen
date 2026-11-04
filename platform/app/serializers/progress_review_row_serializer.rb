@@ -5,9 +5,9 @@
 class ProgressReviewRowSerializer < ApplicationSerializer
   typelize_from ProgressReview
   typelize id: :string, project_id: :string, project_title: :string, verdict: "'approved' | 'check_back' | 'dismissed'",
-           due_reason: "'requested' | 'added' | 'first' | 'approved' | 'check_back' | 'submitted' | null", checks: "Record<string, boolean>", journal_notes: "Record<string, string>",
+           due_reason: "'requested' | 'added' | 'first' | 'approved' | 'check_back' | 'submitted' | null", journal_notes: "Record<string, string>",
            reviewer: "{ id: string; name: string; avatar: string } | null"
-  attributes :verdict, :due_reason, :checks, :journal_notes, :feedback, :logged_minutes, :created_at
+  attributes :verdict, :due_reason, :journal_notes, :feedback, :logged_minutes, :created_at
   attribute(:id) { |review| review.public_id }
   attribute(:project_id) { |review| review.project.public_id }
   attribute(:project_title) { |review| review.project.title }

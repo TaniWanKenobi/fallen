@@ -12,7 +12,7 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
   end
 
   def decision(verdict: "approved", feedback: "Great photos")
-    { review: { verdict:, feedback:, checks: ProgressReview::CHECKS.keys.index_with { "1" } } }
+    { review: { verdict:, feedback: } }
   end
 
   test "people without the role don't see the queue, design reviewers included" do
@@ -42,14 +42,7 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
     assert props["can"]["decide"]
     refute props["can"]["dismiss"]
     assert_equal @project.journals.kept.count, props["journals"].size
-    assert_equal ProgressReview::CHECKS.keys, props["checks"].keys
-    assert_equal ProgressReview::REQUIRED_CHECKS, props["required_checks"]
     refute props["check_back_holds"], "a first check back only warns"
-    people = load_deferred(journal_review_project_path(@project), "Review/Progress/Show", "people")["people"]
-    owner = @project.user
-    others = Project.kept.teamed_with(owner).where.not(id: @project.id).count
-    assert_equal others, people.find { it["person"]["id"] == owner.public_id }["other_projects"]
-    assert_equal @project.teammates.uniq.size, people.size
 
     post heartbeat_journal_review_project_path(@project), as: :json
     assert response.parsed_body["held"]
@@ -111,7 +104,7 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
     assert_equal [ @status ], ProgressStatus.queued.to_a
   end
 
-  test "the feedback goes to the project's thread with the notes on particular journals; what to fix goes only to DMs" do
+  test "the feedback goes to the project's thread; notes on particular journals stay with reviewers; what to fix goes only to DMs" do
     journal = journals(:first)
     review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Add photos of the wiring", todos: [ "Photo of the wiring" ],
       journal_notes: { journal.public_id => "Which sensor did you pick, and why?", journals(:pending_hours).public_id => "  " })
@@ -121,14 +114,18 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
       call = slack.calls_to(:chat_postMessage).sole
       assert_equal [ @project.slack_channel_id, @project.slack_thread_ts ], [ call[:channel], call[:thread_ts] ]
       assert_match "Add photos of the wiring", call[:text]
-      assert_match "Which sensor did you pick, and why?", call[:text]
+      refute_match "Which sensor", call[:text], "notes on journals are for reviewers"
       refute_match "Photo of the wiring", call[:text], "to-dos go only to the team's DMs"
       refute_match "<@", call[:text], "the team is DMed, so the thread doesn't ping them"
     end
 
     sign_in_as users(:member)
     props = load_deferred(project_path(@project), "Projects/Show", "journal_review")
-    assert_equal({ journal.public_id => "Which sensor did you pick, and why?" }, props["journal_review"]["reviews"].sole["journal_notes"])
+    refute props["journal_review"]["reviews"].sole.key?("journal_notes"), "the team's page doesn't carry the notes"
+
+    sign_in_as @reviewer
+    history = inertia_props(journal_review_project_path(@project), "Review/Progress/Show")["history"]
+    assert_equal({ journal.public_id => "Which sensor did you pick, and why?" }, history.sole["journal_notes"])
   end
 
   test "notes only go on the project's own journals" do

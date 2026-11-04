@@ -71,9 +71,9 @@ module SlackMessages
     { text: "#{text}\n\n#{ps}", blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.context(ps) ], **pet_persona(pet) }
   end
 
-  # In the project's thread when a reviewer has read its journals (ProgressReviewedJob): the feedback and notes on
-  # journals, in the open so others in the channel learn from it too. What to fix and any XP held go only to the team's
-  # DMs (progress_reviewed_dm), so nobody is mentioned or singled out here.
+  # In the project's thread when a reviewer has read its journals (ProgressReviewedJob): the feedback, in the open so
+  # others in the channel learn from it too. What to fix and any XP held go only to the team's DMs
+  # (progress_reviewed_dm), so nobody is mentioned or singled out here.
   def progress_reviewed(review)
     lead = review.verdict == "approved" ? ":white_check_mark: Journal review: looking good, keep going!" : ":mag: Journal review: some ideas for the next journals."
     text = [ lead, *progress_review_feedback(review) ].join("\n")
@@ -109,11 +109,11 @@ module SlackMessages
       SlackBot::Blocks.actions(SlackBot::Blocks.button("See the review", "open_fallen", url: project_url(review.project), style: "primary")) ] }
   end
 
-  # The reviewer's feedback and notes on particular journals, for the thread and the DMs.
+  # The reviewer's feedback, for the thread and the DMs. Their notes on particular journals are for reviewers only.
   def progress_review_feedback(review)
-    lines = []
-    lines << "\nFrom the reviewer:\n#{escape(review.feedback.truncate(2500)).gsub(/^/, '> ')}" if review.feedback.present?
-    lines.concat(progress_journal_notes(review))
+    return [] if review.feedback.blank?
+
+    [ "\nFrom the reviewer:\n#{mrkdwn(review.feedback.truncate(2500)).gsub(/^/, '> ')}" ]
   end
 
   # After a check back, everything still to fix: the new to-dos, ones it reopened and earlier ones not ticked off yet.
@@ -147,18 +147,6 @@ module SlackMessages
            "#{escape(status.flag_reason.to_s.truncate(1500)).gsub(/^/, '> ')}\nIt's out of the journal review queue until an admin clears it on its review page."
     { text: text, blocks: [ SlackBot::Blocks.section(text),
       SlackBot::Blocks.actions(SlackBot::Blocks.button("Open the review", "open_fallen", url:, style: "primary")) ] }
-  end
-
-  # The reviewer's notes on particular journals, each linked to its journal and dated in its author's time zone.
-  def progress_journal_notes(review)
-    return [] if review.journal_notes.blank?
-
-    journals = Journal.where_public_ids(review.journal_notes.keys).includes(:user, :project).index_by(&:public_id)
-    notes = review.journal_notes.filter_map do |id, note|
-      journal = journals[id] or next
-      "• <#{journal_url(journal)}|#{journal.created_at.in_time_zone(journal.user.timezone).strftime('%b %-d')}>: #{escape(note.truncate(800))}"
-    end
-    notes.any? ? [ "On particular journals:", *notes ] : []
   end
 
   # DMed by ProjectTransferDecidedJob. `new_project` is whether approving made a project rather than adding to one.
@@ -622,9 +610,18 @@ module SlackMessages
   # Only web links become Slack links: `<!channel|x>` or `<@U123|x>` from a Markdown link would ping.
   LINKABLE = %r{(?:https?://|mailto:)}i
 
+  # A character Markdown escaped (`snake\_case`, as the site's editors write it) is set aside so nothing formats it,
+  # then put back without the backslash.
+  MARKDOWN_ESCAPE = /\\([!-\/:-@\[-`{-~])/
+  # Slack has no nested lists, so a nested item is pushed in with em spaces and gets the bullet Slack's own editor uses
+  # at that depth. Every two spaces of indent is one level.
+  LIST_ITEM = /^([ \t]*)([-*+]|\d+[.)])[ \t]+/
+  BULLETS = %w[• ◦ ▪].freeze
+  def list_depth(indent) = indent.gsub("\t", "  ").length / 2
+
   # Enough of Markdown to read well in Slack: bold, italics, strike, code, links, images, headings, lists.
   def mrkdwn(markdown)
-    text = escape(markdown)
+    text = escape(markdown).gsub(MARKDOWN_ESCAPE) { "\u{E000}#{$1.ord}\u{E001}" }
     text = text.gsub(/!\[([^\]]*)\]\((#{LINKABLE}[^)\s]+)\)/) { "<#{$2}|#{$1.presence || 'image'}>" }
     text = text.gsub(/\[([^\]]+)\]\((#{LINKABLE}[^)\s]+)\)/) { "<#{$2}|#{$1}>" }
     text = text.gsub(/\*\*(.+?)\*\*/, "\u0000\\1\u0000").gsub(/__(.+?)__/, "\u0000\\1\u0000")
@@ -632,7 +629,10 @@ module SlackMessages
     text = text.tr("\u0000", "*")
     text = text.gsub(/~~(.+?)~~/, '~\1~')
     text = text.gsub(/^\#{1,6}\s+(.+)$/, '*\1*')
-    text.gsub(/^\s*[-*]\s+/, "• ").gsub(/^\s*(\d+)\.\s+/, '\1. ')
+    text.gsub(LIST_ITEM) do
+      depth = list_depth($1)
+      "#{"\u2003" * depth}#{$2.match?(/\d/) ? $2.sub(')', '.') : BULLETS[depth % BULLETS.size]} "
+    end.gsub(/\u{E000}(\d+)\u{E001}/) { $1.to_i.chr(Encoding::UTF_8) }
   end
 
   # Uploads the editor embedded (relative links to the site, which Slack can't open) and Markdown images with no
