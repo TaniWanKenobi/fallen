@@ -28,12 +28,7 @@ class ProgressPageProps
       history: -> { ProgressReviewRowSerializer.render(page.history) },
       notes: -> { ReviewerNoteSerializer.render(project.reviewer_notes.includes(:user).order(:created_at, :id)) },
       max_journal_note: ProgressReview::MAX_JOURNAL_NOTE,
-      todos: -> { ReviewTodoSerializer.render(project.review_todos.unresolved.ordered.includes(:done_by)) },
-      held_xp: -> { ProgressXpHold.where(project:).held.sum(:amount) },
-      xp_held_share: ProgressReview::XP_HELD_SHARE,
-      # A check back now would hold XP: the last review was one too (ProgressReview#warning?).
-      check_back_holds: -> { !page.submitted? && page.history.find(&:sent?)&.verdict == "check_back" },
-      max_todo: ReviewTodo::MAX_BODY,
+      check_back_min_minutes: ProgressStatus::CHECK_BACK_MIN_MINUTES,
       claimed: @claimed,
       can: @can
     }

@@ -100,7 +100,7 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(20) { get journal_review_project_path(project) }
     project.progress_status.update!(starred_at: Time.current, starred_by: reviewer)
     assert_query_budget(8) { load_deferred(starred_projects_path, "Review/MarkedProjects/Index", "projects", "pagy") }
-    ProgressReview.decide(project.progress_status, reviewer:, verdict: "check_back", feedback: "More photos", todos: [ "Photos" ])
+    ProgressReview.decide(project.progress_status, reviewer:, verdict: "check_back", feedback: "More photos")
     assert_query_budget(6) { load_deferred(journal_review_projects_path(tab: "decided"), "Review/Progress/Index", "reviews", "pagy") }
   end
 

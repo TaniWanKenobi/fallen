@@ -76,9 +76,8 @@ Rails.application.routes.draw do
     resources :submissions, only: %i[create destroy], shallow: true
     resources :repo_snapshots, only: %i[create show], shallow: true
     resource :submission_check, only: :create
-    # Journal review from the team's side: asking for one, and ticking off what a check back asked them to fix.
+    # Journal review from the team's side: asking for one.
     resource :review_request, only: :create
-    resources :review_todos, only: :update, shallow: true
     resources :teammates, controller: :project_teammates, only: :destroy
   end
   get "join/:token" => "project_joins#show", as: :join

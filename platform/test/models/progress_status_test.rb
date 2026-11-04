@@ -75,9 +75,9 @@ class ProgressStatusTest < ActiveSupport::TestCase
     ProgressStatus.refresh(@project)
   end
 
-  def decide(verdict, feedback: "Keep it up", todos: verdict == "check_back" ? [ "Add photos" ] : [], **rest)
+  def decide(verdict, feedback: "Keep it up", **rest)
     status = @project.reload.progress_status
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict:, feedback:, todos:, **rest)
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict:, feedback:, **rest)
     assert review.persisted?, review.errors.full_messages.to_sentence
     status.reload
   end
@@ -105,7 +105,7 @@ class ProgressStatusTest < ActiveSupport::TestCase
     assert_equal [ *ProgressStatus::GAPS_MINUTES, ProgressStatus::GAPS_MINUTES.last ], seen
   end
 
-  test "a check back comes back with the next journal that has hours, and a dismissal waits for one more" do
+  test "a check back comes back with the next journal of 30 minutes or more, and a dismissal waits for one more" do
     log(FIRST, at: 3.days.ago)
     status = travel_to(2.days.ago) { decide("check_back") }
     refute status.due?
@@ -114,7 +114,10 @@ class ProgressStatusTest < ActiveSupport::TestCase
     journal.update_column(:source, "web")
     refute ProgressStatus.refresh(@project).due?, "a journal without hours doesn't count yet"
 
-    journal.update_column(:duration_minutes, 15)
+    journal.update_column(:duration_minutes, ProgressStatus::CHECK_BACK_MIN_MINUTES - 1)
+    refute ProgressStatus.refresh(@project).due?, "a short journal doesn't bring it back"
+
+    journal.update_column(:duration_minutes, ProgressStatus::CHECK_BACK_MIN_MINUTES)
     status = ProgressStatus.refresh(@project)
     assert_equal "check_back", status.due_reason
 
@@ -122,65 +125,38 @@ class ProgressStatusTest < ActiveSupport::TestCase
     refute status.due?
     assert_equal 1, status.reviews_count, "a dismissal isn't a review"
     add(0.25, at: 1.second.from_now)
+    refute @project.reload.progress_status.due?
+    add(0.5, at: 2.seconds.from_now)
     assert_equal "check_back", @project.reload.progress_status.due_reason
   end
 
-  test "a first check back warns, a second in a row holds back XP, and approving gives it back and resolves the to-dos" do
+  test "the team hears the same either way: whether it was a check back is for reviewers" do
     user = @project.user
     log(FIRST, at: 2.days.ago)
     status = @project.reload.progress_status
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", feedback: "Hi")
-    assert review.errors[:todos].any?
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", feedback: " ")
+    assert review.errors[:feedback].any?, "a check back needs feedback"
 
-    decide("check_back", feedback: "Great sketches!", todos: [ "Say why you picked the BME280", "Add a photo of the wiring" ])
-    warning = @project.progress_reviews.order(:id).last
-    todos = ReviewTodo.where(project: @project).ordered
-    assert_equal [ "Say why you picked the BME280", "Add a photo of the wiring" ], todos.map(&:body)
-    assert_empty ProgressXpHold.all, "the first check back only warns"
-    assert_match "No XP is held this time", SlackMessages.progress_reviewed_dm(warning, user)[:text]
-    thread = SlackMessages.progress_reviewed(warning)[:text]
-    assert_match "Great sketches!", thread
-    assert_no_match(/BME280|XP/, thread, "what to fix and XP go only to the team's DMs")
-
-    todos.first.mark(true, by: user)
-    add(1, at: 1.second.from_now, xp: 40)
-    before = user.reload.xp
-    decide("check_back", todos: [], reopen: [ todos.first.public_id ])
-    refute todos.first.reload.done?, "the reviewer reopened it"
-    hold = ProgressXpHold.sole
-    assert_equal (40 * ProgressReview::XP_HELD_SHARE).floor, hold.amount
-    assert_equal before - hold.amount, user.reload.xp
-    assert_match "holding back #{hold.amount} of your XP", SlackMessages.progress_reviewed_dm(hold.progress_review, user)[:text]
-
-    add(1, at: 2.seconds.from_now)
-    approval = decide("approved") && @project.progress_reviews.order(:id).last
-    assert ReviewTodo.where(project: @project).all?(&:resolved_at)
-    assert_equal [ approval ], ProgressXpHold.where(project: @project).map(&:released_by_review).uniq
-    assert_equal before, user.reload.xp
-  end
-
-  test "deleting the project gives back the XP a check back was holding" do
-    user = @project.user
-    log(FIRST, at: 2.days.ago)
-    travel_to(1.day.ago) { decide("check_back") }
+    check_back = travel_to(1.day.ago) { decide("check_back", feedback: "Great sketches!") && @project.progress_reviews.order(:id).last }
     add(1, xp: 40)
-    decide("check_back")
-    held = ProgressXpHold.sole
-    @project.discard
-    assert held.reload.released_at
-    assert_nil held.released_by_review
+    approval = decide("approved", feedback: "Great sketches!") && @project.progress_reviews.order(:id).last
+    assert_equal SlackMessages.progress_reviewed(check_back)[:text], SlackMessages.progress_reviewed(approval)[:text]
+    assert_equal SlackMessages.progress_reviewed_dm(check_back)[:text], SlackMessages.progress_reviewed_dm(approval)[:text]
+    assert_empty ReviewTodo.all
+    assert_empty ProgressXpHold.all, "nothing is held back"
     assert_equal 0, user.xp_entries.kept.where(kind: %w[review_hold review_release]).sum(:amount)
   end
 
-  test "a check back that only reopens earlier to-dos still tells the team what to fix" do
+  test "deleting the project gives back XP an older review was holding" do
+    user = @project.user
     log(FIRST, at: 2.days.ago)
-    travel_to(1.day.ago) { decide("check_back", todos: [ "Add photos" ]) }
-    todo = ReviewTodo.sole
-    todo.mark(true, by: @project.user)
-    add(1)
-    review = ProgressReview.decide(@project.reload.progress_status, reviewer: @reviewer, verdict: "check_back", feedback: "Not quite", reopen: [ todo.public_id ])
-    assert review.persisted?, review.errors.full_messages.to_sentence
-    assert_match "• Add photos", SlackMessages.progress_reviewed_dm(review, @project.user)[:text]
+    decide("check_back")
+    review = @project.progress_reviews.sole
+    held = ProgressXpHold.create!(project: @project, progress_review: review, user:, amount: 20)
+    held.xp_entries.create!(user:, kind: "review_hold", amount: -20, day: user.local_date)
+    @project.discard
+    assert held.reload.released_at
+    assert_equal 0, user.xp_entries.kept.where(kind: %w[review_hold review_release]).sum(:amount)
   end
 
   test "two callers making the first row at once both end up with it" do
@@ -233,7 +209,7 @@ class ProgressStatusTest < ActiveSupport::TestCase
     ProgressStatus.refresh(@project)
     assert_equal "check_back", @project.reload.progress_status.due_reason
 
-    decide("check_back", todos: [ "Fix the README" ])
+    decide("check_back")
     refute @project.reload.progress_status.due?
     assert_empty ProgressXpHold.where(project: @project), "a second check back in a row holds nothing once it's submitted"
   end
@@ -256,9 +232,9 @@ class ProgressStatusTest < ActiveSupport::TestCase
   test "check back needs feedback; not on your own team" do
     log(FIRST)
     status = @project.reload.progress_status
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back", todos: [ "x" ])
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back")
     assert review.errors[:feedback].any?
-    review = ProgressReview.decide(status, reviewer: @project.user, verdict: "check_back", feedback: "Hi", todos: [ "x" ])
+    review = ProgressReview.decide(status, reviewer: @project.user, verdict: "check_back", feedback: "Hi")
     refute review.persisted?
     review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "dismissed")
     refute review.persisted?, "dismiss is only for a check back"

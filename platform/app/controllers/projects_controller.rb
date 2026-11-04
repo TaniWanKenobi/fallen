@@ -100,14 +100,8 @@ class ProjectsController < ApplicationController
   def journal_review_props(project)
     teammate = project.on_team?(current_user)
     blocker = teammate ? ProgressStatus.request_blocker(project) : nil
-    todos = project.review_todos.unresolved.ordered.includes(:done_by).to_a
-    held = teammate ? ProgressXpHold.where(project:, user: current_user).held.sum(:amount) : 0
     {
       reviews: ProgressReviewSerializer.render(project.progress_reviews.reviews.newest_first.limit(JOURNAL_REVIEWS_SHOWN)),
-      todos: ReviewTodoSerializer.render(todos),
-      held_xp: held,
-      # Something to fix and nothing held yet: the next check back would hold XP, so the team is told.
-      xp_warning: teammate && todos.any? && held.zero? && !ProgressStatus.submitted?(project),
       # Why the team can't ask for a review right now (nil if they can); not shown to anyone else.
       request_blocker: blocker,
       can_request: teammate && blocker.nil?

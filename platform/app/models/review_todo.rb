@@ -1,6 +1,5 @@
-# One thing a journal review's "check back" asked the team to fix. The team ticks it off on the project page when
-# they've done it; the next reviewer sees what was ticked, can reopen one that isn't really fixed, and approving
-# resolves them all (ProgressReview).
+# One thing an older journal review's "check back" asked the team to fix. Reviews no longer make these; they're kept as
+# the record of what was asked.
 # == Schema Information
 #
 # Table name: review_todos

@@ -1,8 +1,7 @@
-# XP a journal review's second "check back" in a row holds back from one person until a reviewer sees the fixes (the
-# first only warns): a share (ProgressReview::XP_HELD_SHARE) of what their journals on the project earned since the
-# review before. It's two entries in the XP ledger, never edited: a negative `review_hold` when held and a matching
-# `review_release` when a journal review approves the project, its design is approved or the project is deleted, so a
-# week's XP that was already counted stays as it was.
+# XP an older journal review's second "check back" in a row held back from one person until a reviewer saw the fixes.
+# Reviews no longer hold XP; the migration that ended it gave back what was held. It's two entries in the XP ledger,
+# never edited: a negative `review_hold` when held and a matching `review_release` when it was given back (or the
+# design is approved or the project deleted, for any left), so a week's XP that was already counted stays as it was.
 # == Schema Information
 #
 # Table name: progress_xp_holds
@@ -43,23 +42,6 @@ class ProgressXpHold < ApplicationRecord
   validates :amount, numericality: { only_integer: true, greater_than: 0 }
 
   scope :held, -> { where(released_at: nil) }
-
-  # Holds the share of each author's journal XP on the project since the previous review. Nothing for someone whose
-  # share rounds to nothing.
-  def self.hold_for(review, since:)
-    journals = review.project.journals.kept.where.not(duration_minutes: nil)
-    journals = journals.where(created_at: since..) if since
-    earned = XpEntry.journals.kept.where(source_type: "Journal", source_id: journals.select(:id)).group(:user_id).sum(:amount)
-    users = User.where(id: earned.keys).index_by(&:id)
-    earned.filter_map do |user_id, xp|
-      amount = (xp * ProgressReview::XP_HELD_SHARE).floor
-      next if amount <= 0
-
-      hold = create!(project: review.project, progress_review: review, user: users.fetch(user_id), amount:)
-      hold.xp_entries.create!(user: hold.user, kind: "review_hold", amount: -amount, day: hold.user.local_date)
-      hold
-    end
-  end
 
   # Gives back everything held on the project, crediting `by` (a journal review's approval) when that's why.
   def self.release_all(project, by: nil)

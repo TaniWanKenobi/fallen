@@ -1,4 +1,4 @@
-import type { Person, ProgressReviewRow, ReviewJournal, ReviewTodo, ReviewerNote } from '@/types'
+import type { Person, ProgressReviewRow, ReviewJournal, ReviewerNote } from '@/types'
 
 // The journal review page's props (ProgressPageProps on the server).
 export interface ProgressPage {
@@ -38,15 +38,8 @@ export interface ProgressPage {
   history: ProgressReviewRow[]
   notes: ReviewerNote[]
   max_journal_note: number
-  // What earlier check backs asked to fix and the team hasn't had resolved yet, ticked or not.
-  todos: ReviewTodo[]
-  // XP held back from the team until a reviewer sees the fixes; approving gives it back.
-  held_xp: number
-  // How much of the XP since the last review a check back holds (ProgressReview::XP_HELD_SHARE).
-  xp_held_share: number
-  // Whether a check back now holds XP (the last review was a check back too) rather than only warning.
-  check_back_holds: boolean
-  max_todo: number
+  // How long a journal has to be to bring a check back back (ProgressStatus::CHECK_BACK_MIN_MINUTES).
+  check_back_min_minutes: number
   claimed: boolean
   // `own`: the reviewer is on the project's team, so someone else has to review it.
   can: {

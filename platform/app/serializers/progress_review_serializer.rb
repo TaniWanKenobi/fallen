@@ -32,8 +32,8 @@
 #
 class ProgressReviewSerializer < ApplicationSerializer
   typelize_from ProgressReview
-  typelize id: :string, verdict: "'approved' | 'check_back'"
-  # Notes on particular journals stay with reviewers (ProgressReviewRowSerializer), so they aren't here.
-  attributes :verdict, :feedback, :created_at
+  typelize id: :string
+  # Whether it was a check back and the notes on particular journals stay with reviewers (ProgressReviewRowSerializer).
+  attributes :feedback, :created_at
   attribute(:id) { |review| review.public_id }
 end

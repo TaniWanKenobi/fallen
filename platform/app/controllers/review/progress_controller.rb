@@ -6,7 +6,7 @@ class Review::ProgressController < Review::ApplicationController
   TABS = %w[queue mine decided].freeze
   # How far back the queue page's "reviews take about…" looks.
   TURNAROUND_OVER = 7.days
-  NOTICES = { "approved" => "feedback sent", "check_back" => "we'll check back after their next journal", "dismissed" => "waiting for one more journal" }.freeze
+  NOTICES = { "approved" => "feedback sent", "check_back" => "it comes back after their next journal of #{ProgressStatus::CHECK_BACK_MIN_MINUTES}+ min", "dismissed" => "waiting for one more journal" }.freeze
 
   def index
     tab = TABS.include?(params[:tab]) ? params[:tab] : "queue"
@@ -18,7 +18,8 @@ class Review::ProgressController < Review::ApplicationController
 
     render inertia: "Review/Progress/Index", props: {
       tab:, reason:, reasons: ProgressStatus::DUE_REASONS, can_add: policy([ :review, ProgressStatus ]).add?,
-      ladder: { first_at_minutes: ProgressStatus::FIRST_AT_MINUTES, gaps_minutes: ProgressStatus::GAPS_MINUTES },
+      ladder: { first_at_minutes: ProgressStatus::FIRST_AT_MINUTES, gaps_minutes: ProgressStatus::GAPS_MINUTES,
+                check_back_min_minutes: ProgressStatus::CHECK_BACK_MIN_MINUTES },
       counts: InertiaRails.defer(group: "table") { counts(statuses) },
       **table(tab, rows, reviews)
     }
@@ -66,10 +67,9 @@ class Review::ProgressController < Review::ApplicationController
   def update
     status = find_status
     authorize [ :review, status ], :decide?
-    fields = params.expect(review: [ :verdict, :feedback, journal_notes: {}, todos: [], reopen: [] ])
+    fields = params.expect(review: [ :verdict, :feedback, journal_notes: {} ])
     review = ProgressReview.decide(status, reviewer: true_user, verdict: fields[:verdict], feedback: fields[:feedback],
-      journal_notes: fields[:journal_notes]&.to_unsafe_h || {},
-      todos: fields[:todos] || [], reopen: fields[:reopen] || [])
+      journal_notes: fields[:journal_notes]&.to_unsafe_h || {})
     if review.persisted?
       redirect_to journal_review_next_path(skip: skipped.join(",").presence), notice: "#{status.project.title}: #{NOTICES.fetch(review.verdict)}."
     else

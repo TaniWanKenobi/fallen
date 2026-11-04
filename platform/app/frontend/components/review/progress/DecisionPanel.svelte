@@ -9,7 +9,6 @@
   import Key from '@/components/review/Key.svelte'
   import PersonChip from '@/components/review/PersonChip.svelte'
   import FeedbackEditor from '@/components/review/progress/FeedbackEditor.svelte'
-  import TodosEditor from '@/components/review/progress/TodosEditor.svelte'
   import VerdictBadge from '@/components/review/progress/VerdictBadge.svelte'
   import { reveal } from '@/components/review/motion'
   import { formatDate, formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
@@ -23,8 +22,6 @@
     page,
     feedback = $bindable(),
     needsFix = $bindable(),
-    todos = $bindable(),
-    reopen = $bindable(),
     journalNotes,
     submitting,
     pending,
@@ -35,8 +32,6 @@
     feedback: string
     // Ticked, the review goes out as a check back; unticked, as an approval.
     needsFix: boolean
-    todos: string[]
-    reopen: string[]
     // How many journals this review has a note on.
     journalNotes: number
     submitting: boolean
@@ -47,17 +42,7 @@
 
   const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
   const s = $derived(page.status)
-  // A check back needs something left to fix: a new to-do, a reopened one, or an old one they haven't ticked.
-  const somethingToFix = $derived(
-    todos.some((t) => t.trim()) || reopen.length > 0 || page.todos.some((t) => !t.done),
-  )
-  const checkBackBlocker = $derived(
-    !feedback.trim()
-      ? 'Write feedback so they know what to work on'
-      : !somethingToFix
-        ? 'Add at least one thing to fix'
-        : null,
-  )
+  const checkBackBlocker = $derived(!feedback.trim() ? 'Write feedback so they know what to work on' : null)
   const holder = $derived(
     s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date() ? s.claimed_by : null,
   )
@@ -123,7 +108,7 @@
     <p class="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
       Not waiting for a review.
       {#if page.project.submitted && s.reviews_count}It’s been submitted, so journal review is done.
-      {:else if s.waiting_since}It comes back with their next journal.
+      {:else if s.waiting_since}It comes back with their next journal of {page.check_back_min_minutes}+ min.
       {:else if s.next_due_minutes}It comes back at {formatMinutes(s.next_due_minutes)} logged.{/if}
     </p>
   {:else if !page.can.decide}
@@ -197,13 +182,13 @@
       <span class="min-w-0">
         <span class="block text-sm font-medium">Check back next journal</span>
         <span class="block text-xs text-muted-foreground">If the journal needs many changes</span>
+        {#if needsFix}<span class="block pt-0.5 text-xs text-muted-foreground/70"
+            >Only reviewers see this. It comes back with their next journal of {page.check_back_min_minutes}+
+            min.</span
+          >{/if}
       </span>
       <Key class="ml-auto">{mod}E</Key>
     </label>
-
-    {#if needsFix}
-      <div transition:reveal><TodosEditor {page} bind:todos bind:reopen /></div>
-    {/if}
 
     {@const shown = Object.entries(errors).filter(([key]) => key !== 'feedback')}
     {#if shown.length}
@@ -229,13 +214,7 @@
         Give feedback
       </Button>
       <p class="text-center text-xs text-muted-foreground">
-        {#if blocker}<span class="block pb-1">{blocker}.</span>
-        {:else if !needsFix && page.todos.length}<span class="block pb-1"
-            >Without a check back, this clears their {page.todos.length} open to-do{page.todos.length === 1
-              ? ''
-              : 's'}{#if page.held_xp}
-              and gives back the {page.held_xp} XP held{/if}.</span
-          >{/if}
+        {#if blocker}<span class="block pb-1">{blocker}.</span>{/if}
         {mod}Enter to send
       </p>
       {#if page.can.dismiss}

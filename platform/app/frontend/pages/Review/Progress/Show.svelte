@@ -28,8 +28,6 @@
     // Ticked, the review goes out as a check back; otherwise as an approval.
     needs_fix: boolean
     journal_notes: Record<string, string>
-    todos: string[]
-    reopen: string[]
   }
   // svelte-ignore state_referenced_locally
   const storageKey = `fallen:journal-review:${props.project.id}`
@@ -83,8 +81,6 @@
       feedback: '',
       needs_fix: false,
       journal_notes: {},
-      todos: [],
-      reopen: [],
     }
     try {
       const saved = localStorage.getItem(storageKey)
@@ -142,8 +138,6 @@
           verdict,
           feedback: draft.feedback,
           journal_notes: draft.journal_notes,
-          todos: draft.todos,
-          reopen: draft.reopen,
         },
       },
       {
@@ -294,8 +288,6 @@
         page={props}
         bind:feedback={draft.feedback}
         bind:needsFix={draft.needs_fix}
-        bind:todos={draft.todos}
-        bind:reopen={draft.reopen}
         journalNotes={noted}
         {submitting}
         {pending}

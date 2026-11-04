@@ -59,7 +59,7 @@
     tab: string
     reason: string | null
     reasons: Record<string, string>
-    ladder: { first_at_minutes: number; gaps_minutes: number[] }
+    ladder: { first_at_minutes: number; gaps_minutes: number[]; check_back_min_minutes: number }
     // Admins can put any project in the queue by its link.
     can_add: boolean
   } = $props()
@@ -246,7 +246,8 @@
   <p class="mt-6 text-xs text-muted-foreground">
     A project comes up at {formatMinutes(ladder.first_at_minutes)} logged. Each approval brings it back after
     {ladder.gaps_minutes.map(formatMinutes).join(', then ')} more (the last gap from then on); a check back brings
-    it back with their next journal. Once the design is submitted it only comes up if it was never reviewed. <Link
+    it back with their next journal of {formatMinutes(ladder.check_back_min_minutes)} or more. Once the design is
+    submitted it only comes up if it was never reviewed. <Link
       href={journalReviewNext().url}
       class="underline">Start reviewing</Link
     > claims the next one for you for 15 minutes while the page is open; skipping lets it go.

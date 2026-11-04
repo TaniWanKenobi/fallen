@@ -42,7 +42,6 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
     assert props["can"]["decide"]
     refute props["can"]["dismiss"]
     assert_equal @project.journals.kept.count, props["journals"].size
-    refute props["check_back_holds"], "a first check back only warns"
 
     post heartbeat_journal_review_project_path(@project), as: :json
     assert response.parsed_body["held"]
@@ -104,9 +103,9 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
     assert_equal [ @status ], ProgressStatus.queued.to_a
   end
 
-  test "the feedback goes to the project's thread; notes on particular journals stay with reviewers; what to fix goes only to DMs" do
+  test "the feedback goes to the project's thread; notes on particular journals and the decision stay with reviewers" do
     journal = journals(:first)
-    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Add photos of the wiring", todos: [ "Photo of the wiring" ],
+    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Add photos of the wiring",
       journal_notes: { journal.public_id => "Which sensor did you pick, and why?", journals(:pending_hours).public_id => "  " })
     assert_equal({ journal.public_id => "Which sensor did you pick, and why?" }, review.journal_notes, "blank notes are dropped")
     with_fake_slack do |slack|
@@ -115,13 +114,13 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
       assert_equal [ @project.slack_channel_id, @project.slack_thread_ts ], [ call[:channel], call[:thread_ts] ]
       assert_match "Add photos of the wiring", call[:text]
       refute_match "Which sensor", call[:text], "notes on journals are for reviewers"
-      refute_match "Photo of the wiring", call[:text], "to-dos go only to the team's DMs"
       refute_match "<@", call[:text], "the team is DMed, so the thread doesn't ping them"
     end
 
     sign_in_as users(:member)
     props = load_deferred(project_path(@project), "Projects/Show", "journal_review")
     refute props["journal_review"]["reviews"].sole.key?("journal_notes"), "the team's page doesn't carry the notes"
+    refute props["journal_review"]["reviews"].sole.key?("verdict"), "or whether it was a check back"
 
     sign_in_as @reviewer
     history = inertia_props(journal_review_project_path(@project), "Review/Progress/Show")["history"]
@@ -129,7 +128,7 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
   end
 
   test "notes only go on the project's own journals" do
-    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Hi", todos: [ "x" ], journal_notes: { journals(:web_only).public_id => "Not here" })
+    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Hi", journal_notes: { journals(:web_only).public_id => "Not here" })
     refute review.persisted?
     assert review.errors[:journal_notes].any?
   end
@@ -158,19 +157,6 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
     assert_equal "Is the wiring clear?", props["status"]["request"]["note"]
   end
 
-  test "the team ticks off what a check back asked them to fix" do
-    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Nearly", todos: [ "Add photos" ])
-    todo = review.review_todos.sole
-    sign_in_as users(:member)
-    patch review_todo_path(todo), params: { done: true }
-    assert todo.reload.done?
-    assert_equal users(:member), todo.done_by
-
-    sign_in_as @reviewer
-    patch review_todo_path(todo), params: { done: false }
-    assert todo.reload.done?, "only the team ticks their own to-dos"
-  end
-
   test "reviewers are nudged when the queue backs up" do
     with_fake_slack do |slack|
       with_env("SLACK_REVIEWERS_CHANNEL_ID" => "CREVIEW") do
@@ -188,7 +174,7 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
 
   test "each person on the team is DMed about the review, and the thread gets a reply" do
     @project.user.update!(slack_id: "UOWNER")
-    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Nice soldering! More photos please.", todos: [ "Add photos" ])
+    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Nice soldering! More photos please.")
     assert_enqueued_with(job: ProgressReviewedJob, args: [ review ])
     clear_enqueued_jobs
     with_fake_slack do |slack|
@@ -200,7 +186,7 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
       assert_equal "UOWNER", dm[:channel]
       assert_match "A reviewer read your journals for *#{@project.title}*", dm[:text]
       assert_match "Nice soldering! More photos please.", dm[:text]
-      assert_match "• Add photos", dm[:text]
+      assert_no_match(/fix|check back/i, dm[:text], "the team isn't told it was a check back")
     end
   end
 

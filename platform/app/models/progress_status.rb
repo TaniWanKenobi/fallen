@@ -10,8 +10,8 @@
 #   weeks.
 # - Approving it brings it back after GAPS_MINUTES more: the first gap after the first approval, the next after the
 #   second, and the last one for every approval after that.
-# - "Check back" brings it back with the next journal that has hours. A reviewer can dismiss a check back to wait
-#   for one more.
+# - "Check back" brings it back with the next journal of CHECK_BACK_MIN_MINUTES or more; shorter ones don't count. A
+#   reviewer can dismiss a check back to wait for one more.
 # - The team can ask for a review themselves (request), at most once every REQUEST_COOLDOWN, and it goes to the front.
 #   An admin can add any project by its link (add), whatever its hours or submission, and it goes to the front too.
 # - Once the design is submitted it's done, unless it has never had a journal review or a check back from before it
@@ -74,6 +74,8 @@ class ProgressStatus < ApplicationRecord
   # 10h at launch, while the backlog is worked through; meant to come down (to 4h) once the queue keeps up.
   FIRST_AT_MINUTES = 10 * 60
   GAPS_MINUTES = [ 6, 10, 40, 80, 100 ].map { it * 60 }.freeze
+  # A check back waits for a journal at least this long, so a quick one doesn't bring it straight back.
+  CHECK_BACK_MIN_MINUTES = 30
   CLAIM_FOR = 15.minutes
   # Asking for a review: there has to be something to read, and not more often than this.
   REQUEST_MIN_MINUTES = 60
@@ -238,7 +240,7 @@ class ProgressStatus < ApplicationRecord
     return "added" if added_at && (last_reviewed_at.nil? || added_at > last_reviewed_at)
     return "requested" if requested_at && (last_reviewed_at.nil? || requested_at > last_reviewed_at)
     return reason_after_submission if self.class.submitted?(project)
-    return (journals.where.not(duration_minutes: nil).exists?([ "journals.created_at > ?", waiting_since ]) ? "check_back" : nil) if waiting_since
+    return (journals.where(duration_minutes: CHECK_BACK_MIN_MINUTES..).exists?([ "journals.created_at > ?", waiting_since ]) ? "check_back" : nil) if waiting_since
     return nil if logged_minutes < next_at_minutes
 
     reviews_count.zero? ? "first" : "approved"

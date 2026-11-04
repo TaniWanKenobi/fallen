@@ -2,10 +2,11 @@
 # design review (SubmissionReview), and it changes no hours: it checks the journals are good enough and tells the
 # team what to do better. The feedback goes to the project's Slack thread and its page.
 #
-# "Check back" takes feedback and something to fix. The feedback is Markdown, shown on the site and turned into
+# The team is sent the feedback either way; whether it was approved or a "check back" is for reviewers only, and
+# only decides when the project comes back (ProgressStatus): a check back, which takes feedback, brings it back with
+# their next journal of CHECK_BACK_MIN_MINUTES or more. The feedback is Markdown, shown on the site and turned into
 # Slack's own formatting for Slack (SlackMessages.mrkdwn). Notes on particular journals are for reviewers only.
-# `checks` holds the boxes older reviews ticked; reviews no longer tick any. The first check back in a row is a
-# warning; a second one in a row holds XP back until it's fixed (ProgressXpHold).
+# `checks`, the to-dos (ReviewTodo) and XP holds (ProgressXpHold) are what older reviews did; new ones make none.
 # "Dismissed" isn't a review: it puts a check back off until one more journal comes in, with nothing sent.
 # ProgressStatus works out when the project comes back.
 # == Schema Information
@@ -45,9 +46,6 @@ class ProgressReview < ApplicationRecord
 
   VERDICTS = %w[approved check_back dismissed].freeze
   MAX_FEEDBACK = 5_000
-  # How much of the XP a person's journals earned since the last review a second check back in a row holds until it's
-  # fixed (ProgressXpHold).
-  XP_HELD_SHARE = 0.5
   MAX_JOURNAL_NOTE = 1_000
 
   belongs_to :project
@@ -67,16 +65,11 @@ class ProgressReview < ApplicationRecord
   after_create_commit -> { ProgressReviewedJob.perform_later(self) }, if: :sent?
 
   # Makes the decision on `status`'s project for `reviewer`, or returns an unsaved review whose errors say why not.
-  # `journal_notes` maps a journal's public id to a note on it; blank ones are dropped. A check back adds `todos` (what
-  # to fix) and reopens the to-dos in `reopen` (public ids) the team ticked but didn't really fix, and has to leave at
-  # least one open; an approval resolves them all.
-  def self.decide(status, reviewer:, verdict:, feedback: nil, journal_notes: {}, todos: [], reopen: [])
+  # `journal_notes` maps a journal's public id to a note on it; blank ones are dropped.
+  def self.decide(status, reviewer:, verdict:, feedback: nil, journal_notes: {})
     review = new(project: status.project, reviewer:, verdict: verdict.to_s, feedback: feedback.to_s.strip.presence,
       journal_notes: verdict.to_s == "dismissed" ? {} : journal_notes.to_h.to_h { |id, note| [ id.to_s, note.to_s.strip ] }.compact_blank)
     review.errors.add(:base, "You can't review a project you're on") if status.project.on_team?(reviewer)
-    todos = review.verdict == "check_back" ? Array(todos).map { it.to_s.strip }.compact_blank : []
-    reopen = review.verdict == "check_back" ? ReviewTodo.where_public_ids(Array(reopen)).where(project: status.project).unresolved.to_a : []
-    review.check_todos(todos, reopen) if review.verdict == "check_back"
     return review if review.errors.any? || review.invalid?
 
     status.with_lock do
@@ -84,49 +77,14 @@ class ProgressReview < ApplicationRecord
       next review.errors.add(:base, "Someone else is reviewing this") if status.held_by_someone_else?(reviewer)
       next review.errors.add(:verdict, "dismiss is only for a check back") if review.verdict == "dismissed" && status.due_reason != "check_back"
 
-      since = status.last_reviewed_at
       review.update!(due_reason: status.due_reason, due_since: status.due_since, logged_minutes: status.logged_minutes)
-      review.follow_up(todos:, reopen:, since:)
       status.decided(review)
     end
     review
   end
 
-  # Approvals and check backs go to the team; a dismissal is the reviewers' own business.
+  # Approvals and check backs send the team the feedback; a dismissal is the reviewers' own business.
   def sent? = verdict != "dismissed"
-
-  # A check back straight after an approval (or as the first review) only warns; one after another check back holds
-  # XP. Dismissals don't count either way.
-  def warning?
-    verdict == "check_back" && project.progress_reviews.reviews.where(id: ...id).newest_first.pick(:verdict) != "check_back"
-  end
-
-  # Whether this check back warned that the next one holds XP: not once the design is submitted, when nothing is held.
-  def warns_of_hold? = warning? && !ProgressStatus.submitted?(project)
-
-  # A check back needs something left to fix: a new to-do, one it reopens, or one still open and not yet ticked.
-  def check_todos(todos, reopen)
-    errors.add(:todos, "are each at most #{ReviewTodo::MAX_BODY} characters") if todos.any? { it.length > ReviewTodo::MAX_BODY }
-    errors.add(:todos, "can be at most #{ReviewTodo::MAX_PER_REVIEW} at once") if todos.size > ReviewTodo::MAX_PER_REVIEW
-    return if todos.any? || reopen.any? || ReviewTodo.where(project:).unresolved.where(done_at: nil).exists?
-
-    errors.add(:todos, "need at least one thing to fix for a check back")
-  end
-
-  # What a decision does besides moving the queue: a check back adds its to-dos, reopens the ones it names and, when
-  # it's the second in a row, holds XP back (not once the design is submitted: there's nothing left to journal); an
-  # approval resolves every to-do and gives back what was held.
-  def follow_up(todos:, reopen:, since:)
-    case verdict
-    when "check_back"
-      ReviewTodo.where(id: reopen.map(&:id)).update_all(done_at: nil, done_by_id: nil, updated_at: Time.current)
-      todos.each_with_index { |body, i| review_todos.create!(project:, body:, position: i) }
-      ProgressXpHold.hold_for(self, since:) unless warning? || ProgressStatus.submitted?(project)
-    when "approved"
-      ReviewTodo.where(project:).unresolved.update_all(resolved_at: Time.current, updated_at: Time.current)
-      ProgressXpHold.release_all(project, by: self)
-    end
-  end
 
   private
 

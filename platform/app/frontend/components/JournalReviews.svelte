@@ -1,14 +1,9 @@
 <script lang="ts" module>
-  import type { ProgressReview, ReviewTodo } from '@/types'
+  import type { ProgressReview } from '@/types'
 
   // The project page's journal review prop (ProjectsController#journal_review_props).
   export interface JournalReviewProps {
     reviews: ProgressReview[]
-    todos: ReviewTodo[]
-    // The signed-in person's XP held back until the to-dos are fixed.
-    held_xp: number
-    // There's something to fix and nothing held yet: a second check back in a row would hold XP.
-    xp_warning: boolean
     // Why the team can't ask for a review now; null if they can, or if they aren't on the team.
     request_blocker: string | null
     can_request: boolean
@@ -20,30 +15,17 @@
   import Markdown from '@/components/Markdown.svelte'
   import { formatDate } from '@/lib/format'
   import * as sfx from '@/lib/sfx'
-  import { projectReviewRequest, reviewTodo } from '@/routes'
+  import { projectReviewRequest } from '@/routes'
 
-  // Journal review on a project's page: what's left to fix from the last check back (ticked off here), XP held until
-  // it is, asking a reviewer to look now, and what reviewers said, newest first: the same feedback posted in its
-  // thread.
-  let {
-    projectId,
-    reviews,
-    todos,
-    held_xp,
-    xp_warning,
-    request_blocker,
-    can_request,
-  }: JournalReviewProps & { projectId: string } = $props()
+  // Journal review on a project's page: asking a reviewer to look now, and what reviewers said, newest first: the same
+  // feedback posted in its thread.
+  let { projectId, reviews, request_blocker, can_request }: JournalReviewProps & { projectId: string } =
+    $props()
 
   let asking = $state(false)
   let note = $state('')
   let sending = $state(false)
   const teammate = $derived(can_request || request_blocker != null)
-
-  function tick(id: string, done: boolean) {
-    sfx.select()
-    router.patch(reviewTodo(id).url, { done }, { preserveScroll: true, only: ['journal_review'] })
-  }
 
   function ask() {
     sending = true
@@ -55,7 +37,7 @@
   }
 </script>
 
-{#if reviews.length > 0 || todos.length > 0 || teammate}
+{#if reviews.length > 0 || teammate}
   <section class="glass px-5 py-5 md:px-6">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0 flex-1 basis-64">
@@ -98,58 +80,17 @@
       <p class="mt-2 font-outfit text-xs text-sky-ice/50">{request_blocker}.</p>
     {/if}
 
-    {#if todos.length > 0}
-      <div class="mt-4 rounded-[4px] border border-saffron/40 bg-black/10 px-4 py-3">
-        <p class="font-outfit text-sm font-semibold text-white">To fix before the next review</p>
-        <ul class="mt-2 space-y-1.5">
-          {#each todos as todo (todo.id)}
-            <li>
-              <label class="flex cursor-pointer items-start gap-2.5 font-outfit text-sm text-pale-blue">
-                <input
-                  type="checkbox"
-                  checked={todo.done}
-                  disabled={!teammate}
-                  onchange={(event) => tick(todo.id, event.currentTarget.checked)}
-                  class="mt-1 size-4 shrink-0 accent-saffron"
-                />
-                <span class={todo.done ? 'text-sky-ice/50 line-through' : ''}>{todo.body}</span>
-              </label>
-            </li>
-          {/each}
-        </ul>
-        {#if held_xp > 0}
-          <p class="mt-3 font-outfit text-xs text-sky-ice/70">
-            {held_xp} of your XP is held back until a reviewer sees these fixed. Fix them in your next journals
-            and it comes back.
-          </p>
-        {:else if xp_warning}
-          <p class="mt-3 font-outfit text-xs text-sky-ice/70">
-            Fix these in your next journals. If the next review still finds them, some of the XP from your new
-            journals is held back until they're fixed.
-          </p>
-        {/if}
-      </div>
-    {/if}
-
     {#if reviews.length > 0}
       <ul class="mt-4 space-y-4">
         {#each reviews as review (review.id)}
           <li>
-            <p class="font-outfit text-sm text-sky-ice/70">
-              <span class={review.verdict === 'approved' ? 'text-emerald-300' : 'text-saffron'}>
-                {review.verdict === 'approved' ? 'Looking good' : 'A few things to work on'}
-              </span>
-              · {formatDate(review.created_at)}
-            </p>
+            <p class="font-outfit text-sm text-sky-ice/70">Reviewed {formatDate(review.created_at)}</p>
             {#if review.feedback}
               <Markdown
                 source={review.feedback}
                 photos={[]}
                 glass
-                class={[
-                  'mt-1.5 border-l-2 pl-3 text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0',
-                  review.verdict === 'approved' ? 'border-white/25' : 'border-saffron/60',
-                ].join(' ')}
+                class="mt-1.5 border-l-2 border-white/25 pl-3 text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0"
               />
             {/if}
           </li>

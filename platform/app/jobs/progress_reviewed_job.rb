@@ -1,5 +1,5 @@
-# Tells a project's team a reviewer has read their journals (ProgressReview): a DM each with the feedback, what to fix
-# and their own XP held or given back, and a reply in the project's thread. One job per message (`to:` a person, or
+# Tells a project's team a reviewer has read their journals (ProgressReview): a DM each with the feedback, and a reply
+# in the project's thread. One job per message (`to:` a person, or
 # :thread), so a rerun after a restart repeats at most one.
 class ProgressReviewedJob < ApplicationJob
   queue_as :slack
@@ -15,7 +15,7 @@ class ProgressReviewedJob < ApplicationJob
 
       SlackBot.client.chat_postMessage(channel: project.slack_channel_id, thread_ts: project.slack_thread_ts, **SlackMessages.progress_reviewed(review))
     elsif to.slack_id.present? && !to.discarded? && !to.is_banned?
-      SlackBot.client.chat_postMessage(channel: to.slack_id, **SlackMessages.progress_reviewed_dm(review, to))
+      SlackBot.client.chat_postMessage(channel: to.slack_id, **SlackMessages.progress_reviewed_dm(review))
     end
   end
 
