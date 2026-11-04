@@ -446,6 +446,12 @@ class JournalFlowTest < ActiveSupport::TestCase
                                               "message" => { "ts" => journal.slack_ts, "text" => SlackMessages.journal(journal)[:text].tr("\n", " "), "user" => "U0MEMBER" } } })
       assert_includes journal.reload.body, "**Soldered**"
 
+      # Slack hands emoji back as shortcodes, so the text no longer matches; the footer still marks it as Fallen's.
+      echo = { "ts" => journal.slack_ts, "text" => journal_text("*Soldered* the board :sob:"), "user" => "U0MEMBER",
+               "blocks" => [ { "type" => "context", "block_id" => SlackMessages::FOOTER_BLOCK_ID, "elements" => [] } ] }
+      SlackBot.handle(:event, { "event" => { "type" => "message", "subtype" => "message_changed", "channel" => CHANNEL, "message" => echo } })
+      assert_includes journal.reload.body, "board.png"
+
       SlackBot.handle(:event, { "event" => { "type" => "message", "subtype" => "message_changed", "channel" => CHANNEL,
                                               "message" => { "ts" => journal.slack_ts, "text" => journal_text("Soldered it twice"), "user" => "U0MEMBER" } } })
       assert_equal journal_text("Soldered it twice"), journal.reload.body

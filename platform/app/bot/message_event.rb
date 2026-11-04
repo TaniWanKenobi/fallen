@@ -65,9 +65,10 @@ class MessageEvent < SlackBot::Event
     changed = event.message or return
     if (journal = Journal.find_by_slack_message(channel_id, changed.ts))
       # Fallen rewriting a web journal's message (SyncJournalToSlackJob) comes back as an edit too, with its newlines
-      # turned into spaces. Its Slack text is a lossy copy of the Markdown, so only a change someone made in Slack is
-      # taken back.
-      return if journal.discarded? || (journal.from_web? && changed.text.to_s.squish == SlackMessages.journal(journal)[:text].squish)
+      # turned into spaces and emoji as :shortcodes:. Its Slack text is a lossy copy of the Markdown (no photos), so
+      # only a change someone made in Slack is taken back. Editing in Slack drops the footer, so a message that still
+      # has it is Fallen's own.
+      return if journal.discarded? || (journal.from_web? && fallens_own_rewrite?(journal, changed))
 
       journal.slack_message_edited(changed.ts, changed.text.to_s)
       # Editing in Slack drops blocks the person didn't write, the footer among them.
@@ -87,5 +88,9 @@ class MessageEvent < SlackBot::Event
     else
       JournalDraft.containing(event.deleted_ts).first&.remove(event.deleted_ts)
     end
+  end
+
+  def fallens_own_rewrite?(journal, changed)
+    SlackMessages.footer?(changed.blocks) || changed.text.to_s.squish == SlackMessages.journal(journal)[:text].squish
   end
 end
