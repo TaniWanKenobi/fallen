@@ -69,7 +69,7 @@ export const adminNav: AdminNavSection[] = [
     items: [
       { label: 'Projects', href: adminProjects.index().url, icon: FolderOpen, statKey: 'projects_count' },
       { label: 'Users', href: adminUsers.index().url, icon: Users, statKey: 'users_count' },
-      { label: 'Transfers', href: adminTransfers.index().url, icon: ArrowLeftRight },
+      { label: 'Transfers', href: adminTransfers.index().url, icon: ArrowLeftRight, role: 'reviewer' },
       { label: 'Streaks', href: adminStreaks.index().url, icon: Flame },
       {
         label: 'Design review',

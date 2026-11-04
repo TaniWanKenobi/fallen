@@ -2,6 +2,10 @@
 class Admin::TransfersController < Admin::ApplicationController
   TABS = %w[pending approved rejected all].freeze
 
+  # Reviewers work transfers too; the route constraint and Admin::ProjectTransferPolicy decide who gets in.
+  skip_before_action :require_admin!, only: %i[index show approve reject refetch sync]
+  before_action :require_transfer_reviewer!, only: %i[index show approve reject refetch sync]
+
   def index
     tab = TABS.include?(params[:status]) ? params[:status] : "pending"
     scope = policy_scope([ :admin, ProjectTransfer ]).kept
@@ -63,6 +67,10 @@ class Admin::TransfersController < Admin::ApplicationController
   end
 
   private
+
+  def require_transfer_reviewer!
+    raise ActionController::RoutingError, "Not Found" unless current_user&.reviews_transfers?
+  end
 
   def find_and_authorize
     ProjectTransfer.find_by_public_id!(params[:id]).tap { authorize [ :admin, it ] }

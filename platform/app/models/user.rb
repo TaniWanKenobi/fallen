@@ -133,6 +133,8 @@ class User < ApplicationRecord
   def reviews_designs? = admin? || design_reviewer?
   # Who works the journal review queue (ProgressReview).
   def reviews_journals? = admin? || reviewer?
+  # Who reads and decides project transfers (/admin/transfers).
+  def reviews_transfers? = admin? || reviewer?
 
   # Feature flags (FeatureFlag) name people by public_id, so the admin page can show who a flag is on for.
   def flipper_id = public_id

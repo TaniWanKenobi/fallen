@@ -148,13 +148,9 @@ Rails.application.routes.draw do
     end
   end
 
-  constraints Constraints::Admin.new do
+  # Project transfers, open to reviewers and admins. Pulling the form from Airtable stays admins-only (the policy).
+  constraints Constraints::TransferReviewer.new do
     namespace :admin do
-      root "dashboard#index"
-      resources :users, only: %i[index show update] do
-        post :impersonate, on: :member
-      end
-      resources :projects, only: %i[index show update]
       resources :transfers, only: %i[index show] do
         member do
           post :approve
@@ -163,6 +159,16 @@ Rails.application.routes.draw do
         end
         post :sync, on: :collection
       end
+    end
+  end
+
+  constraints Constraints::Admin.new do
+    namespace :admin do
+      root "dashboard#index"
+      resources :users, only: %i[index show update] do
+        post :impersonate, on: :member
+      end
+      resources :projects, only: %i[index show update]
       resources :streaks, only: :index
       # Design funding sent through HCB (GrantPayout), and connecting HCB.
       resources :grants, only: :index do

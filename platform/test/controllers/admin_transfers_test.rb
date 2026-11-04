@@ -83,6 +83,19 @@ class AdminTransfersTest < ActionDispatch::IntegrationTest
     assert_enqueued_with(job: FetchProjectTransferJob, args: [ project_transfers(:stardance) ]) { post refetch_admin_transfer_path(project_transfers(:stardance)) }
   end
 
+  test "reviewers decide transfers but can't pull the form or open the rest of the panel" do
+    reviewer = users(:newcomer).tap { it.update!(roles: %w[user reviewer]) }
+    sign_in_as reviewer
+    assert inertia_props(admin_transfer_path(project_transfers(:stardance)), "Admin/Transfers/Show")["can"]["reject"]
+
+    post reject_admin_transfer_path(project_transfers(:stardance)), params: { transfer: { note: "Not theirs" } }
+    assert_equal [ "rejected", reviewer ], project_transfers(:stardance).reload.values_at(:status, :reviewer)
+
+    assert_no_enqueued_jobs { post sync_admin_transfers_path }
+    get admin_users_path
+    assert_response :not_found
+  end
+
   test "members can't see transfers" do
     sign_in_as users(:member)
     get admin_transfers_path
