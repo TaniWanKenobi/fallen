@@ -36,6 +36,11 @@ class Rack::Attack
     req.ip if req.post? && req.path == "/trial_session"
   end
 
+  # The workshop sign-up needs no account; a club may sign up together from one IP.
+  throttle("workshop_rsvp/ip", limit: 100, period: 10.minutes) do |req|
+    req.ip if req.post? && req.path == "/workshops/rsvp"
+  end
+
   # A Fallout email link (FalloutLinksController) signs in with a six-letter code, so guesses are few per IP and per email.
   throttle("fallout_link/ip", limit: 10, period: 10.minutes) { |req| req.ip if fallout_link?(req) }
   throttle("fallout_link/email", limit: 10, period: 1.hour) { |req| req.GET["email"].to_s.strip.downcase.presence if fallout_link?(req) }

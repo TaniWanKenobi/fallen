@@ -15,6 +15,7 @@ import NotebookPen from '@lucide/svelte/icons/notebook-pen'
 import Star from '@lucide/svelte/icons/star'
 import ShieldAlert from '@lucide/svelte/icons/shield-alert'
 import Banknote from '@lucide/svelte/icons/banknote'
+import CalendarCheck from '@lucide/svelte/icons/calendar-check'
 import {
   adminFlags,
   adminGrants,
@@ -29,6 +30,7 @@ import {
   adminTeams,
   adminTransfers,
   adminUsers,
+  adminWorkshopRsvps,
   aiFlaggedProjects,
   journalReviewRoot,
   reviewSubmissions,
@@ -81,6 +83,7 @@ export const adminNav: AdminNavSection[] = [
       { label: 'Starred projects', href: starredProjects().url, icon: Star, role: 'reviewer' },
       { label: 'AI flags', href: aiFlaggedProjects().url, icon: ShieldAlert, role: 'reviewer' },
       { label: 'Grants', href: adminGrants.index().url, icon: Banknote },
+      { label: 'Workshop RSVPs', href: adminWorkshopRsvps.index().url, icon: CalendarCheck },
     ],
   },
   {

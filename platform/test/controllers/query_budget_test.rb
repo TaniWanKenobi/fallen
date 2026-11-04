@@ -7,6 +7,7 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
   test "guest pages" do
     assert_query_budget(2) { get root_path }
     assert_query_budget(1) { get dev_path }
+    assert_query_budget(0) { get workshop_rsvp_path }
     # The same panels as /admin/stats, uncached here (the test cache is a null store).
     assert_query_budget(14) { load_deferred(stats_path, "Stats/Show", "active", "daily", "funnel", "sources", "writing") }
   end
@@ -127,6 +128,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(5) { get admin_grants_path }
     assert_query_budget(8) { load_deferred(admin_grants_path, "Admin/Grants/Index", "payouts", "pagy", "totals") }
     assert_query_budget(3) { get admin_streaks_path }
+    assert_query_budget(3) { get admin_workshop_rsvps_path }
+    assert_query_budget(5) { load_deferred(admin_workshop_rsvps_path, "Admin/WorkshopRsvps/Index", "rsvps", "pagy", "counts") }
     assert_query_budget(9) { load_deferred(admin_streaks_path, "Admin/Streaks/Index", "rows", "pagy", "weeks", "counts") }
     assert_query_budget(8) { load_deferred(admin_streaks_path(tab: "log"), "Admin/Streaks/Index", "rows", "pagy") }
 

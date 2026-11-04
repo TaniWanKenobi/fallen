@@ -47,14 +47,19 @@ class PrivacyRequest
 
   def delete_everything
     users = matching_users.lock.to_a
-    return { found: false, deleted: {}, retained: [] } if users.empty?
+    @versions = 0
+    rsvps = forget(WorkshopRsvp.where(email: subject_emails | users.map { it.email.downcase }))
+    if users.empty?
+      return { found: rsvps.positive?, deleted: { "workshop_rsvps" => rsvps, "versions" => @versions }.select { |_, count| count.positive? }, retained: [] }
+    end
 
     ids = users.map(&:id)
     banned, removable = users.partition(&:is_banned?)
     deleted = {}
     retained = []
 
-    @versions = PaperTrail::Version.where(item_type: "User", item_id: ids).delete_all
+    @versions += PaperTrail::Version.where(item_type: "User", item_id: ids).delete_all
+    deleted["workshop_rsvps"] = rsvps
     handed = hand_over_team_projects(ids)
     project_ids = Project.where(user_id: ids).pluck(:id)
     journal_ids = Journal.where(user_id: ids).or(Journal.where(project_id: project_ids)).pluck(:id)
@@ -184,9 +189,10 @@ class PrivacyRequest
     end
   end
 
+  def subject_emails = Array(@subject["emails"]).grep(String).map(&:downcase)
+
   def matching_users
-    emails = Array(@subject["emails"]).grep(String).map(&:downcase)
-    scope = User.where("lower(email) IN (?)", emails)
+    scope = User.where("lower(email) IN (?)", subject_emails)
     scope = scope.or(User.where(slack_id: @subject["slack_id"])) if @subject["slack_id"].is_a?(String) && @subject["slack_id"].present?
     scope = scope.or(User.where(hca_id: @subject["identity_id"])) if @subject["identity_id"].is_a?(String) && @subject["identity_id"].present?
     scope

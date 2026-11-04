@@ -114,6 +114,20 @@ class PrivacyControllerTest < ActionDispatch::IntegrationTest
     assert_equal({}, response.parsed_body["deleted"])
   end
 
+  test "deletes workshop sign-ups by email, with or without an account" do
+    travel_to Time.zone.parse("2026-11-04 12:00 EST")
+    WorkshopRsvp.sign_up(email: "guest@example.com", slot: "nov7")
+    WorkshopRsvp.sign_up(email: users(:member).email, slot: "nov11")
+
+    call_hub :delete, dry_run: false, subject: { emails: [ "Guest@example.com" ], slack_id: nil, identity_id: nil }
+    assert response.parsed_body["found"]
+    assert_equal 1, response.parsed_body["deleted"]["workshop_rsvps"]
+
+    call_hub :delete, dry_run: false, subject: { emails: [], slack_id: users(:member).slack_id, identity_id: nil }
+    assert_equal 1, response.parsed_body["deleted"]["workshop_rsvps"]
+    assert_equal 0, WorkshopRsvp.count
+  end
+
   test "detaches staff history about other accounts instead of deleting it" do
     admin = users(:admin)
     PaperTrail.request(whodunnit: admin.id.to_s) { users(:member).update!(display_name: "Edited by admin") }

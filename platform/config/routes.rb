@@ -21,6 +21,9 @@ Rails.application.routes.draw do
   get "transfers" => "transfers#show", as: :transfers
   get "settings" => "settings#show", as: :settings
   get "sorry" => "bans#show", as: :sorry
+  # The workshop sign-up (WorkshopRsvp), linked only from the invite email.
+  get "workshops/rsvp" => "workshop_rsvps#new", as: :workshop_rsvp
+  post "workshops/rsvp" => "workshop_rsvps#create"
 
   # Hack Club Auth (OAuth)
   get "auth/hca/start" => "auth#new", as: :sign_in
@@ -170,6 +173,9 @@ Rails.application.routes.draw do
       end
       resources :projects, only: %i[index show update]
       resources :streaks, only: :index
+      resources :workshop_rsvps, only: :index, path: "workshop-rsvps" do
+        get :export, on: :collection # A CSV of the emails, for sending the link on the day
+      end
       # Design funding sent through HCB (GrantPayout), and connecting HCB.
       resources :grants, only: :index do
         member do
