@@ -22,22 +22,23 @@ module AirtableUsers
   # to know whether one is set (disconnecting clears it to nil, as ProgramStats assumes).
   def users = User.select(*(User.column_names - TOKENS), "slack_user_token IS NOT NULL AS slack_token_set")
 
+  # Two grouped queries per batch, one per table, with every aggregate in each: one statement apiece per aggregate
+  # repeated the same journals scan four times and Sentry flagged it as an N+1.
   def rows(users)
     ids = users.map(&:id)
     journals = Journal.kept.where(user_id: ids).group(:user_id)
-    stats = {
-      journals: journals.count,
-      minutes: journals.sum(:duration_minutes),
-      first_journal: journals.minimum(:created_at),
-      last_journal: journals.maximum(:created_at),
-      projects: Project.kept.where(user_id: ids).group(:user_id).count,
-      approved: Project.kept.approved.where(user_id: ids).group(:user_id).count
-    }
-    users.map { |user| row(user, stats) }
+      .pluck(:user_id, Arel.sql("COUNT(*)"), Arel.sql("SUM(duration_minutes)"), Arel.sql("MIN(created_at)"), Arel.sql("MAX(created_at)"))
+      .to_h { |id, *values| [ id, values ] }
+    projects = Project.kept.where(user_id: ids).group(:user_id)
+      .pluck(:user_id, Arel.sql("COUNT(*)"), Arel.sql("COUNT(*) FILTER (WHERE approved_at IS NOT NULL)"))
+      .to_h { |id, *values| [ id, values ] }
+    users.map { |user| row(user, journals.fetch(user.id, []), projects.fetch(user.id, [])) }
   end
 
-  def row(user, stats)
-    approved = stats[:approved][user.id].to_i
+  def row(user, journals, projects)
+    journal_count, minutes, first_journal, last_journal = journals
+    project_count, approved = projects
+    approved = approved.to_i
     {
       "ID" => user.public_id,
       "Name" => user.display_name,
@@ -57,12 +58,12 @@ module AirtableUsers
       "XP Multiplier" => user.xp_multiplier.to_f,
       "Streak Freezes" => user.streak_freezes,
       "Stage" => user.hatched? ? Evolution.stage(user.xp) { approved.positive? } : 0,
-      "Projects" => stats[:projects][user.id].to_i,
+      "Projects" => project_count.to_i,
       "Approved Projects" => approved,
-      "Journals" => stats[:journals][user.id].to_i,
-      "Hours" => (stats[:minutes][user.id].to_i / 60.0).round(2),
-      "First Journal At" => stats[:first_journal][user.id]&.iso8601,
-      "Last Journal At" => stats[:last_journal][user.id]&.iso8601,
+      "Journals" => journal_count.to_i,
+      "Hours" => (minutes.to_i / 60.0).round(2),
+      "First Journal At" => first_journal&.iso8601,
+      "Last Journal At" => last_journal&.iso8601,
       "Last Seen At" => user.last_seen_at&.iso8601,
       "Signed Up At" => user.created_at.iso8601,
       "UTM Source" => user.signup_source["utm_source"],

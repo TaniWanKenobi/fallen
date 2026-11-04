@@ -20,6 +20,17 @@ class AirtableUsersTest < ActiveSupport::TestCase
     assert_not loaded.has_attribute?(:hca_token)
   end
 
+  test "a batch takes one journals query and one projects query, however many users" do
+    everyone = AirtableUsers.users.to_a
+    rows = assert_queries_count(2) { AirtableUsers.rows(everyone) }.index_by { it["ID"] }
+    member = users(:member)
+    journals = member.journals.kept
+
+    assert_equal journals.minimum(:created_at).iso8601, rows[member.public_id]["First Journal At"]
+    assert_equal journals.maximum(:created_at).iso8601, rows[member.public_id]["Last Journal At"]
+    assert_equal member.projects.kept.approved.count, rows[member.public_id]["Approved Projects"]
+  end
+
   test "Slack Connected is false once Slack is disconnected" do
     users(:member).disconnect_slack!
 
