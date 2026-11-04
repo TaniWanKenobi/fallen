@@ -343,8 +343,12 @@
   transition-duration: 150ms;
   transition-timing-function: var(--ease-out);
 }
+/* The squeeze replaces the vendored 1px push-down. Zero its variable rather than set `translate: none`, which the
+   production minifier drops next to a transform; with both, the button shrinks toward its bottom edge. */
+.admin .group\/button:active {
+  --tw-translate-y: 0px;
+}
 .admin .group\/button:not(.underline-offset-4, :disabled, [aria-disabled='true']):active {
-  translate: none;
   transform: scale(0.97);
 }
 .admin .group\/button:is(.size-6, .h-6):not(:disabled):active {
