@@ -27,6 +27,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     # authors taken from the team. One more for the latest design submission.
     assert_query_budget(12) { get project_path(projects(:station)) }
     assert_query_budget(4) { load_deferred(project_path(projects(:station)), "Projects/Show", "lapse") }
+    # Journal review on the project page: reviews, to-dos, held XP and whether the team can ask for one.
+    assert_query_budget(6) { load_deferred(project_path(projects(:station)), "Projects/Show", "journal_review") }
     assert_query_budget(2) { get new_project_path }
     # Plus the team's members, which the project's serializer carries.
     assert_query_budget(4) { get edit_project_path(projects(:station)) }
@@ -81,6 +83,26 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     # whatever their number, on top of a fresh sign-in's two.
     sign_in_as users(:member)
     assert_query_budget(19) { get project_path(projects(:station)) }
+  end
+
+  test "journal review pages" do
+    project = projects(:station)
+    project.journals.kept.update_all(duration_minutes: ProgressStatus::FIRST_AT_MINUTES)
+    ProgressStatus.refresh(project)
+    reviewer = users(:newcomer)
+    reviewer.update!(roles: %w[user reviewer])
+    sign_in_as reviewer
+
+    assert_query_budget(3) { get journal_review_root_path }
+    assert_query_budget(10) { load_deferred(journal_review_root_path, "Review/Progress/Index", "projects", "pagy", "counts") }
+    # Claims it, then everything the review needs, the same count whatever the number of journals.
+    assert_query_budget(20) { get journal_review_project_path(project) }
+    # The claim and the project, then three for every teammate's other projects and their reviews.
+    assert_query_budget(13) { load_deferred(journal_review_project_path(project), "Review/Progress/Show", "people") }
+    project.progress_status.update!(starred_at: Time.current, starred_by: reviewer)
+    assert_query_budget(8) { load_deferred(starred_projects_path, "Review/MarkedProjects/Index", "projects", "pagy") }
+    ProgressReview.decide(project.progress_status, reviewer:, verdict: "check_back", feedback: "More photos", todos: [ "Photos" ])
+    assert_query_budget(6) { load_deferred(journal_review_projects_path(tab: "decided"), "Review/Progress/Index", "reviews", "pagy") }
   end
 
   test "admin pages" do

@@ -94,6 +94,8 @@ class Submission < ApplicationRecord
   validates :note, length: { maximum: MAX_NOTE }
   validates :feedback, :internal_reason, length: { maximum: 5_000 }
   validate :screenshots_are_images, if: -> { attachment_changes.key?("screenshots") }
+  # Submitting ends journal review for a project that has had one, and withdrawing brings it back (ProgressStatus).
+  after_commit -> { ProgressRefreshJob.perform_later(project_id) }, if: -> { previous_changes.key?("id") || previous_changes.key?("status") }
 
   scope :pending, -> { where(status: "pending") }
   scope :decided, -> { where(status: DECIDED) }

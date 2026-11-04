@@ -11,6 +11,9 @@ import Trophy from '@lucide/svelte/icons/trophy'
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard'
 import Users from '@lucide/svelte/icons/users'
 import ClipboardCheck from '@lucide/svelte/icons/clipboard-check'
+import NotebookPen from '@lucide/svelte/icons/notebook-pen'
+import Star from '@lucide/svelte/icons/star'
+import ShieldAlert from '@lucide/svelte/icons/shield-alert'
 import Banknote from '@lucide/svelte/icons/banknote'
 import {
   adminFlags,
@@ -26,7 +29,10 @@ import {
   adminTeams,
   adminTransfers,
   adminUsers,
+  aiFlaggedProjects,
+  journalReviewRoot,
   reviewSubmissions,
+  starredProjects,
 } from '@/routes'
 import type { AdminStats } from '@/types'
 
@@ -37,9 +43,13 @@ export type AdminNavItem = {
   statKey?: keyof AdminStats
   // The count is a problem to look at, not a total, so it stands out (and hides at zero).
   alert?: boolean
-  // Design reviewers see it too; everything else is for admins only (the server refuses them either way).
-  reviewers?: boolean
+  // The role besides admin that can open it (design_reviewer, reviewer). Everything without one is for admins only
+  // (the server refuses everyone else either way).
+  role?: Role
 }
+
+type Role = 'design_reviewer' | 'reviewer'
+type PanelUser = { is_admin: boolean; roles: string[] } | null | undefined
 
 export type AdminNavSection = { title: string; items: AdminNavItem[] }
 
@@ -65,8 +75,11 @@ export const adminNav: AdminNavSection[] = [
         label: 'Design review',
         href: reviewSubmissions.reviewRoot().url,
         icon: ClipboardCheck,
-        reviewers: true,
+        role: 'design_reviewer',
       },
+      { label: 'Journal review', href: journalReviewRoot().url, icon: NotebookPen, role: 'reviewer' },
+      { label: 'Starred projects', href: starredProjects().url, icon: Star, role: 'reviewer' },
+      { label: 'AI flags', href: aiFlaggedProjects().url, icon: ShieldAlert, role: 'reviewer' },
       { label: 'Grants', href: adminGrants.index().url, icon: Banknote },
     ],
   },
@@ -87,17 +100,20 @@ export const adminNav: AdminNavSection[] = [
   },
 ]
 
-// The panel as someone sees it: admins get all of it, design reviewers only what they can open.
-export function navFor(user: { is_admin: boolean } | null | undefined): AdminNavSection[] {
+// The panel as someone sees it: admins get all of it, reviewers only the queues their roles open.
+export function navFor(user: PanelUser): AdminNavSection[] {
   if (user?.is_admin) return adminNav
   return adminNav
-    .map((section) => ({ ...section, items: section.items.filter((item) => item.reviewers) }))
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => item.role && user?.roles.includes(item.role)),
+    }))
     .filter((section) => section.items.length > 0)
 }
 
-// Where the panel's logo goes: the dashboard for admins, the review queue for everyone else.
-export const panelHome = (user: { is_admin: boolean } | null | undefined) =>
-  user?.is_admin ? adminRoot().url : reviewSubmissions.reviewRoot().url
+// Where the panel's logo goes: the dashboard for admins, the first queue they can open for everyone else.
+export const panelHome = (user: PanelUser) =>
+  user?.is_admin ? adminRoot().url : (navFor(user)[0]?.items[0]?.href ?? reviewSubmissions.reviewRoot().url)
 
 export function isActive(item: AdminNavItem, pathname: string): boolean {
   const root = adminRoot().url

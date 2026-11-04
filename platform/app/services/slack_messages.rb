@@ -71,6 +71,96 @@ module SlackMessages
     { text: "#{text}\n\n#{ps}", blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.context(ps) ], **pet_persona(pet) }
   end
 
+  # In the project's thread when a reviewer has read its journals (ProgressReviewedJob): the feedback and notes on
+  # journals, in the open so others in the channel learn from it too. What to fix and any XP held go only to the team's
+  # DMs (progress_reviewed_dm), so nobody is mentioned or singled out here.
+  def progress_reviewed(review)
+    lead = review.verdict == "approved" ? ":white_check_mark: Journal review: looking good, keep going!" : ":mag: Journal review: some ideas for the next journals."
+    text = [ lead, *progress_review_feedback(review) ].join("\n")
+    { text: text, blocks: [ SlackBot::Blocks.section(text),
+      SlackBot::Blocks.actions(SlackBot::Blocks.button("See it on Fallen", "open_fallen", url: project_url(review.project))) ] }
+  end
+
+  # DMed to each person on the team when a reviewer has read the project's journals (ProgressReviewedJob): the
+  # feedback, what's left to fix after a check back, and their own XP held, warned about or given back.
+  def progress_reviewed_dm(review, person)
+    project = escape(review.project.title)
+    lines =
+      if review.verdict == "approved"
+        [ ":sparkles: A reviewer read your journals for *#{project}*: looking good, keep going!" ]
+      else
+        [ ":hammer_and_wrench: A reviewer read your journals for *#{project}* and has a few things for you to work on in your next journals." ]
+      end
+    lines.concat(progress_review_feedback(review))
+    lines.concat(progress_review_todos(review))
+    if review.verdict == "check_back"
+      held = review.progress_xp_holds.where(user: person).sum(:amount)
+      if held.positive?
+        lines << "\nThis is the second check back in a row, so we're holding back #{held} of your XP until a reviewer sees them fixed. Fix them in your next journals and it comes back."
+      elsif review.warns_of_hold?
+        lines << "\nNo XP is held this time. If the next review still finds these, we'll hold back some of the XP from your new journals until they're fixed."
+      end
+    else
+      released = review.released_xp_holds.where(user: person).sum(:amount)
+      lines << "\n:unlock: The #{released} XP we held back is yours again!" if released.positive?
+    end
+    text = lines.join("\n")
+    { text: text, blocks: [ SlackBot::Blocks.section(text),
+      SlackBot::Blocks.actions(SlackBot::Blocks.button("See the review", "open_fallen", url: project_url(review.project), style: "primary")) ] }
+  end
+
+  # The reviewer's feedback and notes on particular journals, for the thread and the DMs.
+  def progress_review_feedback(review)
+    lines = []
+    lines << "\nFrom the reviewer:\n#{escape(review.feedback.truncate(2500)).gsub(/^/, '> ')}" if review.feedback.present?
+    lines.concat(progress_journal_notes(review))
+  end
+
+  # After a check back, everything still to fix: the new to-dos, ones it reopened and earlier ones not ticked off yet.
+  def progress_review_todos(review)
+    return [] unless review.verdict == "check_back"
+
+    todos = ReviewTodo.where(project: review.project).unresolved.where(done_at: nil).ordered.to_a
+    todos.any? ? [ "\nTo fix before the next review (tick them off on your project page):", *todos.map { "• #{escape(it.body)}" } ] : []
+  end
+
+  # In the reviewers' channel when the journal review queue is backing up (ProgressQueueNudgeJob).
+  def progress_queue_nudge(waiting:, late:, requested:, oldest:)
+    url = Rails.application.routes.url_helpers.journal_review_root_url(host: ENV.fetch("APP_URL", "http://localhost:3000"))
+    age = ActionController::Base.helpers.distance_of_time_in_words_to_now(oldest)
+    asked = requested.positive? ? " #{requested} of them asked for a review themselves." : ""
+    text = ":hourglass: #{waiting} #{'project'.pluralize(waiting)} waiting for journal review, #{late} for over " \
+           "#{ActionController::Base.helpers.distance_of_time_in_words(ProgressQueueNudgeJob::NUDGE_AFTER)} " \
+           "(the oldest for #{age}).#{asked} Feedback helps most while they're still building."
+    { text: text, blocks: [ SlackBot::Blocks.section(text),
+      SlackBot::Blocks.actions(SlackBot::Blocks.button("Start reviewing", "open_fallen", url:, style: "primary")) ] }
+  end
+
+  # In #fallen-ai-flags when a journal reviewer flags a project for AI (ReportProgressFlagJob).
+  def progress_flagged(status)
+    project = status.project
+    helpers = Rails.application.routes.url_helpers
+    url = helpers.journal_review_project_url(project, host: ENV.fetch("APP_URL", "http://localhost:3000"))
+    by = status.flagged_by ? " by #{escape(status.flagged_by.display_name)}" : ""
+    team = project.teammates.map(&:slack_mention).join(", ")
+    text = ":robot_face: *Journal review flag*#{by}: <#{url}|#{escape(project.title)}> (#{team})\n" \
+           "#{escape(status.flag_reason.to_s.truncate(1500)).gsub(/^/, '> ')}\nIt's out of the journal review queue until an admin clears it on its review page."
+    { text: text, blocks: [ SlackBot::Blocks.section(text),
+      SlackBot::Blocks.actions(SlackBot::Blocks.button("Open the review", "open_fallen", url:, style: "primary")) ] }
+  end
+
+  # The reviewer's notes on particular journals, each linked to its journal and dated in its author's time zone.
+  def progress_journal_notes(review)
+    return [] if review.journal_notes.blank?
+
+    journals = Journal.where_public_ids(review.journal_notes.keys).includes(:user, :project).index_by(&:public_id)
+    notes = review.journal_notes.filter_map do |id, note|
+      journal = journals[id] or next
+      "• <#{journal_url(journal)}|#{journal.created_at.in_time_zone(journal.user.timezone).strftime('%b %-d')}>: #{escape(note.truncate(800))}"
+    end
+    notes.any? ? [ "On particular journals:", *notes ] : []
+  end
+
   # DMed by ProjectTransferDecidedJob. `new_project` is whether approving made a project rather than adding to one.
   def project_transfer_decided(transfer, new_project: false)
     name = escape(transfer.snapshot&.dig("title").presence || transfer.project_name || "your project")

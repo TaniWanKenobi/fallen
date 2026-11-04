@@ -29,6 +29,12 @@ production:
     queue: background
     schedule: every 5 minutes
 
+  # Nudges reviewers when journal review falls behind (ProgressQueueNudgeJob).
+  nudge_journal_reviewers:
+    class: ProgressQueueNudgeJob
+    queue: slack
+    schedule: every day at 10am
+
   # HCB's access token, which design funding is sent with (HcbConnection), renewed before it expires.
   refresh_hcb_token:
     class: HcbTokenRefreshJob

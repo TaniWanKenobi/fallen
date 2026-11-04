@@ -42,7 +42,7 @@ class XpEntry < ApplicationRecord
   has_paper_trail
 
   PER_HOUR = 8
-  KINDS = %w[journal early_bird weekly_bonus team_win stupendous transfer grant email_signup].freeze
+  KINDS = %w[journal early_bird weekly_bonus team_win stupendous transfer grant email_signup review_hold review_release].freeze
   # Once per person, for the first journal that says "stupendous", spelled right, in any case.
   STUPENDOUS_BONUS = 20
   STUPENDOUS = /stupendous/i
@@ -51,8 +51,9 @@ class XpEntry < ApplicationRecord
   EMAIL_SIGNUP_BONUS = 20
   EMAIL_SIGNUP_SOURCE = "bigemailthing"
   EMAIL_SIGNUP_UNTIL = Time.utc(2026, 11, 2, 12)
-  # Kinds that aren't the team's doing, so they never count in the race.
-  UNRACED = %w[team_win grant email_signup].freeze
+  # Kinds that aren't the team's doing, so they never count in the race. XP a journal review holds back
+  # (ProgressXpHold) comes back later as a release, so neither side of it moves the race.
+  UNRACED = %w[team_win grant email_signup review_hold review_release].freeze
 
   belongs_to :user
   belongs_to :source, polymorphic: true, optional: true

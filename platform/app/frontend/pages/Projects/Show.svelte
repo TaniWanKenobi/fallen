@@ -18,6 +18,7 @@
   import Skeleton from '@/components/Skeleton.svelte'
   import InviteModal from '@/components/team/InviteModal.svelte'
   import DesignStatus from '@/components/submission/DesignStatus.svelte'
+  import JournalReviews, { type JournalReviewProps } from '@/components/JournalReviews.svelte'
   import SubmitDesignModal from '@/components/submission/SubmitDesignModal.svelte'
   import ProjectTeam from '@/components/team/ProjectTeam.svelte'
   import { projects, project as projectRoute } from '@/routes'
@@ -42,6 +43,7 @@
     lapse,
     writing_check,
     submission,
+    journal_review,
     can,
   }: {
     project: Project
@@ -61,6 +63,9 @@
     writing_check?: WritingCheckMode | null
     // The latest design submission, if there is one.
     submission?: Submission | null
+    // What journal reviewers said, newest first.
+    // Deferred: what journal reviewers said, what's left to fix, XP held back, and asking for a review.
+    journal_review?: JournalReviewProps
     can?: {
       submit: boolean
       withdraw: boolean
@@ -72,6 +77,18 @@
       remove_teammate: boolean
     }
   } = $props()
+
+  // Notes journal reviewers left on particular journals, by journal id, newest review first.
+  const reviewNotes = $derived(
+    (journal_review?.reviews ?? []).reduce<Record<string, { note: string; at: string }[]>>(
+      (byJournal, review) => {
+        for (const [id, note] of Object.entries(review.journal_notes))
+          (byJournal[id] ??= []).push({ note, at: review.created_at })
+        return byJournal
+      },
+      {},
+    ),
+  )
 
   let composer: { open: boolean; journal: Journal | null } = $state({ open: false, journal: null })
   let editing = $state(false)
@@ -200,6 +217,8 @@
             onSubmit={() => (submitting = true)}
           />
 
+          {#if journal_review}<JournalReviews projectId={project.id} {...journal_review} />{/if}
+
           {#if can.journal}
             <button
               type="button"
@@ -248,6 +267,7 @@
                     editable={journal.author.id === me}
                     onEdit={write}
                     onMove={(journal) => (moving = journal)}
+                    reviewNotes={reviewNotes[journal.id]}
                   />
                 </li>
               {/each}

@@ -49,6 +49,11 @@ class Project < ApplicationRecord
   has_many :submissions, dependent: :destroy
   has_many :repo_snapshots, dependent: :delete_all
   has_many :reviewer_notes, dependent: :delete_all
+  # Journal review (ProgressReview): where it stands, what's left to fix and every decision made on it. To-dos go
+  # before the reviews they point at; a review with XP held on it refuses to go (the ledger keeps it).
+  has_one :progress_status, dependent: :delete
+  has_many :review_todos, dependent: :delete_all
+  has_many :progress_reviews, dependent: :destroy
   has_one_attached :banner
 
   BANNER_TYPES = Journal::IMAGE_TYPES
@@ -163,6 +168,8 @@ class Project < ApplicationRecord
     transaction do
       journals.kept.includes(images_attachments: :blob).find_each(&:discard)
       XpEntry.kept.where(source: self).find_each(&:discard)
+      # XP a journal review was holding comes back: the journals' own XP is going with them.
+      ProgressXpHold.release_all(self)
       super
     end
   end

@@ -113,6 +113,8 @@ class User < ApplicationRecord
   after_save :revoke_admin_tokens, if: :lost_admin_access?
   after_create -> { XpEntry.grant_email_signup(self) }
   # The email signup bonus's DM waits for Slack when someone got the bonus before linking it.
+  # A banned or deleted owner's projects leave the journal review queue, and come back if that's undone.
+  after_commit :refresh_journal_reviews, on: :update, if: -> { saved_change_to_is_banned? || saved_change_to_discarded_at? }
   after_commit :send_email_signup_dm, on: :update, if: -> { saved_change_to_slack_id? && slack_id_before_last_save.blank? && slack_id.present? }
 
   scope :admins, -> { where("roles @> ARRAY[?]::varchar[]", "admin") }
@@ -129,6 +131,8 @@ class User < ApplicationRecord
   def staff? = admin? || reviewer? || design_reviewer?
   # Who works the design review queue (/review).
   def reviews_designs? = admin? || design_reviewer?
+  # Who works the journal review queue (ProgressReview).
+  def reviews_journals? = admin? || reviewer?
 
   # Feature flags (FeatureFlag) name people by public_id, so the admin page can show who a flag is on for.
   def flipper_id = public_id
@@ -375,6 +379,10 @@ class User < ApplicationRecord
   end
 
   def revoke_admin_tokens = admin_tokens.live.update_all(revoked_at: Time.current, updated_at: Time.current)
+
+  def refresh_journal_reviews
+    ActiveJob.perform_all_later(projects.kept.pluck(:id).map { ProgressRefreshJob.new(it) })
+  end
 
   def send_email_signup_dm
     entry = xp_entries.kept.find_by(kind: "email_signup")

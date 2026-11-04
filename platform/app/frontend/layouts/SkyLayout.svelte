@@ -11,7 +11,7 @@
   import NavRail from '@/components/NavRail.svelte'
   import NameTag from '@/components/NameTag.svelte'
   import Wordmark from '@/components/Wordmark.svelte'
-  import { adminRoot, home, reviewSubmissions, signIn } from '@/routes'
+  import { adminRoot, home, journalReviewRoot, reviewSubmissions, signIn } from '@/routes'
   import { shared } from '@/lib/shared.svelte'
   import { slackGateDue } from '@/lib/slackGate.svelte'
   import { pages, warmPages } from '@/lib/pages'
@@ -79,9 +79,14 @@
           <div class="absolute top-6 right-4 md:static md:flex md:justify-end md:pt-[51px] md:pr-[59px]">
             <Link href={adminRoot()} class="pill-cream">Admin</Link>
           </div>
-        {:else if user?.roles.includes('design_reviewer')}
+        {:else if user?.roles.includes('design_reviewer') || user?.roles.includes('reviewer')}
           <div class="absolute top-6 right-4 md:static md:flex md:justify-end md:pt-[51px] md:pr-[59px]">
-            <a href={reviewSubmissions.reviewRoot().url} class="pill-cream">Review</a>
+            <a
+              href={user.roles.includes('design_reviewer')
+                ? reviewSubmissions.reviewRoot().url
+                : journalReviewRoot().url}
+              class="pill-cream">Review</a
+            >
           </div>
         {/if}
 

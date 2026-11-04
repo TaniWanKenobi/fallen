@@ -80,6 +80,7 @@ class PrivacyRequest
     deleted["project_transfers"] = forget(ProjectTransfer.where(user_id: ids).or(ProjectTransfer.where(project_id: project_ids)).or(ProjectTransfer.where(email: emails)))
     ProjectTransfer.where(reviewer_id: ids).update_all(reviewer_id: nil)
     deleted.merge!(forget_submissions(ids, project_ids, journal_ids))
+    deleted.merge!(forget_progress_reviews(ids, project_ids))
     deleted["journals"] = forget(Journal.where(id: journal_ids))
     deleted["project_members"] = forget(ProjectMember.where(user_id: ids).or(ProjectMember.where(project_id: project_ids)))
     deleted["project_invites"] = forget(ProjectInvite.where(user_id: ids).or(ProjectInvite.where(inviter_id: ids)).or(ProjectInvite.where(project_id: project_ids)))
@@ -144,6 +145,26 @@ class PrivacyRequest
     ReviewerNote.where(user_id: ids).update_all(user_id: nil)
     GrantPayout.where(sent_by_id: ids).update_all(sent_by_id: nil)
     HcbConnection.where(connected_by_id: ids).delete_all
+    result
+  end
+
+  # Journal reviews of their projects, what they asked them to fix, XP held back, and where those projects stand in
+  # the queue. Reviews they wrote of other people's projects lose their name, as do the claims, AI flags, stars,
+  # review requests and ticked to-dos they left.
+  def forget_progress_reviews(ids, project_ids)
+    result = {
+      "review_todos" => forget(ReviewTodo.where(project_id: project_ids)),
+      "progress_xp_holds" => forget(ProgressXpHold.where(project_id: project_ids).or(ProgressXpHold.where(user_id: ids))),
+      "progress_reviews" => forget(ProgressReview.where(project_id: project_ids)),
+      "progress_statuses" => forget(ProgressStatus.where(project_id: project_ids))
+    }
+    ProgressReview.where(reviewer_id: ids).update_all(reviewer_id: nil)
+    ProgressStatus.where(claimed_by_id: ids).update_all(claimed_by_id: nil, claim_expires_at: nil)
+    ProgressStatus.where(flagged_by_id: ids).update_all(flagged_by_id: nil)
+    ProgressStatus.where(starred_by_id: ids).update_all(starred_by_id: nil)
+    ProgressStatus.where(requested_by_id: ids).update_all(requested_by_id: nil)
+    ProgressStatus.where(added_by_id: ids).update_all(added_by_id: nil)
+    ReviewTodo.where(done_by_id: ids).update_all(done_by_id: nil)
     result
   end
 

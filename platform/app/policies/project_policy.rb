@@ -13,6 +13,8 @@ class ProjectPolicy < ApplicationPolicy
   def destroy? = owner? && record.solo? && !record.journals.kept.where.not(user_id: record.user_id).exists?
   def invite? = teammate?
   def remove_teammate? = owner?
+  # Asking for a journal review (ProgressStatus.request), when there's nothing stopping it.
+  def request_review? = teammate? && record.kept? && ProgressStatus.request_blocker(record).nil?
   # The owner can leave once there is someone to hand the project to.
   def leave? = teammate? && !(owner? && record.solo?)
   def join? = user.present? && !teammate? && !record.team_full?

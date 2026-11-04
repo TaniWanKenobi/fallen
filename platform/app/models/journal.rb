@@ -119,6 +119,8 @@ class Journal < ApplicationRecord
   # A new journal starts the pet's timer from zero; deleting the newest one brings its time back.
   after_commit -> { TimerChannel.changed(user_id) }, if: -> { previous_changes.key?("id") || previous_changes.key?("discarded_at") }
   after_commit :analyze_images_later, if: -> { @attached_images.present? }
+  # Hours on a project are what bring it up for journal review (ProgressStatus).
+  after_commit :refresh_progress_later, if: -> { previous_changes.keys.intersect?(%w[duration_minutes discarded_at project_id]) }
 
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
   # Transferred journals can't be edited, and one given no share of a transfer's hours has none to add.
@@ -347,5 +349,9 @@ class Journal < ApplicationRecord
     return if project.nil? || project.on_team?(user)
 
     errors.add(:project, "must be one you're on the team of")
+  end
+
+  def refresh_progress_later
+    previous_changes.fetch("project_id", [ project_id ]).compact.uniq.each { ProgressRefreshJob.perform_later(it) }
   end
 end

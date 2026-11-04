@@ -5,6 +5,7 @@ class ProjectsController < ApplicationController
   include TeamProps
 
   JOURNALS_PER_PAGE = 20
+  JOURNAL_REVIEWS_SHOWN = 5
 
   before_action :set_project, only: %i[show edit update destroy]
 
@@ -44,6 +45,8 @@ class ProjectsController < ApplicationController
       lapse: InertiaRails.defer { lapse_props(timelapses: true) if @project.on_team?(current_user) },
       writing_check: WritingCheck.mode_for(current_user),
       submission: submission && SubmissionSerializer.render(submission),
+      # Journal review (ProgressReview): what reviewers said, what's left to fix, XP held back, and asking for one.
+      journal_review: InertiaRails.defer { journal_review_props(@project) },
       can: {
         submit: can_submit?(submission), withdraw: submission.present? && policy(submission).destroy?,
         update: policy.update?, destroy: policy.destroy?, journal: policy(@project.journals.build(user: current_user)).create?,
@@ -93,6 +96,23 @@ class ProjectsController < ApplicationController
   end
 
   private
+
+  def journal_review_props(project)
+    teammate = project.on_team?(current_user)
+    blocker = teammate ? ProgressStatus.request_blocker(project) : nil
+    todos = project.review_todos.unresolved.ordered.includes(:done_by).to_a
+    held = teammate ? ProgressXpHold.where(project:, user: current_user).held.sum(:amount) : 0
+    {
+      reviews: ProgressReviewSerializer.render(project.progress_reviews.reviews.newest_first.limit(JOURNAL_REVIEWS_SHOWN)),
+      todos: ReviewTodoSerializer.render(todos),
+      held_xp: held,
+      # Something to fix and nothing held yet: the next check back would hold XP, so the team is told.
+      xp_warning: teammate && todos.any? && held.zero? && !ProgressStatus.submitted?(project),
+      # Why the team can't ask for a review right now (nil if they can); not shown to anyone else.
+      request_blocker: blocker,
+      can_request: teammate && blocker.nil?
+    }
+  end
 
   # Whether the project can go for design review now: on the team, the flag on, and nothing waiting or decided for good.
   def can_submit?(latest)

@@ -75,6 +75,8 @@ class SubmissionReview
     end
     return false if errors.any?
 
+    # An approved design means the journals did their job: give back XP a journal review was holding (ProgressXpHold).
+    ProgressXpHold.release_all(submission.project) if submission.approved?
     SubmissionDecidedJob.perform_later(submission)
     GrantPayoutJob.perform_later(submission.grant_payout) if submission.grant_payout && GrantPayout.automatic?
     true

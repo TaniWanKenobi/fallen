@@ -73,6 +73,9 @@ Rails.application.routes.draw do
     resources :submissions, only: %i[create destroy], shallow: true
     resources :repo_snapshots, only: %i[create show], shallow: true
     resource :submission_check, only: :create
+    # Journal review from the team's side: asking for one, and ticking off what a check back asked them to fix.
+    resource :review_request, only: :create
+    resources :review_todos, only: :update, shallow: true
     resources :teammates, controller: :project_teammates, only: :destroy
   end
   get "join/:token" => "project_joins#show", as: :join
@@ -116,6 +119,32 @@ Rails.application.routes.draw do
         resources :notes, only: :create
         resources :repo_files, only: :create
       end
+    end
+  end
+
+  # Journal review (ProgressReview), open to reviewers and admins, the same way.
+  constraints Constraints::JournalReviewer.new do
+    scope "admin/journal-reviews", module: :review, as: :journal_review do
+      root "progress#index"
+      get "next" => "progress#next", as: :next
+      # Admins put a project in the queue by its link.
+      post "add" => "progress#add", as: :add
+      resources :projects, controller: :progress, only: %i[index show update] do
+        member do
+          post :heartbeat
+          post :release
+          post :take_over
+          post :flag
+          post :unflag
+          post :star
+          post :unstar
+        end
+      end
+    end
+    # Projects reviewers starred as standouts, and ones flagged as written by AI (ProgressStatus), each on its own page.
+    scope "admin", module: :review do
+      get "starred" => "marked_projects#index", defaults: { kind: "starred" }, as: :starred_projects
+      get "ai-flags" => "marked_projects#index", defaults: { kind: "flagged" }, as: :ai_flagged_projects
     end
   end
 

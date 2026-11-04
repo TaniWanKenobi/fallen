@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -374,6 +374,75 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
     t.datetime "used_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
+  create_table "progress_reviews", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "reviewer_id"
+    t.string "verdict", null: false
+    t.string "due_reason"
+    t.jsonb "checks", default: {}, null: false
+    t.text "feedback"
+    t.integer "logged_minutes", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "journal_notes", default: {}, null: false
+    t.datetime "due_since"
+    t.index ["created_at"], name: "index_progress_reviews_on_created_at"
+    t.index ["project_id", "verdict"], name: "index_progress_reviews_on_project_id_and_verdict"
+    t.index ["project_id"], name: "index_progress_reviews_on_project_id"
+    t.index ["reviewer_id"], name: "index_progress_reviews_on_reviewer_id"
+  end
+
+  create_table "progress_statuses", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.datetime "due_since"
+    t.string "due_reason"
+    t.integer "logged_minutes", default: 0, null: false
+    t.integer "next_at_minutes", null: false
+    t.datetime "waiting_since"
+    t.integer "approvals_count", default: 0, null: false
+    t.integer "reviews_count", default: 0, null: false
+    t.datetime "last_reviewed_at"
+    t.bigint "claimed_by_id"
+    t.datetime "claim_expires_at"
+    t.datetime "flagged_at"
+    t.text "flag_reason"
+    t.bigint "flagged_by_id"
+    t.datetime "starred_at"
+    t.bigint "starred_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "requested_by_id"
+    t.datetime "added_at"
+    t.bigint "added_by_id"
+    t.datetime "requested_at"
+    t.text "request_note"
+    t.index ["added_by_id"], name: "index_progress_statuses_on_added_by_id"
+    t.index ["claimed_by_id"], name: "index_progress_statuses_on_claimed_by_id"
+    t.index ["due_reason", "due_since"], name: "index_progress_statuses_queued_by_reason", where: "((due_since IS NOT NULL) AND (flagged_at IS NULL))"
+    t.index ["due_since"], name: "index_progress_statuses_queued", where: "((due_since IS NOT NULL) AND (flagged_at IS NULL))"
+    t.index ["flagged_at"], name: "index_progress_statuses_on_flagged_at", where: "(flagged_at IS NOT NULL)"
+    t.index ["flagged_by_id"], name: "index_progress_statuses_on_flagged_by_id"
+    t.index ["project_id"], name: "index_progress_statuses_on_project_id", unique: true
+    t.index ["requested_by_id"], name: "index_progress_statuses_on_requested_by_id"
+    t.index ["starred_at"], name: "index_progress_statuses_on_starred_at", where: "(starred_at IS NOT NULL)"
+    t.index ["starred_by_id"], name: "index_progress_statuses_on_starred_by_id"
+  end
+
+  create_table "progress_xp_holds", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "progress_review_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "amount", null: false
+    t.datetime "released_at"
+    t.bigint "released_by_review_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["progress_review_id"], name: "index_progress_xp_holds_on_progress_review_id"
+    t.index ["project_id"], name: "index_progress_xp_holds_on_project_id"
+    t.index ["released_by_review_id"], name: "index_progress_xp_holds_on_released_by_review_id"
+    t.index ["user_id"], name: "index_progress_xp_holds_on_user_id"
+  end
+
   create_table "project_invites", force: :cascade do |t|
     t.bigint "project_id", null: false
     t.bigint "user_id", null: false
@@ -485,6 +554,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
     t.datetime "updated_at", null: false
     t.index ["project_id"], name: "index_repo_snapshots_on_project_id"
     t.index ["user_id"], name: "index_repo_snapshots_on_user_id"
+  end
+
+  create_table "review_todos", force: :cascade do |t|
+    t.bigint "project_id", null: false
+    t.bigint "progress_review_id", null: false
+    t.text "body", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "done_at"
+    t.bigint "done_by_id"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["done_by_id"], name: "index_review_todos_on_done_by_id"
+    t.index ["progress_review_id"], name: "index_review_todos_on_progress_review_id"
+    t.index ["project_id"], name: "index_review_todos_on_project_id"
+    t.index ["project_id"], name: "index_review_todos_unresolved", where: "(resolved_at IS NULL)"
   end
 
   create_table "reviewer_notes", force: :cascade do |t|
@@ -907,6 +992,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
   add_foreign_key "mcp_sql_changes", "admin_tokens"
   add_foreign_key "mcp_sql_changes", "users"
   add_foreign_key "mcp_sql_changes", "users", column: "reviewer_id"
+  add_foreign_key "progress_reviews", "projects"
+  add_foreign_key "progress_reviews", "users", column: "reviewer_id"
+  add_foreign_key "progress_statuses", "projects"
+  add_foreign_key "progress_statuses", "users", column: "added_by_id"
+  add_foreign_key "progress_statuses", "users", column: "claimed_by_id"
+  add_foreign_key "progress_statuses", "users", column: "flagged_by_id"
+  add_foreign_key "progress_statuses", "users", column: "requested_by_id"
+  add_foreign_key "progress_statuses", "users", column: "starred_by_id"
+  add_foreign_key "progress_xp_holds", "progress_reviews"
+  add_foreign_key "progress_xp_holds", "progress_reviews", column: "released_by_review_id"
+  add_foreign_key "progress_xp_holds", "projects"
+  add_foreign_key "progress_xp_holds", "users"
   add_foreign_key "project_invites", "projects"
   add_foreign_key "project_invites", "users"
   add_foreign_key "project_invites", "users", column: "inviter_id"
@@ -919,6 +1016,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_210200) do
   add_foreign_key "repo_files", "repo_snapshots", on_delete: :cascade
   add_foreign_key "repo_snapshots", "projects"
   add_foreign_key "repo_snapshots", "users"
+  add_foreign_key "review_todos", "progress_reviews"
+  add_foreign_key "review_todos", "projects"
+  add_foreign_key "review_todos", "users", column: "done_by_id"
   add_foreign_key "reviewer_notes", "projects"
   add_foreign_key "reviewer_notes", "submissions"
   add_foreign_key "reviewer_notes", "users"
