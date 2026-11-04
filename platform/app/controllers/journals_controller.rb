@@ -6,6 +6,8 @@ class JournalsController < ApplicationController
   rate_limit to: 10, within: 10.minutes, only: :move, by: -> { current_user.id }, with: -> { redirect_back_or_to projects_path, alert: "Too many moves, try again in a few minutes." }
   before_action :set_project, only: :create
   before_action :set_journal, only: %i[update destroy move]
+  # Saving a journal sets off its Slack mirror, a journal review refresh and maybe a bonus DM.
+  around_action :batch_jobs, only: %i[create update destroy move]
 
   def create
     journal = @project.journals.build(journal_params.merge(user: current_user, source: "web"))
@@ -54,6 +56,8 @@ class JournalsController < ApplicationController
   end
 
   private
+
+  def batch_jobs(&) = ApplicationJob.batch(&)
 
   def set_project
     @project = Project.kept.find_by_public_id!(params[:project_id])

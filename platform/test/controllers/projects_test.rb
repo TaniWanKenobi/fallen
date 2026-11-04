@@ -113,9 +113,14 @@ class ProjectsTest < ActionDispatch::IntegrationTest
   end
 
   test "writing a journal syncs to slack and earns xp" do
-    assert_enqueued_with(job: SyncJournalToSlackJob) do
-      post project_journals_path(projects(:station)), params: { journal: { body: journal_text("Wired the display"), duration: "1h", images: [ photo.signed_id ] } }
+    enqueues = []
+    subscriber = ->(name, *) { enqueues << name }
+    ActiveSupport::Notifications.subscribed(subscriber, /\Aenqueue(_all)?\.active_job\z/) do
+      assert_enqueued_with(job: SyncJournalToSlackJob) do
+        post project_journals_path(projects(:station)), params: { journal: { body: journal_text("Wired the display"), duration: "1h", images: [ photo.signed_id ] } }
+      end
     end
+    assert_equal [ "enqueue_all.active_job" ], enqueues.uniq, "its jobs go onto the queue in one insert"
     journal = Journal.last
     assert_redirected_to project_path(projects(:station))
     assert_equal "web", journal.source
