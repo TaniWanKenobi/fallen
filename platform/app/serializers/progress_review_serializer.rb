@@ -12,6 +12,7 @@
 #  feedback       :text
 #  journal_notes  :jsonb            not null
 #  logged_minutes :integer          not null
+#  slack_ts       :string
 #  verdict        :string           not null
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null

@@ -185,7 +185,7 @@ class ProgressStatusTest < ActiveSupport::TestCase
     assert_match "already waiting", ProgressStatus.request_blocker(other)
 
     status = other.reload.progress_status
-    ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved")
+    ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved", feedback: "Clear enough!")
     refute status.reload.due?
     assert_match "ask again", ProgressStatus.request_blocker(other)
     travel(ProgressStatus::REQUEST_COOLDOWN + 1.minute) { assert_nil ProgressStatus.request_blocker(other) }
@@ -229,17 +229,19 @@ class ProgressStatusTest < ActiveSupport::TestCase
     assert status.due?
   end
 
-  test "check back needs feedback; not on your own team" do
+  test "a review the team is sent needs feedback; not on your own team" do
     log(FIRST)
     status = @project.reload.progress_status
     review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "check_back")
     assert review.errors[:feedback].any?
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved")
+    assert review.errors[:feedback].any?, "an approval is sent too"
     review = ProgressReview.decide(status, reviewer: @project.user, verdict: "check_back", feedback: "Hi")
     refute review.persisted?
     review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "dismissed")
     refute review.persisted?, "dismiss is only for a check back"
     assert status.reload.due?
-    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved")
+    review = ProgressReview.decide(status, reviewer: @reviewer, verdict: "approved", feedback: "Nice")
     assert review.persisted?, review.errors.full_messages.to_sentence
   end
 

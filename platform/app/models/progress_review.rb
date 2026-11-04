@@ -6,6 +6,7 @@
 # only decides when the project comes back (ProgressStatus): a check back, which takes feedback, brings it back with
 # their next journal of CHECK_BACK_MIN_MINUTES or more. The feedback is Markdown, shown on the site and turned into
 # Slack's own formatting for Slack (SlackMessages.mrkdwn). Notes on particular journals are for reviewers only.
+# The reviewer who wrote it, or an admin, can edit the feedback afterwards (Review::ProgressReviewsController).
 # `checks`, the to-dos (ReviewTodo) and XP holds (ProgressXpHold) are what older reviews did; new ones make none.
 # "Dismissed" isn't a review: it puts a check back off until one more journal comes in, with nothing sent.
 # ProgressStatus works out when the project comes back.
@@ -20,6 +21,7 @@
 #  feedback       :text
 #  journal_notes  :jsonb            not null
 #  logged_minutes :integer          not null
+#  slack_ts       :string
 #  verdict        :string           not null
 #  created_at     :datetime         not null
 #  updated_at     :datetime         not null
@@ -56,13 +58,15 @@ class ProgressReview < ApplicationRecord
 
   validates :verdict, inclusion: { in: VERDICTS }
   validates :feedback, length: { maximum: MAX_FEEDBACK }
-  validates :feedback, presence: { message: "is needed so they know what to change" }, if: -> { verdict == "check_back" }
+  validates :feedback, presence: { message: "is needed: it's what the team is sent" }, if: :sent?
   validate :journal_notes_fit
 
   scope :reviews, -> { where.not(verdict: "dismissed") }
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
 
   after_create_commit -> { ProgressReviewedJob.perform_later(self) }, if: :sent?
+  # An edit rewrites the reply in the thread, with nothing to say it changed.
+  after_update_commit -> { ProgressReviewEditedJob.perform_later(self) }, if: -> { slack_ts && saved_change_to_feedback? }
 
   # Makes the decision on `status`'s project for `reviewer`, or returns an unsaved review whose errors say why not.
   # `journal_notes` maps a journal's public id to a note on it; blank ones are dropped.
@@ -85,6 +89,9 @@ class ProgressReview < ApplicationRecord
 
   # Approvals and check backs send the team the feedback; a dismissal is the reviewers' own business.
   def sent? = verdict != "dismissed"
+
+  # The review's reply in its project's thread, once it's posted (ProgressReviewedJob).
+  def slack_url = slack_ts && project.slack_linked? ? SlackMessaging.permalink(project.slack_channel_id, slack_ts, thread_ts: project.slack_thread_ts) : nil
 
   private
 

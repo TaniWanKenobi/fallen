@@ -32,13 +32,12 @@ class SlackMessagesTest < ActiveSupport::TestCase
     assert_includes text, "<https://fallen.hackclub.com|ok>"
   end
 
-  test "journal review feedback is Markdown, quoted in Slack's own formatting and still can't ping" do
+  test "journal review feedback is Markdown, in Slack's own formatting, and still can't ping" do
     review = ProgressReview.new(project: projects(:station), verdict: "approved",
       feedback: "**Great** wiring, *keep* it up\n- [How to journal](https://example.com/docs)\n- <!channel> @here")
 
     text = SlackMessages.progress_reviewed(review)[:text]
-    assert_match "> *Great* wiring, _keep_ it up", text
-    assert_match "> • <https://example.com/docs|How to journal>", text
+    assert text.start_with?("Journal review:\n*Great* wiring, _keep_ it up\n• <https://example.com/docs|How to journal>"), text
     assert_no_match MENTION, text
   end
 

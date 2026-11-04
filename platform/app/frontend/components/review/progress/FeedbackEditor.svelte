@@ -14,7 +14,8 @@
     labelledby,
     value = $bindable(''),
     placeholder = '',
-  }: { labelledby?: string; value: string; placeholder?: string } = $props()
+    onSubmit,
+  }: { labelledby?: string; value: string; placeholder?: string; onSubmit?: () => void } = $props()
 
   let mount: HTMLDivElement | undefined = $state()
   let editor: Editor | undefined = $state.raw()
@@ -36,6 +37,7 @@
         onChange: (markdown) => (value = written = markdown.trimEnd()),
         onRedraw: () => queueMicrotask(() => redraws++),
         onLink: openLink,
+        onSubmit: onSubmit && (() => onSubmit()),
       })
       if (labelledby) editor.view.dom.setAttribute('aria-labelledby', labelledby)
     })

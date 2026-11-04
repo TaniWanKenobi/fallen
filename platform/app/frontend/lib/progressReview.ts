@@ -36,6 +36,8 @@ export interface ProgressPage {
   }
   journals: ReviewJournal[]
   history: ProgressReviewRow[]
+  // The reviews in `history` whose feedback the reviewer can edit (their own, or any for an admin).
+  editable_reviews: string[]
   notes: ReviewerNote[]
   max_journal_note: number
   // How long a journal has to be to bring a check back back (ProgressStatus::CHECK_BACK_MIN_MINUTES).

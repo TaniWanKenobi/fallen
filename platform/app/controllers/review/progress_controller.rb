@@ -60,7 +60,7 @@ class Review::ProgressController < Review::ApplicationController
     policy = policy([ :review, status ])
     can = { decide: policy.decide? && claimed, take_over: policy.decide? && !claimed, flag: policy.flag?, unflag: policy.unflag?,
             star: policy.star?, dismiss: policy.decide? && claimed && status.due_reason == "check_back", own: status.project.on_team?(true_user) }
-    render inertia: "Review/Progress/Show", props: ProgressPageProps.new(status, claimed:, can:).props.merge(
+    render inertia: "Review/Progress/Show", props: ProgressPageProps.new(status, claimed:, can:, editor: true_user).props.merge(
       skip: skipped.join(","))
   end
 

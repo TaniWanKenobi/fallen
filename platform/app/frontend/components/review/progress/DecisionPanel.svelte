@@ -14,7 +14,7 @@
   import { formatDate, formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
   import type { ProgressPage, ProgressVerdict } from '@/lib/progressReview'
   import { RAISED } from '@/lib/review.svelte'
-  import { takeOverJournalReviewProject } from '@/routes'
+  import { journalReviewReview, takeOverJournalReviewProject } from '@/routes'
 
   // The right-hand column of the journal review page: where the project stands, the feedback for
   // the team and the decision, then the reviews before this one and the reviewers' notes.
@@ -42,16 +42,49 @@
 
   const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
   const s = $derived(page.status)
-  const checkBackBlocker = $derived(!feedback.trim() ? 'Write feedback so they know what to work on' : null)
+  // Feedback is what the team is sent, so nothing goes out without it.
+  const blocker = $derived(!feedback.trim() ? 'Write feedback so they know what to work on' : null)
   const holder = $derived(
     s.claimed_by && s.claim_expires_at && new Date(s.claim_expires_at) > new Date() ? s.claimed_by : null,
   )
 
   const verdict = $derived<ProgressVerdict>(needsFix ? 'check_back' : 'approved')
-  const blocker = $derived(needsFix ? checkBackBlocker : null)
 
   // Why a check back can't go out yet; an approval always can.
-  export const blockerFor = (v: ProgressVerdict) => (v === 'check_back' ? checkBackBlocker : null)
+  export const blockerFor = (v: ProgressVerdict) => (v === 'dismissed' ? null : blocker)
+
+  // Editing the feedback on a review already sent: one at a time, in place.
+  let editing = $state<string | null>(null)
+  let editText = $state('')
+  let saving = $state(false)
+  let editError = $state<string | null>(null)
+
+  function startEdit(id: string, text: string) {
+    editing = id
+    editText = text
+    editError = null
+  }
+
+  function saveEdit() {
+    if (!editing || saving) return
+    if (!editText.trim()) return (editError = 'Feedback can’t be empty')
+    saving = true
+    router.patch(
+      journalReviewReview(editing).url,
+      { feedback: editText },
+      {
+        preserveScroll: true,
+        only: ['history', 'errors'],
+        onSuccess: (result) => {
+          const message = Object.values(result.props.errors ?? {})[0]
+          if (message) editError = String(message)
+          else editing = null
+        },
+        onError: (problems) => (editError = Object.values(problems)[0] ?? 'Couldn’t save that'),
+        onFinish: () => (saving = false),
+      },
+    )
+  }
 
   let feedbackEditor: FeedbackEditor | undefined = $state()
   export const focusFeedback = () => feedbackEditor?.focus()
@@ -244,13 +277,38 @@
             <span>at {formatMinutes(review.logged_minutes)}</span>
             {#if review.reviewer}<PersonChip person={review.reviewer} />{/if}
           </div>
-          {#if review.feedback}
-            <Markdown
-              source={review.feedback}
-              photos={[]}
-              admin
-              class="border-l-2 border-border pl-2 text-[13px] text-muted-foreground [&>:first-child]:mt-0 [&>:last-child]:mb-0"
-            />
+          {#if editing === review.id}
+            <FeedbackEditor bind:value={editText} onSubmit={saveEdit} />
+            {#if editError}<p class="text-xs text-red-600">{editError}</p>{/if}
+            <div class="flex items-center gap-2">
+              <Button size="sm" class="cursor-pointer" disabled={saving} onclick={saveEdit}
+                >{saving ? 'Saving...' : 'Save'}</Button
+              >
+              <Button
+                size="sm"
+                variant="ghost"
+                class="cursor-pointer"
+                disabled={saving}
+                onclick={() => (editing = null)}>Cancel</Button
+              >
+              <span class="ml-auto text-xs text-muted-foreground">{mod}Enter to save</span>
+            </div>
+          {:else}
+            {#if review.feedback}
+              <Markdown
+                source={review.feedback}
+                photos={[]}
+                admin
+                class="border-l-2 border-border pl-2 text-[13px] text-muted-foreground [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+              />
+            {/if}
+            {#if page.editable_reviews.includes(review.id)}
+              <button
+                type="button"
+                class="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                onclick={() => startEdit(review.id, review.feedback ?? '')}>Edit</button
+              >
+            {/if}
           {/if}
         </div>
       {/each}

@@ -142,6 +142,8 @@ Rails.application.routes.draw do
           post :unstar
         end
       end
+      # Editing the feedback on a review that's already gone out.
+      resources :reviews, controller: :progress_reviews, only: :update
     end
     # Projects reviewers starred as standouts, and ones flagged as written by AI (ProgressStatus), each on its own page.
     scope "admin", module: :review do

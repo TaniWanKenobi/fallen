@@ -71,27 +71,23 @@ module SlackMessages
     { text: "#{text}\n\n#{ps}", blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.context(ps) ], **pet_persona(pet) }
   end
 
-  # In the project's thread when a reviewer has read its journals (ProgressReviewedJob): the feedback, in the open so
-  # others in the channel learn from it too. The same whether it was approved or a check back: that's for reviewers.
+  # The reply in the project's thread when a reviewer has read its journals (ProgressReviewedJob), in the open so
+  # others in the channel learn from it too, and rewritten when the reviewer edits it (ProgressReviewEditedJob). The
+  # same whether it was approved or a check back: that's for reviewers.
   def progress_reviewed(review)
-    text = [ ":memo: Journal review: a reviewer read the journals so far.", *progress_review_feedback(review) ].join("\n")
-    { text: text, blocks: [ SlackBot::Blocks.section(text),
-      SlackBot::Blocks.actions(SlackBot::Blocks.button("See it on Fallen", "open_fallen", url: project_url(review.project))) ] }
+    feedback = mrkdwn(review.feedback.to_s.truncate(2500))
+    # A list or a second paragraph reads better starting on its own line.
+    text = "Journal review:#{feedback.match?(/\A[•◦▪\u2003]|\A\d+\. |\n/) ? "\n" : ' '}#{feedback}"
+    { text: text, blocks: [ SlackBot::Blocks.section(text) ] }
   end
 
-  # DMed to each person on the team when a reviewer has read the project's journals (ProgressReviewedJob): the
-  # feedback, the same whatever the decision.
+  # DMed to each person on the team once the review is in the thread (ProgressReviewedJob): who reviewed and a link to
+  # the reply there, or to the project page when it has no thread.
   def progress_reviewed_dm(review)
-    text = [ ":memo: A reviewer read your journals for *#{escape(review.project.title)}*.", *progress_review_feedback(review) ].join("\n")
-    { text: text, blocks: [ SlackBot::Blocks.section(text),
-      SlackBot::Blocks.actions(SlackBot::Blocks.button("See the review", "open_fallen", url: project_url(review.project), style: "primary")) ] }
-  end
-
-  # The reviewer's feedback, for the thread and the DMs. Their notes on particular journals are for reviewers only.
-  def progress_review_feedback(review)
-    return [] if review.feedback.blank?
-
-    [ "\nFrom the reviewer:\n#{mrkdwn(review.feedback.truncate(2500)).gsub(/^/, '> ')}" ]
+    who = review.reviewer&.slack_mention || "A reviewer"
+    url = review.slack_url || project_url(review.project)
+    text = "#{who} reviewed your journals for *#{escape(review.project.title)}*. <#{url}|See the review>"
+    { text: text, blocks: [ SlackBot::Blocks.section(text) ] }
   end
 
   # In the reviewers' channel when the journal review queue is backing up (ProgressQueueNudgeJob).
@@ -99,7 +95,7 @@ module SlackMessages
     url = Rails.application.routes.url_helpers.journal_review_root_url(host: ENV.fetch("APP_URL", "http://localhost:3000"))
     age = ActionController::Base.helpers.distance_of_time_in_words_to_now(oldest)
     asked = requested.positive? ? " #{requested} of them asked for a review themselves." : ""
-    text = ":hourglass: #{waiting} #{'project'.pluralize(waiting)} waiting for journal review, #{late} for over " \
+    text = "#{waiting} #{'project'.pluralize(waiting)} waiting for journal review, #{late} for over " \
            "#{ActionController::Base.helpers.distance_of_time_in_words(ProgressQueueNudgeJob::NUDGE_AFTER)} " \
            "(the oldest for #{age}).#{asked} Feedback helps most while they're still building."
     { text: text, blocks: [ SlackBot::Blocks.section(text),
@@ -113,7 +109,7 @@ module SlackMessages
     url = helpers.journal_review_project_url(project, host: ENV.fetch("APP_URL", "http://localhost:3000"))
     by = status.flagged_by ? " by #{escape(status.flagged_by.display_name)}" : ""
     team = project.teammates.map(&:slack_mention).join(", ")
-    text = ":robot_face: *Journal review flag*#{by}: <#{url}|#{escape(project.title)}> (#{team})\n" \
+    text = "*Journal review flag*#{by}: <#{url}|#{escape(project.title)}> (#{team})\n" \
            "#{escape(status.flag_reason.to_s.truncate(1500)).gsub(/^/, '> ')}\nIt's out of the journal review queue until an admin clears it on its review page."
     { text: text, blocks: [ SlackBot::Blocks.section(text),
       SlackBot::Blocks.actions(SlackBot::Blocks.button("Open the review", "open_fallen", url:, style: "primary")) ] }

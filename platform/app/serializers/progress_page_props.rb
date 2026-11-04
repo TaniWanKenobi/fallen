@@ -4,10 +4,11 @@
 # whatever the size of the project: the project and team, every journal on it with the evidence for its hours, the
 # reviews made before and the reviewers' notes.
 class ProgressPageProps
-  def initialize(status, claimed:, can:)
+  def initialize(status, claimed:, can:, editor:)
     @status = status
     @claimed = claimed
     @can = can
+    @editor = editor
   end
 
   # Everything but the project and status is a lambda, so a partial reload (the deferred `people`) runs only its own
@@ -15,6 +16,7 @@ class ProgressPageProps
   def props
     project = @status.project
     page = self
+    editor = @editor
     Project.preload_teams([ project ])
     ActiveRecord::Associations::Preloader.new(records: [ @status ], associations: [ :claimed_by, :flagged_by, :starred_by, *(:requested_by if @status.due_reason == "requested"), *(:added_by if @status.due_reason == "added") ]).call
 
@@ -26,6 +28,8 @@ class ProgressPageProps
       status: status_props,
       journals: -> { ReviewJournalSerializer.render(page.journals, writing: page.writing_scores(page.journals.map(&:id))) },
       history: -> { ProgressReviewRowSerializer.render(page.history) },
+      # The reviews in `history` whose feedback the person at the keyboard can edit.
+      editable_reviews: -> { page.history.select { Review::ProgressReviewPolicy.new(editor, it).update? }.map(&:public_id) },
       notes: -> { ReviewerNoteSerializer.render(project.reviewer_notes.includes(:user).order(:created_at, :id)) },
       max_journal_note: ProgressReview::MAX_JOURNAL_NOTE,
       check_back_min_minutes: ProgressStatus::CHECK_BACK_MIN_MINUTES,

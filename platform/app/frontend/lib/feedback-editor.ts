@@ -12,6 +12,7 @@ export function createFeedbackEditor({
   onChange,
   onRedraw,
   onLink,
+  onSubmit,
 }: {
   element: HTMLElement
   markdown: string
@@ -19,6 +20,8 @@ export function createFeedbackEditor({
   onChange: (markdown: string) => void
   onRedraw: () => void
   onLink: () => void
+  // ⌘Enter here instead of the page's shortcut, kept from reaching it.
+  onSubmit?: () => void
 }): Editor {
   return new Editor({
     element,
@@ -39,10 +42,16 @@ export function createFeedbackEditor({
     contentType: 'markdown',
     editorProps: {
       attributes: { class: 'feedback-editor', 'aria-multiline': 'true', role: 'textbox' },
-      // ⌘Enter sends the review (the page's shortcut), so it isn't a line break here; ⌘K adds a link.
+      // ⌘Enter sends (the page's shortcut, or `onSubmit`), so it isn't a line break here; ⌘K adds a link.
       handleKeyDown: (_view, event) => {
         if (!(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey) return false
-        if (event.key === 'Enter') return true
+        if (event.key === 'Enter') {
+          if (onSubmit) {
+            event.stopPropagation()
+            onSubmit()
+          }
+          return true
+        }
         if (event.key.toLowerCase() === 'k') {
           event.preventDefault()
           onLink()

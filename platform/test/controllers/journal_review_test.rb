@@ -172,21 +172,56 @@ class JournalReviewTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "each person on the team is DMed about the review, and the thread gets a reply" do
+  test "the review goes in the thread first, then each person on the team is DMed a link to it" do
     @project.user.update!(slack_id: "UOWNER")
+    @reviewer.update!(slack_id: "UREVIEWER")
     review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "check_back", feedback: "Nice soldering! More photos please.")
     assert_enqueued_with(job: ProgressReviewedJob, args: [ review ])
     clear_enqueued_jobs
     with_fake_slack do |slack|
       ProgressReviewedJob.perform_now(review)
-      assert_enqueued_jobs @project.teammates.size + 1, only: ProgressReviewedJob
+      reply = slack.calls_to(:chat_postMessage).sole
+      assert_equal "Journal review: Nice soldering! More photos please.", reply[:text]
+      assert review.reload.slack_ts
+      assert_enqueued_jobs @project.teammates.uniq.size, only: ProgressReviewedJob
+
+      ProgressReviewedJob.perform_now(review)
+      assert_equal 1, slack.calls_to(:chat_postMessage).size, "a rerun doesn't post the reply again"
 
       ProgressReviewedJob.perform_now(review, to: @project.user)
-      dm = slack.calls_to(:chat_postMessage).sole
+      dm = slack.calls_to(:chat_postMessage).last
       assert_equal "UOWNER", dm[:channel]
-      assert_match "A reviewer read your journals for *#{@project.title}*", dm[:text]
-      assert_match "Nice soldering! More photos please.", dm[:text]
-      assert_no_match(/fix|check back/i, dm[:text], "the team isn't told it was a check back")
+      assert_equal "<@UREVIEWER> reviewed your journals for *#{@project.title}*. <#{review.slack_url}|See the review>", dm[:text]
+      assert_match "?thread_ts=#{@project.slack_thread_ts}", review.slack_url
+      assert_no_match(/:[a-z_]+:/, reply[:text] + dm[:text], "no emoji")
+    end
+  end
+
+  test "a reviewer edits their own review's feedback: the page and the thread reply change, with no sign of it" do
+    review = ProgressReview.decide(@status, reviewer: @reviewer, verdict: "approved", feedback: "Nice photos")
+    review.update_column(:slack_ts, "1700000000.000100")
+    other = users(:member)
+    other.update!(roles: %w[user reviewer])
+
+    sign_in_as other
+    patch journal_review_review_path(review), params: { feedback: "Not mine" }
+    assert_equal "Nice photos", review.reload.feedback, "only the reviewer who wrote it, or an admin"
+
+    sign_in_as @reviewer
+    props = inertia_props(journal_review_project_path(@project), "Review/Progress/Show")
+    assert_equal [ review.public_id ], props["editable_reviews"]
+    assert_enqueued_with(job: ProgressReviewEditedJob, args: [ review ]) do
+      patch journal_review_review_path(review), params: { feedback: "Great photos of the **wiring**" }
+    end
+    assert_equal "Great photos of the **wiring**", review.reload.feedback
+    patch journal_review_review_path(review), params: { feedback: " " }
+    assert_equal "Great photos of the **wiring**", review.reload.feedback, "it can't be emptied"
+
+    with_fake_slack do |slack|
+      ProgressReviewEditedJob.perform_now(review)
+      update = slack.calls_to(:chat_update).sole
+      assert_equal [ @project.slack_channel_id, "1700000000.000100" ], [ update[:channel], update[:ts] ]
+      assert_equal "Journal review: Great photos of the *wiring*", update[:text]
     end
   end
 

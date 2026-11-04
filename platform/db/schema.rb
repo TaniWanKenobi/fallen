@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -386,6 +386,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_160000) do
     t.datetime "updated_at", null: false
     t.jsonb "journal_notes", default: {}, null: false
     t.datetime "due_since"
+    t.string "slack_ts"
     t.index ["created_at"], name: "index_progress_reviews_on_created_at"
     t.index ["project_id", "verdict"], name: "index_progress_reviews_on_project_id_and_verdict"
     t.index ["project_id"], name: "index_progress_reviews_on_project_id"
