@@ -565,9 +565,12 @@ module SlackMessages
     { text: text, blocks: blocks }
   end
 
+  DAY_END_PREVIEW = "preview"
+
   # Posted once in the announcements channel as Lulu (DayEndReminderAnnouncementJob). The buttons are
-  # "day_end_reminder:on" and "day_end_reminder:off" (DayEndReminderAction).
-  def day_end_reminder_announcement
+  # "day_end_reminder:on" and "day_end_reminder:off" (DayEndReminderAction). A `preview` copy, for trying it out in a
+  # test channel, marks JOIN so pressing it pings right away in that channel (DayEndReminderPreviewJob).
+  def day_end_reminder_announcement(preview: false)
     at = Time.zone.today.beginning_of_day.advance(hours: 24 - DayEndReminder::HOURS_LEFT).strftime("%-l%P")
     # :lulu-boba:, :sami-bao: and :fallen-star: are custom emoji in the Hack Club workspace.
     text = "Hey, it's Lulu :lulu-boba:! Sami :sami-bao: (yuck) and I are both trying to win this week, so we built something to help " \
@@ -575,14 +578,33 @@ module SlackMessages
            ":fallen-star:Press *JOIN* and we'll notify you in your team channel at #{at} (your time) if you haven't journaled yet!\n\n\n" \
            "_Sami thinks it'll save some of your streaks._\n" \
            "_I think Team Lulu is already cooking and this will just help us cook harder :)_"
-    buttons = [ SlackBot::Blocks.button("Join", "day_end_reminder:on", style: "primary"), SlackBot::Blocks.button("Leave", "day_end_reminder:off") ]
+    buttons = [ SlackBot::Blocks.button("JOIN", "day_end_reminder:on", value: (DAY_END_PREVIEW if preview), style: "primary"),
+                SlackBot::Blocks.button("Leave", "day_end_reminder:off") ]
     { text: text, blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.actions(*buttons) ], **pet_persona("lulu") }
   end
 
-  # The ping in a team's channel (DayEndReminderJob) for the people in `slack_ids`, who share `minutes_left`.
-  def day_end_reminder(pet, slack_ids, minutes_left)
-    text = "#{slack_ids.map { "<@#{it}>" }.join(' ')} About #{duration_words(minutes_left)} left in your day and no journal yet! You got this!"
-    { text: text, blocks: [ SlackBot::Blocks.section(text) ], **pet_persona(pet) }
+  # Each pet's custom emoji in the Hack Club workspace, for signing off the pings in its team's channel.
+  PET_EMOJI = { "lulu" => ":lulu-boba:", "sami" => ":sami-bao:" }.freeze
+
+  # The ping in a team's channel (DayEndReminderJob), redrawn as people journal (DayEndReminderPingJob). `entries` are
+  # [slack_id, status] (DayEndReminder.statuses); anyone :journaled is crossed off. While someone is still to go it
+  # shows the time left and a button to the team's huddle; `minutes_left` nil means their day is over. Its edits never
+  # notify anyone again, only the first post does.
+  def day_end_reminder(pet, entries, minutes_left)
+    emoji = PET_EMOJI.fetch(pet)
+    mentions = entries.map { |slack_id, status| status == :journaled ? "~<@#{slack_id}>~ :check-fallen:" : "<@#{slack_id}>" }.join(" ")
+    pending = entries.any? { |_, status| status == :pending }
+    text = if pending && minutes_left
+      "#{mentions} About #{duration_words(minutes_left)} left in your day and no journal yet :hm:  YOU GOT THIS!! #{emoji}"
+    elsif pending
+      "#{mentions} That's the end of the day! See you tomorrow #{emoji}"
+    else
+      "#{mentions} Everyone here journaled tonight :fire: #{emoji}"
+    end
+    blocks = [ SlackBot::Blocks.section(text) ]
+    huddle = SlackHuddle.huddle_url(SlackHuddle.team_channel_id(pet) || SlackHuddle.channel_id)
+    blocks << SlackBot::Blocks.actions(SlackBot::Blocks.button("Join the huddle", "open_huddle", url: huddle, style: "primary")) if pending && minutes_left && huddle
+    { text: text, blocks: blocks, **pet_persona(pet) }
   end
 
   # In the main huddle's thread once Slack stops letting people in (HuddleFullJob).

@@ -77,6 +77,8 @@ class XpEntry < ApplicationRecord
   after_save :recount_user
   after_create_commit -> { StupendousBonusJob.perform_later(self) }, if: -> { kind == "stupendous" }
   after_create_commit -> { EmailSignupBonusJob.perform_later(self) }, if: -> { kind == "email_signup" }
+  # A day starting or stopping to count crosses them off, or back onto, the evening's ping (DayEndReminder).
+  after_commit -> { DayEndReminder.journal_changed(self) }, if: -> { kind == "journal" && previous_changes.keys.intersect?(%w[id discarded_at]) }
 
   # Every journal with hours is worth at least 1 XP, so the first one always hatches the egg.
   def self.journal_xp(minutes, multiplier) = [ (minutes * PER_HOUR / 60.0 * multiplier).round, 1 ].max

@@ -13,6 +13,8 @@ class DayEndReminderAction < SlackBot::Action
       return reply("You're in! I'll start pinging you once you've finished signing up on Fallen and picked your pet: #{SlackMessages.app_url}") unless User.on_a_team.exists?(user.id)
 
       reply("Let's go! I'll ping you in your team's channel when there are #{DayEndReminder::HOURS_LEFT} hours left in your day and you haven't journaled.")
+      # The test copy of the announcement pings them here and now, as if it were already evening.
+      DayEndReminderPreviewJob.perform_later(channel_id, [ user.slack_id ]) if value == SlackMessages::DAY_END_PREVIEW
     when "off"
       DayEndReminder.where(user: user).destroy_all
       reply("No more reminders!")

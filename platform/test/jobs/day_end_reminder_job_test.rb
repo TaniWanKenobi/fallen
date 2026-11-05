@@ -20,7 +20,7 @@ class DayEndReminderJobTest < ActiveJob::TestCase
       message = slack.calls_to(:chat_postMessage).sole
       assert_equal "CLULU", message[:channel]
       assert_equal "Lulu", message[:username]
-      assert_match "<@U0MEMBER> About 4 hours left in your day and no journal yet! You got this!", message[:text]
+      assert_equal "<@U0MEMBER> About 4 hours left in your day and no journal yet :hm:  YOU GOT THIS!! :lulu-boba:", message[:text]
       assert_equal Date.new(2026, 11, 5), @member.day_end_reminder.reload.reminded_on
 
       travel_to(Time.utc(2026, 11, 6, 20, 0)) { run_job }
@@ -78,6 +78,8 @@ class DayEndReminderJobTest < ActiveJob::TestCase
       assert_equal %w[CLULU CSAMI], messages.keys.sort
       assert_match "<@U0MEMBER> <@U0NEWCOMER>", messages["CLULU"][:text]
       assert_match "<@U0ADMIN>", messages["CSAMI"][:text]
+      assert messages["CSAMI"][:text].end_with?("YOU GOT THIS!! :sami-bao:"), "Sami signs off with its own emoji"
+      assert messages["CLULU"][:text].end_with?("YOU GOT THIS!! :lulu-boba:")
     end
   end
 
@@ -131,11 +133,12 @@ class DayEndReminderJobTest < ActiveJob::TestCase
     end
   end
 
+  # Four for the run, plus one per message posted to remember it (DayEndReminderPingJob), never one per person.
   test "the same queries however many are due" do
     users(:newcomer).update_columns(pet: "lulu", slack_id: "U0NEWCOMER")
     [ users(:newcomer), @admin ].each { DayEndReminder.create!(user: it) }
     with_team_channels do |slack|
-      travel_to(Time.utc(2026, 11, 5, 20, 0)) { assert_query_budget(4) { run_job } }
+      travel_to(Time.utc(2026, 11, 5, 20, 0)) { assert_query_budget(4 + 2) { run_job } }
       assert_equal 2, slack.calls_to(:chat_postMessage).size
     end
   end
@@ -149,7 +152,7 @@ class DayEndReminderJobTest < ActiveJob::TestCase
       assert_match ":fallen-star:Press *JOIN* and we'll notify you in your team channel at 8pm (your time) if you haven't journaled yet!", post[:text]
       buttons = post[:blocks].last[:elements]
       assert_equal %w[day_end_reminder:on day_end_reminder:off], buttons.pluck(:action_id)
-      assert_equal %w[Join Leave], buttons.map { it[:text][:text] }
+      assert_equal %w[JOIN Leave], buttons.map { it[:text][:text] }
     end
   end
 

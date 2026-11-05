@@ -6,15 +6,18 @@
 #
 # Table name: day_end_reminders
 #
-#  id          :bigint           not null, primary key
-#  reminded_on :date
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
-#  user_id     :bigint           not null
+#  id              :bigint           not null, primary key
+#  ping_ts         :string
+#  reminded_on     :date
+#  created_at      :datetime         not null
+#  updated_at      :datetime         not null
+#  ping_channel_id :string
+#  user_id         :bigint           not null
 #
 # Indexes
 #
-#  index_day_end_reminders_on_user_id  (user_id) UNIQUE
+#  index_day_end_reminders_on_ping_channel_id_and_ping_ts  (ping_channel_id,ping_ts)
+#  index_day_end_reminders_on_user_id                      (user_id) UNIQUE
 #
 # Foreign Keys
 #
@@ -27,6 +30,27 @@ class DayEndReminder < ApplicationRecord
   HOURS_LEFT = 4
 
   belongs_to :user
+
+  # The people in one ping message (`ping_channel_id`, `ping_ts`), which is redrawn as they journal
+  # (DayEndReminderPingJob).
+  scope :pinged_in, ->(channel, ts) { where(ping_channel_id: channel, ping_ts: ts) }
+
+  # Where each of `reminders` stands for the day they were pinged: :journaled once a journal counts for it (the way
+  # the streak counts it, XpEntry), :pending otherwise. One query for all of them.
+  def self.statuses(reminders)
+    days = reminders.map(&:reminded_on).compact.uniq
+    journaled = XpEntry.journals.kept.where(user_id: reminders.map(&:user_id), day: days).distinct.pluck(:user_id, :day).to_set
+    reminders.index_with { journaled.include?([ it.user_id, it.reminded_on ]) ? :journaled : :pending }
+  end
+
+  # Redraws the ping `entry`'s person was in that day, now that a journal of theirs counts for it or stopped counting.
+  def self.journal_changed(entry)
+    reminder = where(user_id: entry.user_id, reminded_on: entry.day).where.not(ping_ts: nil).first or return
+    DayEndReminderPingJob.perform_later(reminder.ping_channel_id, reminder.ping_ts)
+  end
+
+  # Whether the day they were last pinged for has ended on their clock.
+  def day_over?(now = Time.current) = reminded_on.nil? || user.local_date(now) != reminded_on
 
   # Whether `user`, at `now`, is in the last HOURS_LEFT of their day and has not been pinged for it yet.
   def due?(now = Time.current)

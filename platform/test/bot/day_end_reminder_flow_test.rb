@@ -1,6 +1,8 @@
 require "test_helper"
 
 class DayEndReminderFlowTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   test "opting in and out from the announcement answers only the person who pressed" do
     with_fake_slack do |slack|
       press("on")
@@ -39,10 +41,26 @@ class DayEndReminderFlowTest < ActiveSupport::TestCase
     end
   end
 
+  test "JOIN on the test copy of the announcement pings them in that channel right away; on the real one it waits" do
+    with_fake_slack do
+      assert_enqueued_with(job: DayEndReminderPreviewJob, args: [ "CTEST", [ "U0MEMBER" ] ]) do
+        press("on", value: SlackMessages::DAY_END_PREVIEW, channel: "CTEST")
+      end
+      assert_no_enqueued_jobs(only: DayEndReminderPreviewJob) { press("on", channel: "CBULLETIN") }
+    end
+  end
+
+  test "only the test copy of the announcement marks its JOIN" do
+    real, test = [ false, true ].map { SlackMessages.day_end_reminder_announcement(preview: it)[:blocks].last[:elements].first[:value] }
+    assert_nil real
+    assert_equal SlackMessages::DAY_END_PREVIEW, test
+  end
+
   private
 
-  def press(choice, user: "U0MEMBER")
-    SlackBot.handle(:interaction, { "type" => "block_actions", "user" => { "id" => user }, "channel" => { "id" => "CLULU" }, "trigger_id" => "t",
-                                    "response_url" => "https://hooks.slack.test/r", "actions" => [ { "action_id" => "day_end_reminder:#{choice}" } ] })
+  def press(choice, user: "U0MEMBER", ts: nil, value: nil, channel: "CLULU")
+    SlackBot.handle(:interaction, { "type" => "block_actions", "user" => { "id" => user }, "channel" => { "id" => channel }, "trigger_id" => "t",
+                                    "response_url" => "https://hooks.slack.test/r", "message" => ({ "ts" => ts } if ts),
+                                    "actions" => [ { "action_id" => "day_end_reminder:#{choice}", "value" => value }.compact ] }.compact)
   end
 end

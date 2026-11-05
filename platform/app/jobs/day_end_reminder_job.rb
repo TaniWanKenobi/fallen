@@ -56,10 +56,12 @@ class DayEndReminderJob < ApplicationJob
   # error, a timeout, Slack being down) loses only this message, not the rest of the run, and goes to Sentry: a
   # bad token or channel would otherwise drop every ping, every day, without anyone noticing.
   def ping(channel, pet, reminders, now)
-    message = SlackMessages.day_end_reminder(pet, reminders.map { it.user.slack_id }, reminders.first.minutes_left(now))
+    message = SlackMessages.day_end_reminder(pet, reminders.map { [ it.user.slack_id, :pending ] }, reminders.first.minutes_left(now))
     attempts = 0
     begin
-      SlackBot.client.chat_postMessage(channel: channel, **message)
+      posted = SlackBot.client.chat_postMessage(channel: channel, **message)
+      # Remembered so the message can cross them off as they journal (DayEndReminderPingJob).
+      DayEndReminder.where(id: reminders.map(&:id)).update_all(ping_channel_id: posted["channel"], ping_ts: posted["ts"])
     rescue Slack::Web::Api::Errors::TooManyRequestsError => e
       raise if (attempts += 1) > RATE_LIMIT_RETRIES
 
