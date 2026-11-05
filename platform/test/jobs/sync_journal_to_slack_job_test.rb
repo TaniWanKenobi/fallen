@@ -185,6 +185,22 @@ class SyncJournalToSlackJobTest < ActiveJob::TestCase
     end
   end
 
+  test "a long web journal is edited with its notification text cut short and the whole of it in the blocks" do
+    paragraph = "Wired the amp & tested every key on the <board> with [notes](https://x.test/notes). " * 12
+    journal = projects(:station).journals.create!(user: users(:member), body: Array.new(6, paragraph.strip).join("\n\n"), duration_minutes: 60, source: "web", images: [ photo ])
+    journal.update_columns(slack_channel_id: "CJOURNALS", slack_ts: "1700000009.000900")
+
+    with_fake_slack do |slack|
+      SyncJournalToSlackJob.perform_now(journal, "update")
+      call = slack.calls_to(:chat_update).sole
+      assert_operator call[:text].bytesize, :<=, 4000
+      assert call[:text].end_with?("…"), call[:text].last(80)
+      assert_no_match(/<[^>]*…\z/, call[:text])
+      sections = call[:blocks].select { |block| block[:type] == "section" }.sum { |block| block[:text][:text].length }
+      assert_operator sections, :>, 6000
+    end
+  end
+
   test "a moved journal comes down from the old thread and is posted in the new one" do
     journal = journals(:first)
     journal.update_columns(slack_parts: [ { "ts" => journal.slack_ts, "text" => "Soldered" }, { "ts" => "1700000001.000200", "text" => "the board" } ])

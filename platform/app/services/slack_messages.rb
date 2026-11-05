@@ -34,7 +34,20 @@ module SlackMessages
     # Timelapses are private to the person and staff, so the public thread never links one.
     blocks << footer(journal_url(journal), *(":stopwatch: #{journal.duration_text}" if journal.hours_logged?))
     attachments = journal.images.map { |image| { fallback: image.filename.to_s, image_url: blob_url(image) } }
-    { text: text, blocks: blocks, attachments: attachments }
+    # Slack hands an edit's text back (MessageEvent#message_changed). A web journal's echo still has the footer and
+    # is ignored, but one written in Slack would take the shortened text as its body, so that text stays whole.
+    { text: journal.from_slack? ? text : notification_text(text), blocks: blocks, attachments: attachments }
+  end
+
+  # chat.update refuses `text` over 4,000 bytes with msg_too_long, though chat.postMessage takes it. The blocks
+  # carry the whole journal, so the text, which only shows in notifications and search, is cut at a word, along
+  # with any link left open.
+  NOTIFICATION_TEXT_BYTES = 3500
+  def notification_text(text)
+    return text if text.bytesize <= NOTIFICATION_TEXT_BYTES
+
+    cut = text.byteslice(0, NOTIFICATION_TEXT_BYTES).scrub("")
+    "#{cut.sub(/\s*\S*\z/, "").sub(/<[^>]*\z/, "").rstrip}…"
   end
 
   FOOTER_BLOCK_ID = "fallen_footer"
