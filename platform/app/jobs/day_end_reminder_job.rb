@@ -16,16 +16,26 @@ class DayEndReminderJob < ApplicationJob
     return unless SlackBot.configured?
 
     DayEndReminder.includes(:user).where(user: User.on_a_team.where.not(slack_id: nil)).find_in_batches do |reminders|
-      due = unjournaled(reminders.select { it.due?(now) }, now)
+      due = unjournaled(with_channel(reminders.select { it.due?(now) }), now)
       claim(due, now)
       due.group_by { [ it.user.pet, SlackMessages.duration_words(it.minutes_left(now)) ] }.each do |(pet, _), group|
-        channel = JoinTeamChannelJob.channel_id(pet) or next
+        channel = JoinTeamChannelJob.channel_id(pet)
         group.each_slice(MENTIONS_PER_MESSAGE) { ping(channel, pet, it, now) }
       end
     end
   end
 
   private
+
+  # A team with no channel set can't be pinged, so its people are left unmarked for when it is, and someone hears.
+  def with_channel(reminders)
+    reminders.group_by { it.user.pet }.flat_map do |pet, group|
+      next group if JoinTeamChannelJob.channel_id(pet)
+
+      Rails.error.report(ArgumentError.new("SLACK_#{pet.upcase}_CHANNEL_ID is not set"), handled: true, context: { job: "DayEndReminderJob", user_ids: group.map(&:user_id) })
+      []
+    end
+  end
 
   def unjournaled(reminders, now)
     return reminders if reminders.empty?
@@ -42,7 +52,9 @@ class DayEndReminderJob < ApplicationJob
   end
 
   # A busy evening posts many pings to one channel at once, so Slack may ask to slow down. Everyone was already
-  # claimed, so waiting and trying again is the only way the rest still hear it today.
+  # claimed, so waiting and trying again is the only way the rest still hear it today. Any other failure (a Slack
+  # error, a timeout, Slack being down) loses only this message, not the rest of the run, and goes to Sentry: a
+  # bad token or channel would otherwise drop every ping, every day, without anyone noticing.
   def ping(channel, pet, reminders, now)
     message = SlackMessages.day_end_reminder(pet, reminders.map { it.user.slack_id }, reminders.first.minutes_left(now))
     attempts = 0
@@ -54,7 +66,7 @@ class DayEndReminderJob < ApplicationJob
       sleep(e.retry_after.to_i.clamp(1, 30))
       retry
     end
-  rescue Slack::Web::Api::Errors::SlackError, Slack::Web::Api::Errors::TooManyRequestsError => e
-    Rails.logger.warn({ event: "day_end_reminder.failed", user_ids: reminders.map(&:user_id), error: e.message }.to_json)
+  rescue Faraday::Error => e
+    Rails.error.report(e, handled: true, context: { job: "DayEndReminderJob", channel: channel, user_ids: reminders.map(&:user_id) })
   end
 end

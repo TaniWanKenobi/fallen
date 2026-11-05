@@ -98,6 +98,32 @@ class DayEndReminderJobTest < ActiveJob::TestCase
     end
   end
 
+  test "a Slack outage on one message is reported and the other teams still hear" do
+    DayEndReminder.create!(user: @admin)
+    with_team_channels do |slack|
+      slack.define_singleton_method(:chat_postMessage) do |**args|
+        args[:channel] == "CLULU" ? raise(Slack::Web::Api::Errors::UnavailableError.new(nil)) : method_missing(:chat_postMessage, **args)
+      end
+
+      assert_error_reported(Slack::Web::Api::Errors::UnavailableError) do
+        travel_to(Time.utc(2026, 11, 5, 20, 0)) { run_job }
+      end
+      assert_equal [ "CSAMI" ], slack.calls_to(:chat_postMessage).pluck(:channel)
+    end
+  end
+
+  test "a team with no channel set is reported, and its people stay unmarked for when it is" do
+    with_fake_slack do |slack|
+      with_env("SLACK_LULU_CHANNEL_ID" => nil, "SLACK_SAMI_CHANNEL_ID" => "CSAMI") do
+        assert_error_reported(ArgumentError) do
+          travel_to(Time.utc(2026, 11, 5, 20, 0)) { run_job }
+        end
+      end
+      assert_empty slack.calls_to(:chat_postMessage)
+      assert_nil @member.day_end_reminder.reload.reminded_on
+    end
+  end
+
   test "the time left is rounded to read naturally" do
     reminder = @member.day_end_reminder
     { [ 20, 0 ] => "4 hours", [ 20, 15 ] => "4 hours", [ 20, 40 ] => "3.5 hours", [ 23, 20 ] => "45 minutes", [ 23, 55 ] => "15 minutes" }.each do |(hour, minute), words|
@@ -119,8 +145,8 @@ class DayEndReminderJobTest < ActiveJob::TestCase
       DayEndReminderAnnouncementJob.perform_now("CBULLETIN")
       post = slack.calls_to(:chat_postMessage).sole
       assert_equal [ "CBULLETIN", "Lulu" ], post.values_at(:channel, :username)
-      assert_match "Hey I'm Lulu! Sami (yuck) and I are both trying to win this week", post[:text]
-      assert_match "Press *Join* and Sami or I will ping you in your team channel at 8pm your time if you haven't journaled yet!", post[:text]
+      assert_match "Hey, it's Lulu :lulu-boba:! Sami :sami-bao: (yuck) and I are both trying to win this week", post[:text]
+      assert_match ":fallen-star:Press *JOIN* and we'll notify you in your team channel at 8pm (your time) if you haven't journaled yet!", post[:text]
       buttons = post[:blocks].last[:elements]
       assert_equal %w[day_end_reminder:on day_end_reminder:off], buttons.pluck(:action_id)
       assert_equal %w[Join Leave], buttons.map { it[:text][:text] }

@@ -556,10 +556,12 @@ module SlackMessages
   # "day_end_reminder:on" and "day_end_reminder:off" (DayEndReminderAction).
   def day_end_reminder_announcement
     at = Time.zone.today.beginning_of_day.advance(hours: 24 - DayEndReminder::HOURS_LEFT).strftime("%-l%P")
-    text = "Hey I'm Lulu! Sami (yuck) and I are both trying to win this week, so we built something to help keep our teams on track.\n\n" \
-           "Press *Join* and Sami or I will ping you in your team channel at #{at} your time if you haven't journaled yet!\n\n" \
-           "P.S. Sami thinks it'll save some of your streaks\n" \
-           "P.S.S. I think Team Lulu is already cooking and this will just help us cook harder :)"
+    # :lulu-boba:, :sami-bao: and :fallen-star: are custom emoji in the Hack Club workspace.
+    text = "Hey, it's Lulu :lulu-boba:! Sami :sami-bao: (yuck) and I are both trying to win this week, so we built something to help " \
+           "keep our teams on track.\n\n" \
+           ":fallen-star:Press *JOIN* and we'll notify you in your team channel at #{at} (your time) if you haven't journaled yet!\n\n\n" \
+           "Sami thinks it'll save some of your streaks.\n" \
+           "I think Team Lulu is already cooking and this will just help us cook harder :)"
     buttons = [ SlackBot::Blocks.button("Join", "day_end_reminder:on", style: "primary"), SlackBot::Blocks.button("Leave", "day_end_reminder:off") ]
     { text: text, blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.actions(*buttons) ], **pet_persona("lulu") }
   end
