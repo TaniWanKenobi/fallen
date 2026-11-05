@@ -20,7 +20,7 @@ class DayEndReminderJobTest < ActiveJob::TestCase
       message = slack.calls_to(:chat_postMessage).sole
       assert_equal "CLULU", message[:channel]
       assert_equal "Lulu", message[:username]
-      assert_match "<@U0MEMBER> about 4 hours left in your day and no journal yet!", message[:text]
+      assert_match "<@U0MEMBER> About 4 hours left in your day and no journal yet! You got this!", message[:text]
       assert_equal Date.new(2026, 11, 5), @member.day_end_reminder.reload.reminded_on
 
       travel_to(Time.utc(2026, 11, 6, 20, 0)) { run_job }
@@ -119,11 +119,11 @@ class DayEndReminderJobTest < ActiveJob::TestCase
       DayEndReminderAnnouncementJob.perform_now("CBULLETIN")
       post = slack.calls_to(:chat_postMessage).sole
       assert_equal [ "CBULLETIN", "Lulu" ], post.values_at(:channel, :username)
-      assert_match "hey i'm lulu! sami (yuck) and i teamed up", post[:text]
-      assert_match "between 5 days and your +30 XP bonus", post[:text]
+      assert_match "Hey I'm Lulu! Sami (yuck) and I are both trying to win this week", post[:text]
+      assert_match "Press *Join* and Sami or I will ping you in your team channel at 8pm your time if you haven't journaled yet!", post[:text]
       buttons = post[:blocks].last[:elements]
       assert_equal %w[day_end_reminder:on day_end_reminder:off], buttons.pluck(:action_id)
-      assert_equal %w[join leave], buttons.map { it[:text][:text] }
+      assert_equal %w[Join Leave], buttons.map { it[:text][:text] }
     end
   end
 

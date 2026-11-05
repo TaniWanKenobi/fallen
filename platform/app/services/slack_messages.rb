@@ -555,21 +555,18 @@ module SlackMessages
   # Posted once in the announcements channel as Lulu (DayEndReminderAnnouncementJob). The buttons are
   # "day_end_reminder:on" and "day_end_reminder:off" (DayEndReminderAction).
   def day_end_reminder_announcement
-    text = "hey i'm lulu! sami (yuck) and i teamed up to build something to help you hit your weekly goals.\n\n" \
-           "you know that feeling at 11:58pm when you realize you forgot to journal? yeah. on team lulu, one missed day can be the difference " \
-           "between #{Team::Lulu::DAYS_FOR_BONUS} days and your +#{Team::Lulu::WEEKLY_BONUS} XP bonus. on team sami, a missed day with no " \
-           "freezes left drops your multiplier all the way back to 1x. weeks of streak, gone over one forgotten journal.\n\n" \
-           "so here's the deal: press join, and i'll ping you in your team channel when there are #{DayEndReminder::HOURS_LEFT} hours left " \
-           "in your day and you haven't journaled yet. one ping a day, and only when you need it.\n\n" \
-           "you can opt out anytime by pressing 'leave'"
-    buttons = [ SlackBot::Blocks.button("join", "day_end_reminder:on", style: "primary"), SlackBot::Blocks.button("leave", "day_end_reminder:off") ]
+    at = Time.zone.today.beginning_of_day.advance(hours: 24 - DayEndReminder::HOURS_LEFT).strftime("%-l%P")
+    text = "Hey I'm Lulu! Sami (yuck) and I are both trying to win this week, so we built something to help keep our teams on track.\n\n" \
+           "Press *Join* and Sami or I will ping you in your team channel at #{at} your time if you haven't journaled yet!\n\n" \
+           "P.S. Sami thinks it'll save some of your streaks\n" \
+           "P.S.S. I think Team Lulu is already cooking and this will just help us cook harder :)"
+    buttons = [ SlackBot::Blocks.button("Join", "day_end_reminder:on", style: "primary"), SlackBot::Blocks.button("Leave", "day_end_reminder:off") ]
     { text: text, blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.actions(*buttons) ], **pet_persona("lulu") }
   end
 
   # The ping in a team's channel (DayEndReminderJob) for the people in `slack_ids`, who share `minutes_left`.
   def day_end_reminder(pet, slack_ids, minutes_left)
-    text = "#{slack_ids.map { "<@#{it}>" }.join(' ')} about #{duration_words(minutes_left)} left in your day and no journal yet! " \
-           "Write one before midnight to keep your streak going :)"
+    text = "#{slack_ids.map { "<@#{it}>" }.join(' ')} About #{duration_words(minutes_left)} left in your day and no journal yet! You got this!"
     { text: text, blocks: [ SlackBot::Blocks.section(text) ], **pet_persona(pet) }
   end
 

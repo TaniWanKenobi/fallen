@@ -7,7 +7,9 @@ class DayEndReminderFlowTest < ActiveSupport::TestCase
       assert DayEndReminder.exists?(user: users(:member))
       press("on")
       assert_equal 1, DayEndReminder.where(user: users(:member)).count, "pressing twice keeps one"
-      assert_match "You're in!", slack.calls_to(:chat_postEphemeral).first[:text]
+      joined = slack.calls_to(:chat_postEphemeral).first
+      assert_match "Let's go! I'll ping you in your team's channel when there are 4 hours left", joined[:text]
+      assert_equal [ "Lulu", SlackMessages::PET_PFPS["lulu"] ], joined.values_at(:username, :icon_url), "from their own pet"
 
       press("off")
       assert_not DayEndReminder.exists?(user: users(:member))
@@ -21,15 +23,19 @@ class DayEndReminderFlowTest < ActiveSupport::TestCase
     with_fake_slack do |slack|
       press("on", user: "U0NEWCOMER")
       assert DayEndReminder.exists?(user: users(:newcomer))
-      assert_match "once you've finished signing up on Fallen and picked your pet", slack.calls_to(:chat_postEphemeral).sole[:text]
+      reply = slack.calls_to(:chat_postEphemeral).sole
+      assert_match "once you've finished signing up on Fallen and picked your pet", reply[:text]
+      assert_nil reply[:username], "no pet yet, so the bot answers"
     end
   end
 
-  test "someone without an account is told to sign up" do
+  test "someone whose Slack isn't linked to Fallen is told how to link it" do
     with_fake_slack do |slack|
       press("on", user: "U0STRANGER")
       assert_equal 0, DayEndReminder.count
-      assert_match "Sign up for Fallen first", slack.calls_to(:chat_postEphemeral).sole[:text]
+      reply = slack.calls_to(:chat_postEphemeral).sole[:text]
+      assert_match "I couldn't find a Fallen account linked to your Slack", reply
+      assert_match "/auth/slack/start", reply
     end
   end
 
