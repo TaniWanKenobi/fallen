@@ -552,6 +552,27 @@ module SlackMessages
     { text: text, blocks: blocks }
   end
 
+  # Posted once in the announcements channel as Lulu (DayEndReminderAnnouncementJob). The buttons are
+  # "day_end_reminder:on" and "day_end_reminder:off" (DayEndReminderAction).
+  def day_end_reminder_announcement
+    text = "hey i'm lulu! sami (yuck) and i teamed up to build something to help you hit your weekly goals.\n\n" \
+           "you know that feeling at 11:58pm when you realize you forgot to journal? yeah. on team lulu, one missed day can be the difference " \
+           "between #{Team::Lulu::DAYS_FOR_BONUS} days and your +#{Team::Lulu::WEEKLY_BONUS} XP bonus. on team sami, a missed day with no " \
+           "freezes left drops your multiplier all the way back to 1x. weeks of streak, gone over one forgotten journal.\n\n" \
+           "so here's the deal: press join, and i'll ping you in your team channel when there are #{DayEndReminder::HOURS_LEFT} hours left " \
+           "in your day and you haven't journaled yet. one ping a day, and only when you need it.\n\n" \
+           "you can opt out anytime by pressing 'leave'"
+    buttons = [ SlackBot::Blocks.button("join", "day_end_reminder:on", style: "primary"), SlackBot::Blocks.button("leave", "day_end_reminder:off") ]
+    { text: text, blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.actions(*buttons) ], **pet_persona("lulu") }
+  end
+
+  # The ping in a team's channel (DayEndReminderJob) for the people in `slack_ids`, who share `minutes_left`.
+  def day_end_reminder(pet, slack_ids, minutes_left)
+    text = "#{slack_ids.map { "<@#{it}>" }.join(' ')} about #{duration_words(minutes_left)} left in your day and no journal yet! " \
+           "Write one before midnight to keep your streak going :)"
+    { text: text, blocks: [ SlackBot::Blocks.section(text) ], **pet_persona(pet) }
+  end
+
   # In the main huddle's thread once Slack stops letting people in (HuddleFullJob).
   def huddle_full
     teams = Team::BY_PET.keys.filter_map { |pet| (channel = SlackHuddle.team_channel_id(pet)) && "• Team #{pet.capitalize}: <##{channel}> (<#{SlackHuddle.huddle_url(channel)}|join the huddle>)" }

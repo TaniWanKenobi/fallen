@@ -77,6 +77,7 @@ class PrivacyRequest
     deleted["huddle_pauses"] = forget(HuddlePause.where(user_id: ids))
     deleted["timer_sessions"] = forget(TimerSession.where(user_id: ids))
     deleted["time_milestones"] = forget(TimeMilestone.where(user_id: ids))
+    deleted["day_end_reminders"] = forget(DayEndReminder.where(user_id: ids))
     deleted["active_days"] = ActiveDay.where(user_id: ids).delete_all
     deleted["feature_flags"] = FeatureFlag.forget(users)
     deleted["lapse_timelapses"] = forget(LapseTimelapse.where(user_id: ids).or(LapseTimelapse.where(journal_id: journal_ids)))

@@ -29,6 +29,7 @@ Only from the token's `subject`: any `emails` (case-insensitive against `users.e
 | Time in the Slack huddle (when they joined and left, how each time was known, how long they shared their screen or had their camera on, what they said they were working on and got done, how many of the counted hours they said were really work, and the Slack DMs that asked them), also rows from before they signed up that carry their Slack id | `huddle_sessions` |
 | Slack's join and leave events for the huddle, by Slack id and time | `huddle_events` |
 | The pet's timer: when they started and stopped the site's timer, what they said they would work on and got done with it and how many of its hours were really work, paused in the huddle, and their hourly check-ins (what they said they had got done so far, and the Slack DM that asked) | `timer_sessions`, `huddle_pauses`, `time_milestones` |
+| Whether they asked to be pinged in their team's Slack channel before their day ends without a journal, and the last day they were | `day_end_reminders` |
 | The days they opened the site, by UTC date, for daily active counts | `active_days` |
 | XP earned, line by line (journal XP, bonuses) | `xp_entries`, `users.xp` |
 | Team Sami's weekly streak results (days missed and excused, multiplier and freezes before and after), and changes staff made to their streak (days excused, freezes given, values set) with the staff reason, the message DMed to them and what it changed. Changes they made to other people's streaks as staff lose their name | `streak_weeks`, `streak_adjustments` |

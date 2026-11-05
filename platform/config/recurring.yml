@@ -55,3 +55,9 @@ production:
     class: TimeMilestoneJob
     queue: slack
     schedule: every minute
+
+  # Every 15 minutes so half- and quarter-hour timezones are pinged near the hour too.
+  day_end_reminders:
+    class: DayEndReminderJob
+    queue: slack
+    schedule: every 15 minutes

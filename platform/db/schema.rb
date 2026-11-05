@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_05_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_05_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -120,6 +120,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["submission_id"], name: "index_bom_items_on_submission_id"
+  end
+
+  create_table "day_end_reminders", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.date "reminded_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_day_end_reminders_on_user_id", unique: true
   end
 
   create_table "fallout_invites", primary_key: "digest", id: :string, force: :cascade do |t|
@@ -980,6 +988,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_120000) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_tokens", "users"
   add_foreign_key "bom_items", "submissions"
+  add_foreign_key "day_end_reminders", "users"
   add_foreign_key "grant_payouts", "hcb_grant_cards"
   add_foreign_key "grant_payouts", "submissions"
   add_foreign_key "grant_payouts", "users"

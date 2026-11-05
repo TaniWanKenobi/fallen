@@ -86,6 +86,7 @@ class User < ApplicationRecord
   has_many :timer_sessions, dependent: :destroy
   has_many :huddle_pauses, dependent: :destroy
   has_many :time_milestones, dependent: :delete_all
+  has_one :day_end_reminder, dependent: :delete
   has_many :lapse_timelapses, dependent: :destroy
   has_many :active_days, dependent: :delete_all
   # Team Sami's judged weeks, and the changes admins made to the person's streak (StreakAdjustment).
