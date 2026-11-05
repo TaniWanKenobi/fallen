@@ -20,7 +20,7 @@ class WorkshopRsvpTest < ActiveSupport::TestCase
   setup { travel_to Time.zone.parse("2026-11-04 12:00 EST") }
 
   test "signing up again with the same email moves the person" do
-    WorkshopRsvp.sign_up(email: " Guest@Example.com ", slack_username: "@guest", slot: "nov7")
+    WorkshopRsvp.sign_up(email: " Guest@Example.com ", slack_username: "@guest", slot: "nov8")
     rsvp = WorkshopRsvp.sign_up(email: "guest@example.com", slot: "nov11")
 
     assert_equal 1, WorkshopRsvp.count
@@ -29,7 +29,7 @@ class WorkshopRsvpTest < ActiveSupport::TestCase
   end
 
   test "keeps the Slack name without its @" do
-    assert_equal "guest", WorkshopRsvp.sign_up(email: "guest@example.com", slack_username: " @guest ", slot: "nov7").slack_username
+    assert_equal "guest", WorkshopRsvp.sign_up(email: "guest@example.com", slack_username: " @guest ", slot: "nov8").slack_username
   end
 
   test "needs an email and one of the times" do
@@ -44,9 +44,9 @@ class WorkshopRsvpTest < ActiveSupport::TestCase
   end
 
   test "a session that has started is hidden and takes no more sign-ups" do
-    travel_to WorkshopRsvp::SLOTS["nov7"].first
+    travel_to WorkshopRsvp::SLOTS["nov8"].first
     assert_equal %w[nov11], WorkshopRsvp.upcoming_slots.pluck(:key)
-    assert WorkshopRsvp.sign_up(email: "late@example.com", slot: "nov7").errors.of_kind?(:slot, :started)
+    assert WorkshopRsvp.sign_up(email: "late@example.com", slot: "nov8").errors.of_kind?(:slot, :started)
     assert WorkshopRsvp.sign_up(email: "late@example.com", slot: "nov11").persisted?
   end
 end

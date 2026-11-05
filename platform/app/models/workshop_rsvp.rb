@@ -28,7 +28,7 @@ class WorkshopRsvp < ApplicationRecord
   TITLE = "Make your own Tamagotchi pet"
   # Each session's start and end, in Eastern time. The page shows them in the viewer's own timezone.
   SLOTS = {
-    "nov7" => [ "2026-11-07 14:00", "2026-11-07 16:00" ],
+    "nov8" => [ "2026-11-08 14:00", "2026-11-08 16:00" ],
     "nov11" => [ "2026-11-11 18:00", "2026-11-11 20:00" ]
   }.transform_values { |times| times.map { ActiveSupport::TimeZone["America/New_York"].parse(it) } }.freeze
 
