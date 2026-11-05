@@ -599,7 +599,7 @@ module SlackMessages
     elsif pending
       "#{mentions} That's the end of the day! See you tomorrow #{emoji}"
     else
-      "#{mentions} Everyone here journaled tonight :fire: #{emoji}"
+      "#{entries.map { |slack_id, _| "~<@#{slack_id}>~" }.join(' ')} :check-fallen: Everyone here journaled tonight. LET'S GO!! :fallen-star: #{emoji}"
     end
     { text: text, blocks: [ SlackBot::Blocks.section(text) ], **pet_persona(pet) }
   end

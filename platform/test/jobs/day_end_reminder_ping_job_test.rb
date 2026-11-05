@@ -43,7 +43,7 @@ class DayEndReminderPingJobTest < ActiveJob::TestCase
       [ @member, @teammate ].each { it.xp_entries.create!(kind: "journal", day: Date.new(2026, 11, 5), amount: 5) }
       travel_to(EVENING + 1.hour) { perform_enqueued_jobs }
       update = slack.calls_to(:chat_update).last
-      assert_equal "~<@U0MEMBER>~ :check-fallen: ~<@U0NEWCOMER>~ :check-fallen: Everyone here journaled tonight :fire: :lulu-boba:", update[:text]
+      assert_equal "~<@U0MEMBER>~ ~<@U0NEWCOMER>~ :check-fallen: Everyone here journaled tonight. LET'S GO!! :fallen-star: :lulu-boba:", update[:text]
     end
   end
 
