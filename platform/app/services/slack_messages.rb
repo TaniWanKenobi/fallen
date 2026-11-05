@@ -560,8 +560,8 @@ module SlackMessages
     text = "Hey, it's Lulu :lulu-boba:! Sami :sami-bao: (yuck) and I are both trying to win this week, so we built something to help " \
            "keep our teams on track.\n\n" \
            ":fallen-star:Press *JOIN* and we'll notify you in your team channel at #{at} (your time) if you haven't journaled yet!\n\n\n" \
-           "Sami thinks it'll save some of your streaks.\n" \
-           "I think Team Lulu is already cooking and this will just help us cook harder :)"
+           "_Sami thinks it'll save some of your streaks._\n" \
+           "_I think Team Lulu is already cooking and this will just help us cook harder :)_"
     buttons = [ SlackBot::Blocks.button("Join", "day_end_reminder:on", style: "primary"), SlackBot::Blocks.button("Leave", "day_end_reminder:off") ]
     { text: text, blocks: [ SlackBot::Blocks.section(text), SlackBot::Blocks.actions(*buttons) ], **pet_persona("lulu") }
   end
