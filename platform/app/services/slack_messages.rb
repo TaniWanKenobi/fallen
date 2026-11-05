@@ -588,8 +588,8 @@ module SlackMessages
 
   # The ping in a team's channel (DayEndReminderJob), redrawn as people journal (DayEndReminderPingJob). `entries` are
   # [slack_id, status] (DayEndReminder.statuses); anyone :journaled is crossed off. While someone is still to go it
-  # shows the time left and a button to the team's huddle; `minutes_left` nil means their day is over. Its edits never
-  # notify anyone again, only the first post does.
+  # shows the time left; `minutes_left` nil means their day is over. Its edits never notify anyone again, only the
+  # first post does.
   def day_end_reminder(pet, entries, minutes_left)
     emoji = PET_EMOJI.fetch(pet)
     mentions = entries.map { |slack_id, status| status == :journaled ? "~<@#{slack_id}>~ :check-fallen:" : "<@#{slack_id}>" }.join(" ")
@@ -601,10 +601,7 @@ module SlackMessages
     else
       "#{mentions} Everyone here journaled tonight :fire: #{emoji}"
     end
-    blocks = [ SlackBot::Blocks.section(text) ]
-    huddle = SlackHuddle.huddle_url(SlackHuddle.team_channel_id(pet) || SlackHuddle.channel_id)
-    blocks << SlackBot::Blocks.actions(SlackBot::Blocks.button("Join the huddle", "open_huddle", url: huddle, style: "primary")) if pending && minutes_left && huddle
-    { text: text, blocks: blocks, **pet_persona(pet) }
+    { text: text, blocks: [ SlackBot::Blocks.section(text) ], **pet_persona(pet) }
   end
 
   # In the main huddle's thread once Slack stops letting people in (HuddleFullJob).
