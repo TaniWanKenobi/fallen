@@ -20,7 +20,7 @@ class AirtableUsersTest < ActiveSupport::TestCase
     assert_not loaded.has_attribute?(:hca_token)
   end
 
-  test "a batch takes one journals query and one projects query, however many users" do
+  test "the stats take one journals query and one projects query, however many users" do
     everyone = AirtableUsers.users.to_a
     rows = assert_queries_count(2) { AirtableUsers.rows(everyone) }.index_by { it["ID"] }
     member = users(:member)
@@ -56,7 +56,12 @@ class AirtableUsersTest < ActiveSupport::TestCase
     Airtable.define_singleton_method(:sync) { |table, sync_id, rows| uploaded = [ table, sync_id, rows ] }
 
     with_env("AIRTABLE_USERS_TABLE" => nil, "AIRTABLE_USERS_SYNC_ID" => "sync1") do
-      assert_equal User.count, AirtableUsers.sync(batch_size: 2)
+      stats = []
+      count = ->(*, payload) { stats << payload[:sql] if payload[:sql].match?(/FROM "(journals|projects)"/) }
+      ActiveSupport::Notifications.subscribed(count, "sql.active_record") do
+        assert_equal User.count, AirtableUsers.sync(batch_size: 2)
+      end
+      assert_equal 2, stats.size, "journal and project stats should be read once, not once per batch"
     end
     assert_equal [ "Users", "sync1" ], uploaded.first(2)
     assert_equal User.all.map(&:public_id).sort, uploaded.last.pluck("ID").sort
