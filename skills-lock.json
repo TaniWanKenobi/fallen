@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "stageshow/SKILL.md",
       "computedHash": "bf9f07985a62882deae7935b5b1162fb5bf66b248930bb14a75dcaf9d67291b7"
+    },
+    "tactile-design": {
+      "source": "kosta4a/tactile-design",
+      "sourceType": "github",
+      "skillPath": "skills/tactile-design/SKILL.md",
+      "computedHash": "63a959c28919f1b7248e44cc54d21ea0022f4da6f282fa32c2708c55d341e01a"
     }
   }
 }
