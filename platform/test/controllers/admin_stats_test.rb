@@ -7,6 +7,7 @@ class AdminStatsTest < ActionDispatch::IntegrationTest
 
     assert_equal "30d", props["range"]
     assert_not props.key?("daily"), "panels are deferred"
+    assert_equal [ "default" ], response.parsed_body["deferredProps"].keys, "the panels and sidebar load in one request"
   end
 
   test "every panel loads" do

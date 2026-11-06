@@ -9,7 +9,8 @@ class StatsController < ApplicationController
 
   def show
     stats = ProgramStats.new(range: params[:range])
-    panel = ->(key) { InertiaRails.defer(group: key.to_s) { Rails.cache.fetch([ "program_stats", stats.range, key ], expires_in: CACHE_FOR) { stats.public_send(key) } } }
+    # The panels share the default deferred group, so they load in one request rather than one each.
+    panel = ->(key) { InertiaRails.defer { Rails.cache.fetch([ "program_stats", stats.range, key ], expires_in: CACHE_FOR) { stats.public_send(key) } } }
 
     render inertia: "Stats/Show", props: {
       range: stats.range,
