@@ -176,9 +176,6 @@
       const key = event.key.toLowerCase()
       if (key === 'enter' && props.can.decide)
         return (event.preventDefault(), decide(draft.needs_fix ? 'check_back' : 'approved'))
-      if (key === 'e' && props.can.decide)
-        return (event.preventDefault(), (draft.needs_fix = !draft.needs_fix))
-      if (key === 'f') return (event.preventDefault(), decision?.focusFeedback())
       return
     }
     if (event.key === 'Escape' && typing(event.target)) return (event.target as HTMLElement).blur()
@@ -188,6 +185,8 @@
     if (key === 'k') return (event.preventDefault(), move(-1))
     if (key === 'n') return (filter = filter === 'new' ? 'all' : 'new')
     if (key === 'm') return (event.preventDefault(), cards[focused]?.editNote())
+    if (key === 'f') return (event.preventDefault(), decision?.focusFeedback())
+    if (key === 'c' && props.can.decide) return (draft.needs_fix = !draft.needs_fix)
     if (key === '*') return topBar?.toggleStar()
     if (key === '?') return (helpOpen = !helpOpen)
     if (key === 'e') return router.visit(journalReviewRoot().url)
@@ -201,8 +200,8 @@
     ['*', 'Star or unstar'],
     ['S', 'Skip to the next project'],
     ['E', 'End the session'],
-    ['Ctrl/⌘ F', 'Feedback'],
-    ['Ctrl/⌘ E', 'Tick or untick “Check back next journal”'],
+    ['F', 'Write feedback'],
+    ['C', 'Tick or untick “Check back next journal”'],
     ['Ctrl/⌘ Enter', 'Give feedback'],
   ]
 </script>

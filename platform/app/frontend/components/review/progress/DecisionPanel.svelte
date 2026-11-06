@@ -183,7 +183,7 @@
       >
         Feedback <span class="text-muted-foreground/60">(posted in their thread and on the project page)</span
         >
-        <Key>{mod}F</Key>
+        <Key>F</Key>
       </label>
       <FeedbackEditor
         bind:this={feedbackEditor}
@@ -220,7 +220,7 @@
             min.</span
           >{/if}
       </span>
-      <Key class="ml-auto">{mod}E</Key>
+      <Key class="ml-auto">C</Key>
     </label>
 
     {@const shown = Object.entries(errors).filter(([key]) => key !== 'feedback')}
