@@ -161,6 +161,9 @@ Rails.application.routes.draw do
           post :reject
           post :refetch
         end
+        resource :lapse, only: %i[show update], controller: "transfer_lapses" do
+          patch :annotations
+        end
         post :sync, on: :collection
       end
     end

@@ -8,6 +8,8 @@ class Admin::ProjectTransferPolicy < ApplicationPolicy
   def reject? = approve?
   def refetch? = approve? && record.fetchable?
   def sync? = admin?
+  def lapse? = transfer_reviewer?
+  def review_lapse? = approve?
 
   class Scope < ApplicationPolicy::Scope
     def resolve = user&.reviews_transfers? ? scope.all : scope.none

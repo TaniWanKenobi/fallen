@@ -61,6 +61,17 @@ module Lapse
     pages
   end
 
+  # Any timelapse by id, without a token, as Lapse's own hash. Lapse answers for public and unlisted ones; nil when it
+  # has none it will show.
+  def public_timelapse(id)
+    response = connection.get("/api/timelapse/query", { id: id }) { it.headers["Accept"] = "application/json" }
+    return nil if response.status.in?([ 400, 403, 404 ])
+    raise Error, "Lapse /api/timelapse/query failed (#{response.status})" unless response.success?
+
+    body = JSON.parse(response.body)
+    body["ok"] ? body.dig("data", "timelapse") : nil
+  end
+
   def connection
     Faraday.new(url: host) do |f|
       f.options.open_timeout = 5

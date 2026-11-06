@@ -160,5 +160,9 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     assert_query_budget(6) { load_deferred(admin_mcp_path, "Admin/Mcp/Index", "actions", "sql_changes") }
     change = McpSqlChange.request!(sql: "UPDATE projects SET title = 'x' WHERE id = #{projects(:station).id}", admin: users(:admin), token: AdminToken.last)
     assert_query_budget(5) { get admin_sql_change_path(change) }
+
+    # Plus where else its recordings were counted: Fallen journals in one, other transfers in one.
+    project_transfers(:stardance).update_column(:lapse_recordings, [ { "key" => "lapse:A", "seconds" => 60 } ])
+    assert_query_budget(5) { get admin_transfer_lapse_path(project_transfers(:stardance)) }
   end
 end

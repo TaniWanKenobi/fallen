@@ -11,6 +11,7 @@
   import ImagePlus from '@lucide/svelte/icons/image-plus'
   import Plus from '@lucide/svelte/icons/plus'
   import RefreshCw from '@lucide/svelte/icons/refresh-cw'
+  import Video from '@lucide/svelte/icons/video'
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert'
   import X from '@lucide/svelte/icons/x'
   import Markdown from '@/components/Markdown.svelte'
@@ -25,7 +26,7 @@
   import { adminDark } from '@/lib/adminDark.svelte'
   import { formatDate, formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
   import { uploadImage, type UploadedImage } from '@/lib/uploads'
-  import { adminProject, adminTransfers } from '@/routes'
+  import { adminProject, adminTransferLapse, adminTransfers } from '@/routes'
   import type { AdminProjectTransferDetail } from '@/types'
 
   let {
@@ -171,6 +172,9 @@
         <RefreshCw data-icon="inline-start" /> Fetch again
       </Button>
     {/if}
+    <Button variant="outline" size="sm" href={adminTransferLapse(transfer.id).url}>
+      <Video data-icon="inline-start" /> Lapse review
+    </Button>
     <Button variant="outline" size="sm" href={transfer.source_url} target="_blank" rel="noreferrer">
       Original project <ExternalLink data-icon="inline-end" />
     </Button>
@@ -243,6 +247,16 @@
           <p class="text-xs text-muted-foreground">
             The project's total from this transfer, shared out over every journal it makes.
           </p>
+          {#if transfer.lapse_seconds != null}
+            <p class="text-xs text-muted-foreground">
+              The Lapse review counts {formatMinutes(Math.round(transfer.lapse_seconds / 60))}.
+              <button
+                type="button"
+                class="underline underline-offset-2 hover:text-foreground"
+                onclick={() => setHours(hoursText(Math.round(transfer.lapse_seconds! / 60)))}>Use that</button
+              >
+            </p>
+          {/if}
           {#if errors.approved_minutes}<p class="text-sm text-destructive">
               Hours {errors.approved_minutes}
             </p>{/if}

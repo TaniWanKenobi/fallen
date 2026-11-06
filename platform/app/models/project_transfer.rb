@@ -25,6 +25,12 @@
 #  error              :text
 #  fallen_project_url :string
 #  fetched_at         :datetime
+#  hackatime_projects :string           default([]), not null, is an Array
+#  lapse_annotations  :jsonb            not null
+#  lapse_error        :text
+#  lapse_fetched_at   :datetime
+#  lapse_recordings   :jsonb
+#  lapse_seconds      :integer
 #  message            :text
 #  name               :string
 #  note               :text
@@ -39,6 +45,7 @@
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  airtable_id        :string           not null
+#  hackatime_user_id  :string
 #  project_id         :bigint
 #  reviewer_id        :bigint
 #  user_id            :bigint
@@ -65,6 +72,7 @@
 class ProjectTransfer < ApplicationRecord
   include PublicIdentifiable
   include Discardable
+  include TransferLapseReview
 
   set_public_id_prefix :xfr
   has_paper_trail

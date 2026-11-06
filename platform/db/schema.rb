@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_05_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -501,6 +501,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_05_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "message"
+    t.string "hackatime_user_id"
+    t.string "hackatime_projects", default: [], null: false, array: true
+    t.jsonb "lapse_recordings"
+    t.jsonb "lapse_annotations", default: {}, null: false
+    t.integer "lapse_seconds"
+    t.datetime "lapse_fetched_at"
+    t.text "lapse_error"
     t.index ["airtable_id"], name: "index_project_transfers_on_airtable_id", unique: true
     t.index ["discarded_at"], name: "index_project_transfers_on_discarded_at"
     t.index ["email"], name: "index_project_transfers_on_email"
