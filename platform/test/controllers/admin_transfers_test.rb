@@ -6,7 +6,7 @@ class AdminTransfersTest < ActionDispatch::IntegrationTest
   setup { sign_in_as users(:admin) }
 
   test "pending transfers arrive in the deferred table, oldest first, with counts by status" do
-    project_transfers(:stranger).update!(status: "rejected")
+    project_transfers(:stranger).update!(status: "rejected", reviewer: users(:admin))
     props = load_deferred(admin_transfers_path, "Admin/Transfers/Index", "transfers", "pagy", "counts")
 
     assert_equal [ project_transfers(:stardance).public_id ], props["transfers"].pluck("id")
@@ -16,6 +16,9 @@ class AdminTransfersTest < ActionDispatch::IntegrationTest
     rows = load_deferred(admin_transfers_path(status: "all"), "Admin/Transfers/Index", "transfers")["transfers"]
     assert_equal 2, rows.size
     assert_nil rows.find { it["email"] == "stranger@example.com" }["user"]
+    assert_equal "Admin Person", rows.find { it["email"] == "stranger@example.com" }.dig("reviewer", "name")
+    assert_nil rows.find { it["status"] == "pending" }["reviewer"]
+    assert inertia_props(admin_transfers_path, "Admin/Transfers/Index")["can"]["view_users"]
   end
 
   test "a transfer's page has the snapshot and suggests hours and XP" do
@@ -91,6 +94,7 @@ class AdminTransfersTest < ActionDispatch::IntegrationTest
     post reject_admin_transfer_path(project_transfers(:stardance)), params: { transfer: { note: "Not theirs" } }
     assert_equal [ "rejected", reviewer ], project_transfers(:stardance).reload.values_at(:status, :reviewer)
 
+    assert_not inertia_props(admin_transfers_path, "Admin/Transfers/Index")["can"]["view_users"]
     assert_no_enqueued_jobs { post sync_admin_transfers_path }
     get admin_users_path
     assert_response :not_found

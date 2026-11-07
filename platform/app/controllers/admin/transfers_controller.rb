@@ -9,11 +9,12 @@ class Admin::TransfersController < Admin::ApplicationController
   def index
     tab = TABS.include?(params[:status]) ? params[:status] : "pending"
     scope = policy_scope([ :admin, ProjectTransfer ]).kept
-    rows = (tab == "all" ? scope : scope.where(status: tab)).includes(:user).order(submitted_at: tab == "pending" ? :asc : :desc)
+    rows = (tab == "all" ? scope : scope.where(status: tab)).includes(:user, :reviewer).order(submitted_at: tab == "pending" ? :asc : :desc)
 
     render inertia: "Admin/Transfers/Index", props: {
       status: tab,
-      can: { sync: policy([ :admin, ProjectTransfer ]).sync? },
+      # Reviewers who aren't admins can't open /admin/users, so their rows show the reviewer without a link.
+      can: { sync: policy([ :admin, ProjectTransfer ]).sync?, view_users: true_user.admin? },
       counts: InertiaRails.defer(group: "table") { scope.group(:status).count },
       **deferred_table(rows, AdminProjectTransferSerializer, :transfers)
     }

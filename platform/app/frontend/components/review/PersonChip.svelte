@@ -1,9 +1,19 @@
 <script lang="ts">
-  let { person, class: className = '' }: { person: { name: string; avatar: string }; class?: string } =
-    $props()
+  import Link from '@/components/Link.svelte'
+  import type { ComponentProps } from 'svelte'
+
+  let {
+    person,
+    href,
+    class: className = '',
+  }: {
+    person: { name: string; avatar: string }
+    href?: ComponentProps<typeof Link>['href']
+    class?: string
+  } = $props()
 </script>
 
-<span class="inline-flex min-w-0 items-center gap-1.5 {className}">
+{#snippet chip()}
   <img
     src={person.avatar}
     alt=""
@@ -11,5 +21,13 @@
     height="16"
     class="size-4 shrink-0 rounded-full bg-muted object-cover"
   />
-  <span class="truncate">{person.name}</span>
-</span>
+  <span class={['truncate', href && 'group-hover:underline']}>{person.name}</span>
+{/snippet}
+
+{#if href}
+  <Link {href} prefetch cacheFor="30s" class="group inline-flex min-w-0 items-center gap-1.5 {className}">
+    {@render chip()}
+  </Link>
+{:else}
+  <span class="inline-flex min-w-0 items-center gap-1.5 {className}">{@render chip()}</span>
+{/if}

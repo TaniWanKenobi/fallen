@@ -413,7 +413,7 @@
     <Card.Header>
       <Card.Title>{transfer.status === 'approved' ? 'Approved' : 'Rejected'}</Card.Title>
       <Card.Description>
-        By {transfer.reviewer?.display_name ?? 'someone'}
+        By {transfer.reviewer?.name ?? 'someone'}
         {#if transfer.decided_at}<span title={formatDateTime(transfer.decided_at)}
             >{timeAgo(transfer.decided_at)}</span
           >{/if}

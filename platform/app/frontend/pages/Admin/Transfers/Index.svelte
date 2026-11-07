@@ -12,11 +12,12 @@
   import Morph from '@/components/admin/Morph.svelte'
   import TransferCell from '@/components/admin/TransferCell.svelte'
   import UserCell from '@/components/admin/UserCell.svelte'
+  import PersonChip from '@/components/review/PersonChip.svelte'
   import { Button } from '@/components/admin/ui/button'
   import { renderComponent } from '@/components/admin/ui/data-table'
   import Deferred from '@/components/Deferred.svelte'
   import { formatMinutes, timeAgo } from '@/lib/format'
-  import { adminTransfers } from '@/routes'
+  import { adminTransfers, adminUser } from '@/routes'
   import type { AdminProjectTransfer, Pagy } from '@/types'
 
   let {
@@ -30,7 +31,7 @@
     pagy?: Pagy
     counts?: Record<string, number>
     status: string
-    can: { sync: boolean }
+    can: { sync: boolean; view_users: boolean }
   } = $props()
 
   let syncing = $state(false)
@@ -91,6 +92,22 @@
             ? 'Rejected'
             : timeAgo(row.original.submitted_at),
     },
+    ...(status === 'pending'
+      ? []
+      : [
+          {
+            id: 'reviewer',
+            header: 'Reviewer',
+            cell: ({ row }) => {
+              const reviewer = row.original.reviewer
+              if (!reviewer) return '—'
+              return renderComponent(PersonChip, {
+                person: reviewer,
+                href: can.view_users ? adminUser(reviewer.id) : undefined,
+              })
+            },
+          } satisfies ColumnDef<AdminProjectTransfer>,
+        ]),
   ])
 
   function sync() {
@@ -132,7 +149,16 @@
 
 <Deferred data={['transfers', 'pagy']}>
   {#snippet fallback()}
-    <DataTableSkeleton headers={['Project', 'Person', 'Claimed', 'Logged there', 'Owner', 'Submitted']} />
+    <DataTableSkeleton
+      headers={[
+        'Project',
+        'Person',
+        'Claimed',
+        'Logged there',
+        'Owner',
+        ...(status === 'pending' ? ['Submitted'] : ['Decision', 'Reviewer']),
+      ]}
+    />
   {/snippet}
   <DataTable {columns} data={transfers ?? []} {pagy} noun="transfers" />
 </Deferred>
