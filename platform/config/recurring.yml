@@ -19,10 +19,12 @@ production:
     queue: background
     schedule: "0 12-23 * * 1"
 
+  # Hourly, so a bonus lands within the hour a person's week ends at their midnight rather than up to a day later
+  # (the card has already reset by then). Paying is once per week.
   settle_lulu_weeks:
     class: SettleLuluWeeksJob
     queue: background
-    schedule: every day at 12pm
+    schedule: every hour at minute 7
 
   sync_users_to_airtable:
     class: SyncUsersToAirtableJob

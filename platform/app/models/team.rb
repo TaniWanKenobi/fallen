@@ -119,7 +119,7 @@ class Team
       weeks.count { |w| w != current || reachable } * WEEKLY_BONUS
     end
 
-    # Pays the last week that has ended on the person's calendar. Run daily; each week is checked seven times and
+    # Pays the last week that has ended on the person's calendar. Run hourly; each week is checked for seven days and
     # paid once.
     def settle(today = user.local_date)
       last = week(today - 7)
