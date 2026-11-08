@@ -3,7 +3,6 @@
 </script>
 
 <script lang="ts">
-  import { router } from '@inertiajs/svelte'
   import Link from '@/components/Link.svelte'
   import EditProjectModal from '@/components/EditProjectModal.svelte'
   import JournalComposer from '@/components/JournalComposer.svelte'
@@ -98,11 +97,6 @@
     if (can.journal) write()
   })
 
-  function remove() {
-    if (!confirm(`Delete ${project.title} and its journals? The Slack thread stays.`)) return
-    router.delete(projects.destroy(project.id).url)
-  }
-
   const links = $derived(
     [
       project.demo_url && { label: 'Demo', href: project.demo_url },
@@ -132,18 +126,11 @@
         >
           {project.title}
         </h1>
-        {#if can?.update || can?.destroy}
+        {#if can?.update}
           <div class="pointer-events-auto flex items-center gap-2">
-            {#if can?.update}
-              <button type="button" class="pill-glass h-10 text-sm" onclick={() => (editing = true)}
-                >Edit</button
-              >
-            {/if}
-            {#if can?.destroy}
-              <button type="button" class="pill-glass h-10 text-sm hover:text-red-300" onclick={remove}
-                >Delete</button
-              >
-            {/if}
+            <button type="button" class="pill-glass h-10 text-sm" onclick={() => (editing = true)}
+              >Edit</button
+            >
           </div>
         {/if}
       </div>
@@ -301,5 +288,10 @@
 {/if}
 
 {#if editing}
-  <EditProjectModal {project} directUploadUrl={direct_upload_url} onClose={() => (editing = false)} />
+  <EditProjectModal
+    {project}
+    directUploadUrl={direct_upload_url}
+    canDelete={can?.destroy ?? false}
+    onClose={() => (editing = false)}
+  />
 {/if}
