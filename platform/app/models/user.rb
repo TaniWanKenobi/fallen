@@ -4,6 +4,7 @@
 #
 #  id                      :bigint           not null, primary key
 #  avatar                  :string
+#  daily_goal_minutes      :integer
 #  discarded_at            :datetime
 #  display_name            :string           not null
 #  email                   :string           not null
@@ -16,6 +17,7 @@
 #  last_seen_at            :datetime
 #  pet                     :string
 #  pet_switched_at         :datetime
+#  pronouns                :string
 #  roles                   :string           default([]), not null, is an Array
 #  signup_source           :jsonb            not null
 #  slack_skipped_at        :datetime
@@ -26,6 +28,7 @@
 #  timezone                :string           default("UTC"), not null
 #  timezone_changed_at     :datetime
 #  verification_status     :string
+#  welcome_back_seen_at    :datetime
 #  xp                      :integer          default(0), not null
 #  xp_multiplier           :decimal(3, 2)    default(1.0), not null
 #  created_at              :datetime         not null
@@ -52,6 +55,8 @@ class User < ApplicationRecord
   # The desktop pet picked during onboarding, an egg until the first journal (Evolution). It is also the team (Team),
   # so switching it is limited (PetSwitch).
   PETS = %w[lulu sami].freeze
+  # The choices in the welcome back and on the settings page (lib/pronouns.ts).
+  PRONOUNS = %w[she/her he/him they/them].freeze
   # How long after a timezone change the next one waits (#change_timezone).
   TIMEZONE_CHANGE_EVERY = 7.days
   SLACK_ID = /\A[UW][A-Z0-9]{6,20}\z/
@@ -67,6 +72,8 @@ class User < ApplicationRecord
   set_public_id_prefix :usr
   # Left from the per-record Airtable sync, which AirtableUsers replaced. Drop the column once this is deployed.
   self.ignored_columns += %w[airtable_synced_at]
+  # The welcome back is for people who were here before it (#welcome_back_due?).
+  attribute :welcome_back_seen_at, default: -> { Time.current }
   has_paper_trail
 
   pg_search_scope :search, against: %i[display_name email slack_id], using: { tsearch: { prefix: true } }
@@ -102,6 +109,10 @@ class User < ApplicationRecord
   validates :roles, presence: true
   validates :soft_signup, inclusion: { in: SOFT_SIGNUPS }, allow_nil: true
   validates :pet, inclusion: { in: PETS, message: "That pet doesn't exist." }, allow_nil: true
+  validates :pronouns, inclusion: { in: PRONOUNS, message: "must be she/her, he/him or they/them" }, allow_nil: true
+  validates :daily_goal_minutes, numericality: { only_integer: true, in: DailyGoal::CUSTOM_MINUTES, message: "must be a whole number of minutes from #{DailyGoal::CUSTOM_MINUTES.min} to #{DailyGoal::CUSTOM_MINUTES.max}" }, allow_nil: true
+
+  normalizes :pronouns, with: ->(pronouns) { pronouns.squish.presence }
   validate :pet_switch_allowed, if: :switching_pet?
   validate :roles_are_known
 
@@ -237,6 +248,23 @@ class User < ApplicationRecord
     end
     true
   end
+
+  # The welcome back (WelcomeBacksController): asked once for their pronouns and whether they want the day-end ping,
+  # after the onboarding and Slack. It greets people who were here before it, so accounts made since start with it
+  # seen (the default on welcome_back_seen_at).
+  def welcome_back_due? = welcome_back_seen_at.nil?
+
+  # `reminder` turns the day-end ping on or off; nil leaves it as it is, and so does turning it on when Slack can't
+  # reach them (#remindable?).
+  def welcome_back!(pronouns:, reminder: nil)
+    transaction do
+      update!(pronouns: pronouns, welcome_back_seen_at: Time.current)
+      DayEndReminder.set(self, reminder) unless reminder.nil? || (reminder && !remindable?)
+    end
+  end
+
+  # The day-end ping (DayEndReminder) mentions them in their team's channel, so it needs their Slack id.
+  def remindable? = slack_id.present?
 
   def team = Team.for(self)
   def pet_switch = PetSwitch.new(self)

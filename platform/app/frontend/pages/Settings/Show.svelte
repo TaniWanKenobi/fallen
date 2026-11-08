@@ -23,8 +23,15 @@
     slack,
     lapse,
     timezone,
+    pronouns,
     pet_switch,
-  }: { slack?: SlackStatus; lapse?: LapseStatus; timezone?: string; pet_switch?: PetSwitch | null } = $props()
+  }: {
+    slack?: SlackStatus
+    lapse?: LapseStatus
+    timezone?: string
+    pronouns?: string | null
+    pet_switch?: PetSwitch | null
+  } = $props()
 
   const user = $derived(shared().auth.user)
   const pet = $derived(user?.pet ?? null)
@@ -60,7 +67,7 @@
       {sections.find((s) => s.id === id)?.label}
     </h2>
     {#if id === 'profile' && user}
-      <ProfileSection {user} {timezone} />
+      <ProfileSection {user} {timezone} {pronouns} />
     {:else if id === 'slack'}
       <SlackSection {slack} />
     {:else if id === 'lapse' && lapse}

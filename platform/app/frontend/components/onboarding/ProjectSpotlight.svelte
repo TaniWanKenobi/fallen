@@ -3,8 +3,9 @@
   // from the whole screen like a camera iris. A gold frame with reticle corners pulses round it and an arrow bobs
   // beside it. Outside the window nothing can be clicked; inside, the page works as usual. Two steps use it: the
   // Projects tab (`onarrive` once the projects page is open), then its create button, which hands over to the form
-  // (tour.stepAside). Targets are marked with data-tour.
-  export type SpotlightTarget = 'projects-tab' | 'new-project'
+  // (tour.stepAside). The welcome back uses it for the dashboard's Slack ping box, which it scrolls to itself.
+  // Targets are marked with data-tour.
+  export type SpotlightTarget = 'projects-tab' | 'new-project' | 'lock-in-reminder'
   const PAD = 12
   const RADIUS = 18
   const DIM = 'rgba(4, 6, 15, 0.74)'
@@ -103,6 +104,7 @@
           }
           ready = true
         } else if (
+          name !== 'lock-in-reminder' &&
           !visited &&
           performance.now() - began > LOOK_FOR_MS &&
           page.component !== 'Projects/Index'
@@ -135,7 +137,8 @@
     return () => {
       cancelAnimationFrame(frame)
       target?.removeEventListener('click', onClick)
-      document.body.style.paddingBottom = ''
+      // Only the padding it added itself: the welcome back keeps its own for the lock-in box after this goes.
+      if (name === 'new-project') document.body.style.paddingBottom = ''
       tour.spotlight = false
     }
   })

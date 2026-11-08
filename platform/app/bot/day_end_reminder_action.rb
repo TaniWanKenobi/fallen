@@ -8,7 +8,7 @@ class DayEndReminderAction < SlackBot::Action
 
     case arg
     when "on"
-      DayEndReminder.create_or_find_by!(user: user)
+      DayEndReminder.set(user, true)
       # The job only pings people on a team (User.on_a_team), so someone mid-signup is told it starts once they're on one.
       return reply("You're in! I'll start pinging you once you've finished signing up on Fallen and picked your pet: #{SlackMessages.app_url}") unless User.on_a_team.exists?(user.id)
 
@@ -16,7 +16,7 @@ class DayEndReminderAction < SlackBot::Action
       # The test copy of the announcement pings them here and now, as if it were already evening.
       DayEndReminderPreviewJob.perform_later(channel_id, [ user.slack_id ]) if value == SlackMessages::DAY_END_PREVIEW
     when "off"
-      DayEndReminder.where(user: user).destroy_all
+      DayEndReminder.set(user, false)
       reply("No more reminders!")
     end
   end

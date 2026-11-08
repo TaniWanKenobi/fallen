@@ -23,6 +23,9 @@ class PrivacyRequest
     last_seen_at: nil,
     xp: 0,
     hatch_seen_at: nil,
+    pronouns: nil,
+    welcome_back_seen_at: nil,
+    daily_goal_minutes: nil,
     signup_source: {}
   }.freeze
 

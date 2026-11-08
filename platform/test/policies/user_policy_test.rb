@@ -24,6 +24,13 @@ class UserPolicyTest < ActiveSupport::TestCase
     assert_not UserPolicy.new(users(:admin), member).choose_pet?
   end
 
+  test "people change only their own pronouns and pings" do
+    member = users(:member)
+    assert UserPolicy.new(member, member).edit_self?
+    assert_not UserPolicy.new(member, users(:admin)).edit_self?
+    assert_not UserPolicy.new(users(:admin), member).edit_self?
+  end
+
   test "only the person themselves watching their hatch counts" do
     member = users(:member)
     assert UserPolicy.new(member, member).watch_hatch?

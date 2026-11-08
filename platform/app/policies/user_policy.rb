@@ -9,9 +9,11 @@ class UserPolicy < ApplicationPolicy
   # An admin watching it while impersonating does not count as the person seeing it.
   def watch_hatch? = record == user && !user_impersonating?
   # Starting and stopping their timer, or ringing themselves into the huddle. Not an admin browsing as them.
-  def track_time? = record == user && !user_impersonating?
+  def track_time? = acting_as_self?
   # Journal photos and project banners (UploadsController). Banned people are redirected before this runs.
   def upload? = record == user
+  # Their own pronouns and Slack pings. Not an admin browsing as them.
+  def edit_self? = acting_as_self?
 
   # Admins can browse as regular, active users only; never as other staff or while already impersonating.
   def impersonate?
@@ -27,4 +29,5 @@ class UserPolicy < ApplicationPolicy
   private
 
   def user_impersonating? = Current.true_user.present? && Current.true_user != Current.user
+  def acting_as_self? = record == user && !user_impersonating?
 end

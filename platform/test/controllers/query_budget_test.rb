@@ -20,8 +20,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     users(:admin).project_invites.create!(project: projects(:unlinked), inviter: users(:member))
 
     # Nothing deferred (HomeController#index): the whole page in one round trip. Projects bring their members, and
-    # the invites waiting for the person come in one more.
-    assert_query_budget(15) { get home_path }
+    # the invites waiting for the person come in one more. Two for the XP bar's last seven days and the Slack ping box.
+    assert_query_budget(17) { get home_path }
     assert_query_budget(8) { get projects_path }
     # 11 since journals can have several Lapse timelapses: one preload query, whatever the page holds. The team
     # costs what the owner query it replaced did: members, what each logged here and invites waiting, with journal

@@ -10,7 +10,7 @@ class HomeController < ApplicationController
   # Nothing deferred: these are a dozen indexed queries over one person's own rows, about 15ms together, and a
   # deferred prop costs the browser another round trip to the server, 100-300ms for most people.
   def index
-    render inertia: "Home/Index", props: { projects: projects, invites: pending_invites, stats: stats, xp: xp, goal: goal, activity: activity }
+    render inertia: "Home/Index", props: { projects: projects, invites: pending_invites, stats: stats, xp: xp, goal: goal, activity: activity, reminder: reminder }
   end
 
   private
@@ -34,7 +34,7 @@ class HomeController < ApplicationController
     today = current_user.local_date
     week = team ? team.week(today) : Week.of(today)
     {
-      total: current_user.xp, form: current_user.pet_form, next_stage_xp: current_user.next_stage_xp, progress: current_user.stage_progress,
+      total: current_user.xp, final_xp: Evolution::STAGE_XP.last, last_week: last_week_xp, deadline: DailyGoal::DEADLINE.iso8601, days_left: days_left, form: current_user.pet_form, next_stage_xp: current_user.next_stage_xp, progress: current_user.stage_progress,
       team: team&.name, multiplier: current_user.xp_multiplier.to_f, freezes: current_user.streak_freezes,
       rules: Team.rules,
       week: {
@@ -45,6 +45,25 @@ class HomeController < ApplicationController
         race_finish: Week.racing.race_finish.iso8601
       }
     }
+  end
+
+  # XP from the last seven days, on their own calendar. Never below zero: an XP deduction that week isn't shown as
+  # negative progress.
+  def last_week_xp
+    return 0 unless current_user.pet
+
+    today = current_user.local_date
+    [ current_user.xp_entries.kept.where(day: (today - 6.days)..today).sum(:amount), 0 ].max
+  end
+
+  def days_left = DailyGoal.days(current_user).count
+
+  # The "Ping me on Slack to lock in" box (DayEndReminder), once they're past the onboarding: the ping only goes to
+  # people on a team (DayEndReminderJob).
+  def reminder
+    return unless current_user.pet
+
+    { on: current_user.day_end_reminder.present?, available: current_user.remindable?, hours_left: DayEndReminder::HOURS_LEFT }
   end
 
   def goal = DailyGoal.for(current_user, team: team)&.as_json

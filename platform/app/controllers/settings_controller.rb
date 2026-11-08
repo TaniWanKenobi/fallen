@@ -7,7 +7,7 @@ class SettingsController < ApplicationController
 
   def show
     render inertia: "Settings/Show", props: {
-      slack: slack_props, lapse: lapse_props, timezone: current_user.timezone, pet_switch: current_user.pet && pet_switch_props
+      slack: slack_props, lapse: lapse_props, timezone: current_user.timezone, pronouns: current_user.pronouns, pet_switch: current_user.pet && pet_switch_props
     }
   end
 

@@ -31,6 +31,11 @@ class DayEndReminder < ApplicationRecord
 
   belongs_to :user
 
+  # Opts `user` in or out, from Slack (DayEndReminderAction) or the site (DayEndRemindersController).
+  def self.set(user, on)
+    on ? create_or_find_by!(user: user) : where(user: user).destroy_all
+  end
+
   # The people in one ping message (`ping_channel_id`, `ping_ts`), which is redrawn as they journal
   # (DayEndReminderPingJob).
   scope :pinged_in, ->(channel, ts) { where(ping_channel_id: channel, ping_ts: ts) }

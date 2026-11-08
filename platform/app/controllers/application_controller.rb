@@ -32,7 +32,8 @@ class ApplicationController < ActionController::Base
   private
 
   # What someone has left to do before the rest of the site: the onboarding, which picking a pet finishes, then
-  # signing in with Hack Club Auth if they started with just an email, then connecting Slack or choosing not to. Where the onboarding
+  # signing in with Hack Club Auth if they started with just an email, then connecting Slack or choosing not to, then
+  # the welcome back (User#welcome_back_due?). Where the onboarding
   # resumes comes from here rather than the browser, so leaving halfway (closing the tab, another device) picks up at
   # the same place. Costs one query, and only while onboarding. `joined_with` names the owner when the project is
   # someone else's they joined from its link, so the onboarding doesn't ask them to make one.
@@ -49,7 +50,15 @@ class ApplicationController < ActionController::Base
       { step: "verify", email: current_user.email }
     elsif !current_user.slack_ready? && SlackMessaging.oauth_configured?
       { step: "slack" }
+    elsif current_user.welcome_back_due?
+      welcome_back_props
     end
+  end
+
+  # The welcome back, once the rest is done: their pronouns so far, and whether Slack can reach them for the day-end
+  # ping. No queries, since this runs on every request; whether the ping is on already comes from Home's `reminder`.
+  def welcome_back_props
+    { step: "welcome_back", pronouns: current_user.pronouns, remindable: current_user.remindable?, hours_left: DayEndReminder::HOURS_LEFT }
   end
 
   # PaperTrail records the real admin while impersonating, not the impersonated user.

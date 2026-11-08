@@ -4,6 +4,7 @@
 #
 #  id                      :bigint           not null, primary key
 #  avatar                  :string
+#  daily_goal_minutes      :integer
 #  discarded_at            :datetime
 #  display_name            :string           not null
 #  email                   :string           not null
@@ -16,6 +17,7 @@
 #  last_seen_at            :datetime
 #  pet                     :string
 #  pet_switched_at         :datetime
+#  pronouns                :string
 #  roles                   :string           default([]), not null, is an Array
 #  signup_source           :jsonb            not null
 #  slack_skipped_at        :datetime
@@ -26,6 +28,7 @@
 #  timezone                :string           default("UTC"), not null
 #  timezone_changed_at     :datetime
 #  verification_status     :string
+#  welcome_back_seen_at    :datetime
 #  xp                      :integer          default(0), not null
 #  xp_multiplier           :decimal(3, 2)    default(1.0), not null
 #  created_at              :datetime         not null
@@ -51,6 +54,7 @@ admin:
   slack_id: U0ADMIN
   roles: ["admin", "user"]
   pet: sami
+  welcome_back_seen_at: <%= 1.day.ago %>
 
 member:
   hca_id: hca_member
@@ -61,6 +65,7 @@ member:
   roles: ["user"]
   pet: lulu
   xp: 20
+  welcome_back_seen_at: <%= 1.day.ago %>
 
 # Signed in for the first time: no pet yet (so mid-onboarding), no Slack.
 newcomer:

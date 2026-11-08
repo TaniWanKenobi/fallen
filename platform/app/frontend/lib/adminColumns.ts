@@ -22,6 +22,12 @@ export const userColumns: ColumnDef<AdminUser>[] = [
     header: 'User',
     cell: ({ row }) => renderComponent(UserCell, { user: row.original }),
   },
+  {
+    accessorKey: 'pronouns',
+    header: 'Pronouns',
+    enableSorting: false,
+    cell: ({ row }) => row.original.pronouns ?? '—',
+  },
   { accessorKey: 'slack_id', header: 'Slack ID', cell: ({ row }) => row.original.slack_id ?? '—' },
   {
     accessorKey: 'roles',

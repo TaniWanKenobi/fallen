@@ -30,7 +30,7 @@ class SetupTest < ActionDispatch::IntegrationTest
   end
 
   test "nothing left once Slack is skipped" do
-    users(:newcomer).update!(pet: "lulu", slack_skipped_at: Time.current)
+    users(:newcomer).update!(pet: "lulu", slack_skipped_at: Time.current, welcome_back_seen_at: Time.current)
     sign_in_as users(:newcomer)
     with_env("SLACK_CLIENT_ID" => "id", "SLACK_CLIENT_SECRET" => "secret") do
       assert_nil setup_prop
@@ -39,6 +39,15 @@ class SetupTest < ActionDispatch::IntegrationTest
 
   test "nothing left once Slack is connected" do
     sign_in_as users(:member)
+    assert_nil setup_prop
+  end
+
+  test "after Slack, the welcome back until it's answered" do
+    users(:member).update!(welcome_back_seen_at: nil, pronouns: "she/her")
+    sign_in_as users(:member)
+    assert_equal({ "step" => "welcome_back", "pronouns" => "she/her", "remindable" => true, "hours_left" => DayEndReminder::HOURS_LEFT }, setup_prop)
+
+    post welcome_back_path, params: { pronouns: "she/her" }
     assert_nil setup_prop
   end
 

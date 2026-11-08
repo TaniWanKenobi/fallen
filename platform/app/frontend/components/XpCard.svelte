@@ -4,6 +4,12 @@
   // What HomeController#xp sends: XP and form, the person's team and its week so far, and the race between the teams.
   export interface Standing {
     total: number
+    // Evolution::STAGE_XP.last, and the XP from the last seven days (XpGoalBar).
+    final_xp: number
+    last_week: number
+    // DailyGoal::DEADLINE, and the days to it, today included (0 once it's past).
+    deadline: string
+    days_left: number
     form: number
     next_stage_xp: number | null
     progress: number

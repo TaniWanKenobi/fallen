@@ -44,7 +44,7 @@
 
 <Deferred data={['users', 'pagy']}>
   {#snippet fallback()}
-    <DataTableSkeleton headers={['User', 'Slack ID', 'Roles', 'Last seen', 'Joined']} avatar />
+    <DataTableSkeleton headers={['User', 'Pronouns', 'Slack ID', 'Roles', 'Last seen', 'Joined']} avatar />
   {/snippet}
   <DataTable columns={userColumns} data={users ?? []} {pagy} noun="users" />
 </Deferred>

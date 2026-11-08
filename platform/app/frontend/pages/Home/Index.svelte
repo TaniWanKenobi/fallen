@@ -11,6 +11,9 @@
   import SettingRow from '@/components/settings/SettingRow.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import InviteCards from '@/components/team/InviteCards.svelte'
+  import LockInReminder, { type Reminder } from '@/components/LockInReminder.svelte'
+  import WelcomeBackOverlay from '@/components/welcome-back/WelcomeBackOverlay.svelte'
+  import XpGoalBar from '@/components/XpGoalBar.svelte'
   import WriteJournalButton from '@/components/WriteJournalButton.svelte'
   import XpCard, { type Standing } from '@/components/XpCard.svelte'
   import { formatMinutes } from '@/lib/format'
@@ -32,6 +35,7 @@
     activity,
     xp,
     goal,
+    reminder,
   }: {
     projects?: Project[]
     invites?: ProjectInvite[]
@@ -39,6 +43,7 @@
     activity?: { date: string; minutes: number }[]
     xp?: Standing
     goal?: Goal | null
+    reminder?: Reminder
   } = $props()
 
   const firstName = $derived(shared().auth.user?.display_name.split(' ')[0] ?? '')
@@ -56,6 +61,8 @@
 
 <PageTitle title="Home" subtitle={firstName ? `Welcome back, ${firstName}!` : undefined} />
 
+<WelcomeBackOverlay reminderOn={reminder?.on ?? false} />
+
 <Reveal loading={!projects || !stats || !activity}>
   {#snippet skeleton()}
     <div class="space-y-6">
@@ -70,6 +77,16 @@
   {/snippet}
   {#if projects && stats && activity}
     <div {@attach stagger} class="stagger-in space-y-6 [--stagger-step:70ms]">
+      {#if xp}
+        <XpGoalBar
+          total={xp.total}
+          goal={xp.final_xp}
+          lastWeek={xp.last_week}
+          deadline={xp.deadline}
+          daysLeft={xp.days_left}
+        />
+      {/if}
+
       {#if invites?.length}
         <InviteCards {invites} />
       {/if}
@@ -120,6 +137,9 @@
             <p class="mt-2 font-outfit text-xs text-sky-ice/50">Last {activity.length} days</p>
           </div>
         </div>
+        {#if reminder}
+          <LockInReminder {reminder} />
+        {/if}
         {#if stats.missing_hours > 0}
           <SettingRow
             title="{stats.missing_hours} {stats.missing_hours === 1

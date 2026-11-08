@@ -49,6 +49,12 @@ Rails.application.routes.draw do
 
   resource :pet, only: :update
   resource :hatch, only: :create
+  # The welcome back's answers, and the dashboard's Slack ping box (DayEndReminder).
+  resource :welcome_back, only: :create
+  resource :pronouns, only: :update # Settings > Profile
+  resource :day_end_reminder, only: %i[create destroy]
+  # Their own daily goal in place of the suggested one (DailyGoal), and back.
+  resource :daily_goal, only: %i[update destroy]
   resource :timer, only: %i[show create destroy]
   resource :timer_wrap_up, only: :create
   resources :time_check_ins, only: :update

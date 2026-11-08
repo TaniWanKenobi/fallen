@@ -6,6 +6,8 @@
 # work through it. Team wins are left out; no one can plan on them.
 class DailyGoal
   DEADLINE = Time.find_zone!("America/New_York").local(2026, 12, 9, 23, 59, 59)
+  # The range someone can set their own goal in (users.daily_goal_minutes), from the dashboard.
+  CUSTOM_MINUTES = 15..(16 * 60)
 
   # Nil for someone without a pet, once they have the XP, or after the deadline.
   def self.for(user, team: user.team, now: Time.current)
@@ -34,7 +36,10 @@ class DailyGoal
     @today = user.local_date(now)
   end
 
-  def days = today..user.local_date(DEADLINE)
+  # Today until the deadline on their own calendar, both included. Empty once it has passed.
+  def self.days(user, today = user.local_date) = today..user.local_date(DEADLINE)
+
+  def days = self.class.days(user, today)
 
   def xp_to_go = @xp_to_go ||= [ Evolution::STAGE_XP.last - user.xp + team.journal_xp(team.week(today)).fetch(today, 0), 0 ].max
 
@@ -43,7 +48,10 @@ class DailyGoal
   def best_minutes = minutes_for(team.best_multipliers(days), bonus: team.best_bonus_xp(days))
 
   def as_json(*)
-    { deadline: DEADLINE.iso8601, days_left: days.count, minutes: minutes, best_minutes: best_minutes }
+    {
+      deadline: DEADLINE.iso8601, days_left: days.count, minutes: minutes, best_minutes: best_minutes,
+      custom_minutes: user.daily_goal_minutes, custom_range: [ CUSTOM_MINUTES.min, CUSTOM_MINUTES.max ]
+    }
   end
 
   private

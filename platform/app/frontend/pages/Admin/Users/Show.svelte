@@ -60,6 +60,7 @@
     { label: 'Public ID', value: user.id, mono: true },
     { label: 'HCA ID', value: user.hca_id ?? '—', mono: true },
     { label: 'Slack ID', value: user.slack_id ?? '—', mono: true },
+    { label: 'Pronouns', value: user.pronouns ?? '—' },
     { label: 'Timezone', value: user.timezone },
     { label: 'Verification', value: user.verification_status ?? 'unknown' },
     { label: 'Adult', value: user.is_adult ? 'Yes' : 'No' },

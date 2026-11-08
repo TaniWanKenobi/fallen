@@ -6,6 +6,7 @@ require "test_helper"
 #
 #  id                      :bigint           not null, primary key
 #  avatar                  :string
+#  daily_goal_minutes      :integer
 #  discarded_at            :datetime
 #  display_name            :string           not null
 #  email                   :string           not null
@@ -18,6 +19,7 @@ require "test_helper"
 #  last_seen_at            :datetime
 #  pet                     :string
 #  pet_switched_at         :datetime
+#  pronouns                :string
 #  roles                   :string           default([]), not null, is an Array
 #  signup_source           :jsonb            not null
 #  slack_skipped_at        :datetime
@@ -28,6 +30,7 @@ require "test_helper"
 #  timezone                :string           default("UTC"), not null
 #  timezone_changed_at     :datetime
 #  verification_status     :string
+#  welcome_back_seen_at    :datetime
 #  xp                      :integer          default(0), not null
 #  xp_multiplier           :decimal(3, 2)    default(1.0), not null
 #  created_at              :datetime         not null
@@ -108,5 +111,9 @@ class UserTest < ActiveSupport::TestCase
     assert user.is_adult
     assert_equal [ "user" ], user.roles
     assert_equal "tok", user.hca_token
+  end
+
+  test "a new account starts with the welcome back seen, since it greets people from before it" do
+    assert User.new.welcome_back_seen_at?
   end
 end

@@ -25,6 +25,13 @@ export interface SharedProps {
       }
     | { step: 'verify'; email: string }
     | { step: 'slack' }
+    // ApplicationController#welcome_back_props.
+    | {
+        step: 'welcome_back'
+        pronouns: string | null
+        remindable: boolean
+        hours_left: number
+      }
     | null
   lapse_configured: boolean
   // Development only, for replaying the onboarding after a pet is picked.
