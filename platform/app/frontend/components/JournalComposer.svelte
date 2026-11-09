@@ -275,10 +275,12 @@
     durationInput?.focus()
   }
 
-  // Pasted text is a nudge to write it yourself. Pasted photos are welcome, so they don't set it off.
+  // Pasted text is a nudge to write it yourself. Pasted photos are welcome, so they don't set it off, and neither
+  // does moving their own writing around: ProseMirror marks what it copies with data-pm-slice.
   function onPaste(event: ClipboardEvent) {
     const data = event.clipboardData
     if (!pasteHint || !data || data.files.length > 0 || !data.getData('text/plain').trim()) return
+    if (data.getData('text/html').includes('data-pm-slice')) return
     pasted = true
     pasteHint.classList.remove('flash')
     void pasteHint.offsetWidth
