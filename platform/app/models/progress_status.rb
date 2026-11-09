@@ -71,8 +71,9 @@
 class ProgressStatus < ApplicationRecord
   has_paper_trail
 
-  # 10h at launch, while the backlog is worked through; meant to come down (to 4h) once the queue keeps up.
-  FIRST_AT_MINUTES = 10 * 60
+  # 10h at launch, raised to 20h while the backlog is worked through; meant to come down (to 4h) once the queue keeps
+  # up. Each status keeps the threshold it was given (`next_at_minutes`), so changing this needs a migration too.
+  FIRST_AT_MINUTES = 20 * 60
   GAPS_MINUTES = [ 6, 10, 40, 80, 100 ].map { it * 60 }.freeze
   # A check back waits for a journal at least this long, so a quick one doesn't bring it straight back.
   CHECK_BACK_MIN_MINUTES = 30
