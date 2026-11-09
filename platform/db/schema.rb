@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_09_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_200200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -508,10 +508,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_180000) do
     t.integer "lapse_seconds"
     t.datetime "lapse_fetched_at"
     t.text "lapse_error"
+    t.datetime "draft_saved_at"
+    t.datetime "reached_out_at"
+    t.bigint "reached_out_by_id"
     t.index ["airtable_id"], name: "index_project_transfers_on_airtable_id", unique: true
     t.index ["discarded_at"], name: "index_project_transfers_on_discarded_at"
     t.index ["email"], name: "index_project_transfers_on_email"
     t.index ["project_id"], name: "index_project_transfers_on_project_id"
+    t.index ["reached_out_by_id"], name: "index_project_transfers_on_reached_out_by_id"
     t.index ["reviewer_id"], name: "index_project_transfers_on_reviewer_id"
     t.index ["source", "source_ref"], name: "index_project_transfers_on_source_and_source_ref"
     t.index ["source"], name: "index_project_transfers_unfetched", where: "(fetched_at IS NULL)"
@@ -1044,6 +1048,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_09_180000) do
   add_foreign_key "project_members", "users"
   add_foreign_key "project_transfers", "projects"
   add_foreign_key "project_transfers", "users"
+  add_foreign_key "project_transfers", "users", column: "reached_out_by_id"
   add_foreign_key "project_transfers", "users", column: "reviewer_id"
   add_foreign_key "projects", "users"
   add_foreign_key "repo_files", "repo_snapshots", on_delete: :cascade
