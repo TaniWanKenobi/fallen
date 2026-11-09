@@ -11,7 +11,8 @@
 # one journal. The hours approved are always the project's total from the transfer. The journals earn no XP
 # themselves: the reviewer sets the XP, which is one "transfer" entry in the ledger, left out of the weekly team race.
 # A row reviewed here keeps its decision even if the form's row changes; one still pending follows it. The person is
-# DMed the decision, with the reviewer's `message` to them (ProjectTransferDecidedJob); `note` is for staff.
+# DMed the decision, who made it, and the reviewer's `message` to them (ProjectTransferDecidedJob); `note` is for staff.
+# Both save as the reviewer types (#save_draft).
 # == Schema Information
 #
 # Table name: project_transfers
@@ -216,6 +217,25 @@ class ProjectTransfer < ApplicationRecord
   rescue ActiveRecord::RecordInvalid => e
     errors.add(:base, "Couldn't import the #{e.record.model_name.human.downcase}: #{e.record.errors.full_messages.to_sentence}")
     false
+  end
+
+  DRAFT_FIELDS = %w[note message].freeze
+
+  # The staff note and the message to them while it's still pending; deciding sets them for good. `changes` holds
+  # only the fields the reviewer edited and `was` what they last saw in each, so two reviewers typing at once can't
+  # wipe each other's text: :conflict when someone else changed one since, :decided once it's no longer pending.
+  # Not versioned: each version copies the whole row, snapshot and all, and this runs on every pause in typing. The
+  # decision's update versions the final text.
+  def save_draft(changes, was:)
+    changes = changes.to_h.stringify_keys.slice(*DRAFT_FIELDS)
+    was = was.to_h.stringify_keys
+    with_lock do
+      next :decided unless pending? && kept?
+      next :conflict if changes.keys.any? { self[it].to_s != was[it].to_s }
+
+      PaperTrail.request(enabled: false) { update!(changes.transform_values(&:presence)) }
+      :saved
+    end
   end
 
   def reject(reviewer:, note: nil, message: nil)

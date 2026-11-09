@@ -165,6 +165,7 @@ Rails.application.routes.draw do
         member do
           post :approve
           post :reject
+          patch :draft
           post :refetch
         end
         resource :lapse, only: %i[show update], controller: "transfer_lapses" do

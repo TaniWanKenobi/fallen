@@ -13,6 +13,7 @@ class ProjectTransferDecidedJobTest < ActiveJob::TestCase
       assert_includes message[:text], "It's now a new project on Fallen, *Hexapod robot*."
       assert_not_includes message[:text], "counted"
       assert_includes message[:text], "> Welcome aboard &lt;3 &amp; enjoy"
+      assert_includes message[:text], "Reviewed by <@#{users(:admin).slack_id}>."
       assert_includes message[:blocks].to_s, transfer.project.public_id
     end
   end

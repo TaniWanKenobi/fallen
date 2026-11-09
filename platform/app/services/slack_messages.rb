@@ -140,6 +140,7 @@ module SlackMessages
       else
         [ "Your project transfer for *#{name}* wasn't approved." ]
       end
+    lines << "Reviewed by #{transfer.reviewer.slack_mention}." if transfer.reviewer
     lines << "\nA note from the reviewer:\n#{escape(transfer.message.truncate(2000)).gsub(/^/, '> ')}" if transfer.message.present?
     text = lines.join("\n")
     blocks = [ SlackBot::Blocks.section(text) ]

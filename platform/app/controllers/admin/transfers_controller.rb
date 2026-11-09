@@ -3,8 +3,8 @@ class Admin::TransfersController < Admin::ApplicationController
   TABS = %w[pending approved rejected all].freeze
 
   # Reviewers work transfers too; the route constraint and Admin::ProjectTransferPolicy decide who gets in.
-  skip_before_action :require_admin!, only: %i[index show approve reject refetch sync]
-  before_action :require_transfer_reviewer!, only: %i[index show approve reject refetch sync]
+  skip_before_action :require_admin!, only: %i[index show approve reject draft refetch sync]
+  before_action :require_transfer_reviewer!, only: %i[index show approve reject draft refetch sync]
 
   def index
     tab = TABS.include?(params[:status]) ? params[:status] : "pending"
@@ -55,6 +55,15 @@ class Admin::TransfersController < Admin::ApplicationController
     end
   end
 
+  # The note and message as they're typed, so a reviewer who leaves before deciding finds them again. Authorized as
+  # reading it, since a refusal redirects (which autosave can't follow); the model refuses one already decided.
+  # Answers with both as saved, so the page picks up what another reviewer wrote in the field this one didn't touch.
+  def draft
+    transfer = find_and_authorize(:show?)
+    result = transfer.save_draft(params.expect(transfer: [ :note, :message ]), was: params.fetch(:was, {}).permit(:note, :message))
+    render json: { result: result, **transfer.slice(:note, :message) }, status: result == :saved ? :ok : :conflict
+  end
+
   def refetch
     transfer = find_and_authorize
     FetchProjectTransferJob.perform_later(transfer)
@@ -73,7 +82,7 @@ class Admin::TransfersController < Admin::ApplicationController
     raise ActionController::RoutingError, "Not Found" unless current_user&.reviews_transfers?
   end
 
-  def find_and_authorize
-    ProjectTransfer.find_by_public_id!(params[:id]).tap { authorize [ :admin, it ] }
+  def find_and_authorize(query = nil)
+    ProjectTransfer.find_by_public_id!(params[:id]).tap { authorize [ :admin, it ], query }
   end
 end

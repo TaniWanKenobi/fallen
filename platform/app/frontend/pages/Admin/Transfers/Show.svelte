@@ -3,12 +3,14 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { router, useForm } from '@inertiajs/svelte'
   import Link from '@/components/Link.svelte'
   import ArrowLeft from '@lucide/svelte/icons/arrow-left'
   import BadgeCheck from '@lucide/svelte/icons/badge-check'
   import ExternalLink from '@lucide/svelte/icons/external-link'
   import ImagePlus from '@lucide/svelte/icons/image-plus'
+  import MessageCircle from '@lucide/svelte/icons/message-circle'
   import Plus from '@lucide/svelte/icons/plus'
   import RefreshCw from '@lucide/svelte/icons/refresh-cw'
   import Video from '@lucide/svelte/icons/video'
@@ -24,6 +26,7 @@
   import { Label } from '@/components/admin/ui/label'
   import { Textarea } from '@/components/admin/ui/textarea'
   import { adminDark } from '@/lib/adminDark.svelte'
+  import { csrfToken } from '@/lib/csrf'
   import { formatDate, formatDateTime, formatMinutes, timeAgo } from '@/lib/format'
   import { uploadImage, type UploadedImage } from '@/lib/uploads'
   import { adminProject, adminTransferLapse, adminTransfers } from '@/routes'
@@ -55,8 +58,8 @@
     hours: hoursText(initial.suggested_minutes),
     xp: String(initial.suggested_xp),
     project_id: initial.named_project_id ?? '',
-    note: '',
-    message: '',
+    note: initial.note ?? '',
+    message: initial.message ?? '',
   })
   // The XP follows the hours until it is typed over.
   let xpTouched = $state(false)
@@ -87,6 +90,118 @@
     }
   }
 
+  // The note and message save as they're typed (Admin::TransfersController#draft): a moment after each change, and
+  // straight away with keepalive when the page is hidden or left. One save at a time, so an older one can't land
+  // after a newer one, except when leaving. Deciding stops it, so no draft lands after the decision. Each save sends only the fields
+  // edited and what they held before, so it's refused rather than wiping what another reviewer typed meanwhile, and
+  // a field left alone takes up the other reviewer's text.
+  type DraftField = 'note' | 'message'
+  const draftFields: DraftField[] = ['note', 'message']
+  let draftState: 'saved' | 'saving' | 'failed' | 'conflict' | 'decided' | null = $state(null)
+  let draftTimer: ReturnType<typeof setTimeout> | undefined
+  let draftDirty = false
+  let draftStopped = false
+  let draftInFlight: Partial<Record<DraftField, string>> | null = null
+  // What the server last said each field holds.
+  let lastSaved: Record<DraftField, string> = { note: form.note, message: form.message }
+
+  function saveDraft({ leaving = false } = {}) {
+    clearTimeout(draftTimer)
+    if (!draftDirty || draftStopped || (draftInFlight && !leaving)) return
+    // Leaving mid-save, this one follows the save still in flight, so it replaces that one's text.
+    const base = { ...lastSaved, ...draftInFlight }
+    const fields = draftFields.filter((field) => form[field] !== base[field])
+    draftDirty = false
+    if (fields.length === 0) return
+    const sent = Object.fromEntries(fields.map((field) => [field, form[field]]))
+    const was = Object.fromEntries(fields.map((field) => [field, base[field]]))
+    const before = { ...lastSaved }
+    const body = JSON.stringify({ transfer: sent, was })
+    draftInFlight = sent
+    draftState = 'saving'
+    fetch(adminTransfers.draft(transfer.id).url, {
+      method: 'PATCH',
+      // Browsers refuse keepalive bodies over 64 KB.
+      keepalive: body.length < 60_000,
+      // A redirect means it wasn't saved (signed out, or not allowed), so it isn't followed to a page that says 200.
+      redirect: 'manual',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': csrfToken(),
+      },
+      body,
+    })
+      .then(async (response) => {
+        if (response.status !== 200 && response.status !== 409) throw new Error(String(response.status))
+        const saved: {
+          result: 'saved' | 'conflict' | 'decided'
+          note: string | null
+          message: string | null
+        } = await response.json()
+        if (saved.result !== 'saved') {
+          draftStopped = true
+          draftState = saved.result
+          return
+        }
+        for (const field of draftFields) {
+          const value = saved[field] ?? ''
+          if (field in sent) {
+            lastSaved[field] = value
+          } else if (form[field] === before[field]) {
+            lastSaved[field] = value
+            form[field] = value
+          }
+        }
+        // A save sent while leaving may have been refused first; that stays on screen.
+        if (!draftDirty && draftState === 'saving') draftState = 'saved'
+      })
+      .catch(() => {
+        draftState = 'failed'
+        draftDirty = true
+      })
+      .finally(() => {
+        draftInFlight = null
+        if (draftDirty && !draftStopped)
+          draftTimer = setTimeout(saveDraft, draftState === 'failed' ? 5000 : 0)
+      })
+  }
+
+  function stopDraft() {
+    draftStopped = true
+    clearTimeout(draftTimer)
+  }
+
+  // After a decision that didn't go through: refused, failed or cancelled.
+  function resumeDraft() {
+    if (draftState === 'decided' || draftState === 'conflict') return
+    draftStopped = false
+    draftDirty = draftFields.some((field) => form[field] !== lastSaved[field])
+    if (draftDirty) saveDraft()
+  }
+
+  $effect(() => {
+    const draft = { note: form.note, message: form.message }
+    if (draftStopped || (draft.note === lastSaved.note && draft.message === lastSaved.message)) return
+    draftDirty = true
+    clearTimeout(draftTimer)
+    draftTimer = setTimeout(saveDraft, 1000)
+  })
+
+  onMount(() => {
+    const leave = () => saveDraft({ leaving: true })
+    // Hiding the tab waits for a save in flight, since the page usually comes back; leaving can't wait.
+    const hidden = () => document.visibilityState === 'hidden' && saveDraft()
+    document.addEventListener('visibilitychange', hidden)
+    window.addEventListener('pagehide', leave)
+    return () => {
+      leave()
+      document.removeEventListener('visibilitychange', hidden)
+      window.removeEventListener('pagehide', leave)
+    }
+  })
+
   function setHours(value: string) {
     form.hours = value
     if (!xpTouched) form.xp = xpFor(value)
@@ -94,6 +209,8 @@
 
   function approve(event: SubmitEvent) {
     event.preventDefault()
+    let decided = false
+    stopDraft()
     form
       .transform((data) => ({
         transfer: {
@@ -104,14 +221,26 @@
           })),
         },
       }))
-      .post(adminTransfers.approve(transfer.id).url, { preserveScroll: true })
+      .post(adminTransfers.approve(transfer.id).url, {
+        preserveScroll: true,
+        onSuccess: () => (decided = true),
+        onFinish: () => decided || resumeDraft(),
+      })
   }
 
   function reject() {
+    let decided = false
+    stopDraft()
     router.post(
       adminTransfers.reject(transfer.id),
       { transfer: { note: form.note, message: form.message } },
-      { onFinish: () => (confirmReject = false) },
+      {
+        onSuccess: () => (decided = true),
+        onFinish: () => {
+          confirmReject = false
+          if (!decided) resumeDraft()
+        },
+      },
     )
   }
 
@@ -170,6 +299,23 @@
         onclick={() => router.post(adminTransfers.refetch(transfer.id), {}, { preserveScroll: true })}
       >
         <RefreshCw data-icon="inline-start" /> Fetch again
+      </Button>
+    {/if}
+    {#if transfer.slack_dm_url}
+      <Button
+        variant="outline"
+        size="sm"
+        href={transfer.slack_dm_url}
+        target="_blank"
+        rel="noreferrer"
+        title={transfer.user?.slack_id
+          ? undefined
+          : 'The Slack account the project was written from in the other program'}
+      >
+        <MessageCircle data-icon="inline-start" />
+        {transfer.user?.slack_id
+          ? 'Message on Slack'
+          : `Message ${snapshot?.owner.name ?? 'the owner'} on Slack`}
       </Button>
     {/if}
     <Button variant="outline" size="sm" href={adminTransferLapse(transfer.id).url}>
@@ -369,13 +515,21 @@
           />
           <p class="text-xs text-muted-foreground">
             {transfer.user?.slack_id
-              ? 'Sent in a Slack DM with the decision and the XP, and whether it went into a new project or one of theirs.'
+              ? 'Sent in a Slack DM with the decision, the XP, your name as the reviewer, and whether it went into a new project or one of theirs.'
               : "They haven't linked Slack, so they won't get a DM."}
           </p>
         </div>
         <div class="grid gap-1.5 sm:col-span-2">
           <Label for="note">Staff note (optional)</Label>
           <Textarea id="note" bind:value={form.note} rows={2} placeholder="Why these hours, or why not" />
+          <p class="text-xs text-muted-foreground" aria-live="polite">
+            {#if draftState === 'saving'}Saving…{:else if draftState === 'saved'}The note and message are
+              saved, for anyone who opens this transfer.{:else if draftState === 'failed'}Couldn't save the
+              note and message; trying again.{:else if draftState === 'decided'}Not saved: someone decided
+              this transfer while it was open. Reload to see the decision.{:else if draftState === 'conflict'}Not
+              saved: another reviewer changed the note or message while you were typing. Copy what you wrote,
+              then reload to see theirs.{:else}The note and message save as you type.{/if}
+          </p>
         </div>
         {#if errors.base}<p class="text-sm text-destructive sm:col-span-2">{errors.base}</p>{/if}
         <div class="flex flex-wrap gap-2 sm:col-span-2">

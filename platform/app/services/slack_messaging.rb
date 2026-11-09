@@ -25,6 +25,9 @@ module SlackMessaging
   # so anyone also signed in to another one lands on Slack's error page.
   WORKSPACE_URL = "https://hackclub.slack.com"
 
+  # Opens a DM with someone, from their Slack user ID.
+  def dm_url(slack_id) = "#{WORKSPACE_URL}/app_redirect?channel=#{slack_id}"
+
   def permalink(channel_id, ts, thread_ts: nil)
     url = "#{WORKSPACE_URL}/archives/#{channel_id}/p#{ts.to_s.delete('.')}"
     thread_ts.present? && thread_ts != ts ? "#{url}?thread_ts=#{thread_ts}&cid=#{channel_id}" : url

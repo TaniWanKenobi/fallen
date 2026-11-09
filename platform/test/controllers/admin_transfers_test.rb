@@ -27,6 +27,57 @@ class AdminTransfersTest < ActionDispatch::IntegrationTest
     assert_equal "Designed the legs.", props["transfer"].dig("snapshot", "entries", 0, "body")
     assert_equal [ projects(:station).public_id, projects(:unlinked).public_id ].sort, props["transfer"]["user_projects"].pluck("id").sort
     assert props["can"]["approve"]
+    assert_equal "https://hackclub.slack.com/app_redirect?channel=#{users(:member).slack_id}", props["transfer"]["slack_dm_url"]
+  end
+
+  test "the note and message save as they're typed, without a version each time, until the transfer is decided" do
+    transfer = project_transfers(:stardance)
+    assert_no_difference -> { transfer.versions.count } do
+      patch draft_admin_transfer_path(transfer), params: { transfer: { note: "Hours look high" }, was: { note: "" } }, as: :json
+    end
+
+    assert_response :ok
+    assert_equal({ "result" => "saved", "note" => "Hours look high", "message" => nil }, response.parsed_body)
+    assert_equal [ "Hours look high", nil ], transfer.reload.values_at(:note, :message)
+    assert_equal "Hours look high", inertia_props(admin_transfer_path(transfer), "Admin/Transfers/Show").dig("transfer", "note")
+
+    transfer.update!(status: "rejected", reviewer: users(:admin), note: "Final")
+    patch draft_admin_transfer_path(transfer), params: { transfer: { note: "Changed after" }, was: { note: "Final" } }, as: :json
+    assert_response :conflict
+    assert_equal "decided", response.parsed_body["result"]
+    assert_nil flash[:alert]
+    assert_equal "Final", transfer.reload.note
+  end
+
+  test "two reviewers typing at once keep each other's note and message" do
+    transfer = project_transfers(:stardance)
+    patch draft_admin_transfer_path(transfer), params: { transfer: { note: "Hours look high" }, was: { note: "" } }, as: :json
+    assert_response :ok
+
+    # The other reviewer opened it before that note: editing only the message leaves the note and hands it back.
+    patch draft_admin_transfer_path(transfer), params: { transfer: { message: "Nice work" }, was: { message: "" } }, as: :json
+    assert_response :ok
+    assert_equal({ "result" => "saved", "note" => "Hours look high", "message" => "Nice work" }, response.parsed_body)
+
+    # Editing the note they never saw is refused rather than wiping it.
+    patch draft_admin_transfer_path(transfer), params: { transfer: { note: "Looks fine" }, was: { note: "" } }, as: :json
+    assert_response :conflict
+    assert_equal "conflict", response.parsed_body["result"]
+    assert_equal [ "Hours look high", "Nice work" ], transfer.reload.values_at(:note, :message)
+
+    patch draft_admin_transfer_path(transfer), params: { transfer: { note: "" }, was: { note: "Hours look high" } }, as: :json
+    assert_response :ok
+    assert_equal [ nil, "Nice work" ], transfer.reload.values_at(:note, :message)
+  end
+
+  test "with no Fallen account, Slack opens the account the project was written from" do
+    transfer = project_transfers(:stardance)
+    transfer.update!(user: nil, snapshot: transfer.snapshot.deep_merge("owner" => { "slack_id" => "U0THERE" }))
+    props = inertia_props(admin_transfer_path(transfer), "Admin/Transfers/Show")
+    assert_equal "https://hackclub.slack.com/app_redirect?channel=U0THERE", props["transfer"]["slack_dm_url"]
+
+    transfer.update!(snapshot: nil)
+    assert_nil inertia_props(admin_transfer_path(transfer), "Admin/Transfers/Show").dig("transfer", "slack_dm_url")
   end
 
   test "the person's projects name the owner of the ones they are only a member of" do
