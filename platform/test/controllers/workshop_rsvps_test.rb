@@ -5,14 +5,14 @@ class WorkshopRsvpsTest < ActionDispatch::IntegrationTest
 
   test "anyone can sign up without an account, and it makes no user" do
     props = inertia_props(workshop_rsvp_path, "WorkshopRsvps/New")
-    assert_equal %w[nov8 nov11], props["slots"].pluck("key")
+    assert_equal %w[nov8 nov12 nov20], props["slots"].pluck("key")
 
     assert_no_difference -> { User.count } do
-      post workshop_rsvp_path, params: { workshop_rsvp: { email: "guest@example.com", slack_username: "guest", slot: "nov11" } }
+      post workshop_rsvp_path, params: { workshop_rsvp: { email: "guest@example.com", slack_username: "guest", slot: "nov12" } }
     end
     assert_redirected_to workshop_rsvp_path
-    assert_equal "nov11", WorkshopRsvp.find_by!(email: "guest@example.com").slot
-    assert_equal "nov11", inertia_props(workshop_rsvp_path, "WorkshopRsvps/New")["signed_up"]
+    assert_equal "nov12", WorkshopRsvp.find_by!(email: "guest@example.com").slot
+    assert_equal "nov12", inertia_props(workshop_rsvp_path, "WorkshopRsvps/New")["signed_up"]
   end
 
   test "a bad email comes back as a form error" do
@@ -23,11 +23,11 @@ class WorkshopRsvpsTest < ActionDispatch::IntegrationTest
 
   test "admins see the sign-ups and can download a slot's CSV" do
     WorkshopRsvp.sign_up(email: "a@example.com", slot: "nov8")
-    WorkshopRsvp.sign_up(email: "b@example.com", slot: "nov11")
+    WorkshopRsvp.sign_up(email: "b@example.com", slot: "nov12")
     sign_in_as users(:admin)
 
     props = load_deferred(admin_workshop_rsvps_path, "Admin/WorkshopRsvps/Index", "rsvps", "pagy", "counts")
-    assert_equal({ "nov8" => 1, "nov11" => 1 }, props["counts"])
+    assert_equal({ "nov8" => 1, "nov12" => 1 }, props["counts"])
     assert_equal 2, props["rsvps"].size
 
     get export_admin_workshop_rsvps_path(slot: "nov8")
@@ -45,7 +45,7 @@ class WorkshopRsvpsTest < ActionDispatch::IntegrationTest
   end
 
   test "the page closes once every session has started" do
-    travel_to WorkshopRsvp::SLOTS["nov11"].first
+    travel_to WorkshopRsvp::SLOTS["nov20"].first
     assert_empty inertia_props(workshop_rsvp_path, "WorkshopRsvps/New")["slots"]
   end
 

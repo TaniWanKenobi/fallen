@@ -117,7 +117,7 @@ class PrivacyControllerTest < ActionDispatch::IntegrationTest
   test "deletes workshop sign-ups by email, with or without an account" do
     travel_to Time.zone.parse("2026-11-04 12:00 EST")
     WorkshopRsvp.sign_up(email: "guest@example.com", slot: "nov8")
-    WorkshopRsvp.sign_up(email: users(:member).email, slot: "nov11")
+    WorkshopRsvp.sign_up(email: users(:member).email, slot: "nov12")
 
     call_hub :delete, dry_run: false, subject: { emails: [ "Guest@example.com" ], slack_id: nil, identity_id: nil }
     assert response.parsed_body["found"]
