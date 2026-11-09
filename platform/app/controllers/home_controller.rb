@@ -10,7 +10,7 @@ class HomeController < ApplicationController
   # Nothing deferred: these are a dozen indexed queries over one person's own rows, about 15ms together, and a
   # deferred prop costs the browser another round trip to the server, 100-300ms for most people.
   def index
-    render inertia: "Home/Index", props: { projects: projects, invites: pending_invites, stats: stats, xp: xp, goal: goal, activity: activity, reminder: reminder }
+    render inertia: "Home/Index", props: { projects: projects, invites: pending_invites, stats: stats, xp: xp, goal: goal, activity: activity, reminder: reminder, huddle: huddle }
   end
 
   private
@@ -67,6 +67,12 @@ class HomeController < ApplicationController
   end
 
   def goal = DailyGoal.for(current_user, team: team)&.as_json
+
+  # The main huddle, where events run, or their team's while the main one is full.
+  def huddle
+    channel = Huddle.channel_for(current_user)
+    { url: SlackHuddle.huddle_url(channel), team: channel.present? && channel != SlackHuddle.channel_id }
+  end
 
   # One instance for both, so they share what it looks up.
   def team = @team ||= current_user.team

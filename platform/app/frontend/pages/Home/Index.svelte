@@ -12,6 +12,7 @@
   import Skeleton from '@/components/Skeleton.svelte'
   import InviteCards from '@/components/team/InviteCards.svelte'
   import LockInReminder, { type Reminder } from '@/components/LockInReminder.svelte'
+  import WeeklyEvents, { type Huddle } from '@/components/WeeklyEvents.svelte'
   import WelcomeBackOverlay from '@/components/welcome-back/WelcomeBackOverlay.svelte'
   import XpGoalBar from '@/components/XpGoalBar.svelte'
   import WriteJournalButton from '@/components/WriteJournalButton.svelte'
@@ -36,6 +37,7 @@
     xp,
     goal,
     reminder,
+    huddle,
   }: {
     projects?: Project[]
     invites?: ProjectInvite[]
@@ -44,6 +46,7 @@
     xp?: Standing
     goal?: Goal | null
     reminder?: Reminder
+    huddle?: Huddle
   } = $props()
 
   const firstName = $derived(shared().auth.user?.display_name.split(' ')[0] ?? '')
@@ -95,20 +98,6 @@
         <XpCard {xp} />
       {/if}
 
-      <section class="glass">
-        <SettingRow
-          title="Got thoughts on Fallen?"
-          description="Tell us what to fix or add. Two random people who fill out the form get 15 XP."
-        >
-          <a
-            href="https://forms.hackclub.com/fallenfeedback"
-            target="_blank"
-            rel="noopener"
-            class="pill-glass">Share feedback ↗</a
-          >
-        </SettingRow>
-      </section>
-
       <section class="glass divide-y divide-white/10" aria-labelledby="hours">
         <h2 id="hours" class="glass-heading">Your hours</h2>
         {#if goal && xp?.team}
@@ -156,6 +145,8 @@
           </SettingRow>
         {/if}
       </section>
+
+      <WeeklyEvents {huddle} />
 
       {#if projects.length}
         <section aria-labelledby="my-projects">

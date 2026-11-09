@@ -87,6 +87,24 @@ class PagesTest < ActionDispatch::IntegrationTest
     assert_equal 150, props["activity"].last["minutes"]
   end
 
+  test "home links to the main huddle for joining a live event" do
+    sign_in_as users(:member)
+    with_env("SLACK_HUDDLE_CHANNEL_ID" => "C0HUDDLE") do
+      assert_equal({ "url" => "#{SlackMessaging::WORKSPACE_URL}/huddle/C0HUDDLE", "team" => false }, inertia_props(home_path, "Home/Index")["huddle"])
+    end
+    with_env("SLACK_HUDDLE_CHANNEL_ID" => nil) do
+      assert_nil inertia_props(home_path, "Home/Index")["huddle"]["url"]
+    end
+  end
+
+  test "home sends people to their team's huddle while the main one is full" do
+    sign_in_as users(:member)
+    with_env("SLACK_HUDDLE_CHANNEL_ID" => "C0HUDDLE", "SLACK_HUDDLE_LULU_CHANNEL_ID" => "C0LULU") do
+      Huddle.create!(call_id: "R0FULL", channel_id: "C0HUDDLE", started_at: 1.hour.ago, full_at: 5.minutes.ago)
+      assert_equal({ "url" => "#{SlackMessaging::WORKSPACE_URL}/huddle/C0LULU", "team" => true }, inertia_props(home_path, "Home/Index")["huddle"])
+    end
+  end
+
   test "home comes with where I stand" do
     sign_in_as users(:member)
     xp = inertia_props(home_path, "Home/Index")["xp"]
