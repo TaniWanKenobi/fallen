@@ -84,8 +84,8 @@ Sessions are signed cookies holding the user id, so they stop working once the r
   flagged AI-writing checks posted to the private #fallen-ai-flags channel.
 - HCB keeps its own record of every card grant and top-up sent, and the grant's email, under Hack Club's financial
   record keeping. Fallen only deletes its copy.
-- Design submissions' repositories are read from wherever the person hosts them. Fallen keeps only the copy described
-  above.
+- Design submissions' repositories are read from wherever the person hosts them, by git running in a Vercel Sandbox
+  (vercel.com) that is deleted after each read. Fallen keeps only the copy described above.
 - Journal writing checked for AI is sent to Pangram (pangram.com), which keeps it under its own retention.
 - Stray posts in the journals channel are deleted through Prometheus, which keeps their text in its private audit
   log channel. That log belongs to Prometheus, not Fallen.

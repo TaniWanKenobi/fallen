@@ -2,10 +2,12 @@
 # sourcehut, Bitbucket, anyone's own server), for design submissions (RepoSnapshot). It is the only place that
 # fetches a URL someone typed, so it assumes the URL and the server behind it are hostile:
 #
+# - git runs in a throwaway Vercel Sandbox (VercelSandbox) whose firewall only lets it reach the repo's host and no
+#   private address, so even a server that breaks git gets an empty VM. Production refuses to run git anywhere else.
 # - https on port 443 only, a hostname (never an IP), no username or password in it.
 # - The host is resolved here and refused if any address is private, loopback, link-local, shared, multicast or
-#   otherwise not on the public internet. git is then pinned to the checked address (http.curloptResolve), so the
-#   name can't be pointed somewhere else between the check and the fetch.
+#   otherwise not on the public internet. Without a sandbox (development), git is then pinned to the checked address
+#   (http.curloptResolve), so the name can't be pointed somewhere else between the check and the fetch.
 # - git runs with no inherited environment or config, no credential helpers or prompts, https as the only
 #   protocol, no redirects, a time limit, a file size limit and a speed floor. Nothing is checked out, so no hook,
 #   submodule, attribute or filter in the repo ever runs.
@@ -73,8 +75,7 @@ module GitRemote
     host = URI.parse(url).host
     address = public_address(host)
 
-    Dir.mktmpdir("repo") do |dir|
-      git = ->(*args, **opts, &on_error) { run(dir, host, address, *args, **opts, &on_error) }
+    workspace(host, address) do |git, dir|
       clone(git, url)
       repo = File.join(dir, "repo.git")
       branch = git.call("symbolic-ref", "--short", "HEAD", repo:).strip
@@ -102,8 +103,7 @@ module GitRemote
 
     host = URI.parse(url).host
     address = public_address(host)
-    Dir.mktmpdir("repo") do |dir|
-      git = ->(*args, **opts, &on_error) { run(dir, host, address, *args, **opts, &on_error) }
+    workspace(host, address) do |git, dir|
       repo = File.join(dir, "repo.git")
       git.call("init", "--quiet", "--bare", repo)
       fetch_commit(git, repo, url, commit_sha)
@@ -140,14 +140,38 @@ module GitRemote
     end
   end
 
+  # Yields a `git` callable for #run and the folder it works in: inside a throwaway Vercel Sandbox when one is set
+  # up, otherwise on this machine. Production refuses to run git on this machine, where a git exploit would sit next
+  # to every secret the worker has.
+  def workspace(host, address)
+    if VercelSandbox.configured?
+      VercelSandbox.open(host) do |sandbox|
+        remote = ->(env, command) { sandbox.capture(env, command, sandbox.dir, timeout: TIMEOUT, max_file_bytes: MAX_DISK_BYTES) }
+        # The sandbox's own firewall keeps git on `host` and off private addresses, and pinning our resolved
+        # address could disagree with the sandbox's DNS, so no pin there.
+        yield ->(*args, **opts, &on_error) { run(remote, sandbox.dir, nil, *args, **opts, &on_error) }, sandbox.dir
+      end
+    else
+      raise Error, "Reading repositories isn't set up yet" if Rails.env.production?
+
+      Dir.mktmpdir("repo") do |dir|
+        pin = "#{host}:443:#{address.ipv6? ? "[#{address}]" : address}"
+        local = ->(env, command) { capture(env, command, dir) }
+        yield ->(*args, **opts, &on_error) { run(local, dir, pin, *args, **opts, &on_error) }, dir
+      end
+    end
+  rescue VercelSandbox::Error => e
+    Rails.error.report(e, handled: true)
+    raise Error, "We couldn't read repositories just now. Try again in a bit."
+  end
+
   # Runs one git command with nothing from this machine's environment or config. Yields stderr on failure, or
   # raises Error.
-  def run(dir, host, address, *args, repo: nil)
-    pin = "#{host}:443:#{address.ipv6? ? "[#{address}]" : address}"
+  def run(executor, dir, pin, *args, repo: nil)
     command = [
       "git",
       "-c", "protocol.allow=never", "-c", "protocol.https.allow=always",
-      "-c", "http.followRedirects=false", "-c", "http.curloptResolve=#{pin}",
+      "-c", "http.followRedirects=false", *(pin ? [ "-c", "http.curloptResolve=#{pin}" ] : []),
       "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=15",
       "-c", "credential.helper=", "-c", "core.askPass=", "-c", "core.hooksPath=/dev/null",
       "-c", "core.symlinks=false", "-c", "submodule.recurse=false", "-c", "fetch.recurseSubmodules=false",
@@ -160,8 +184,8 @@ module GitRemote
       "GIT_CONFIG_GLOBAL" => "/dev/null", "GIT_TERMINAL_PROMPT" => "0", "GIT_ASKPASS" => "/bin/false",
       "SSH_ASKPASS" => "/bin/false", "GIT_PROTOCOL_FROM_USER" => "0", "LC_ALL" => "C"
     }
-    out, err, status = capture(env, command, dir)
-    return out if status&.success?
+    out, err, ok = executor.call(env, command)
+    return out if ok
 
     block_given? ? yield(err.to_s) : raise(Error, "The repository couldn't be read")
   end
@@ -179,7 +203,7 @@ module GitRemote
       stdout, stderr = readers.map(&:value)
       status = wait.value
     end
-    [ stdout, stderr, status ]
+    [ stdout, stderr, status.success? ]
   rescue SystemCallError => e
     # git missing or unrunnable is our fault, not the repo's: report it, and still fail the read so nobody waits on
     # a check that never finishes.

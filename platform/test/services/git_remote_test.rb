@@ -59,6 +59,17 @@ class GitRemoteTest < ActiveSupport::TestCase
     assert_match "Try again", error.message
   end
 
+  test "production never runs git on our own machine" do
+    with_env("VERCEL_SANDBOX_TOKEN" => nil) do
+      stub_method(Rails, :env, ActiveSupport::EnvironmentInquirer.new("production")) do
+        stub_method(Resolv, :getaddresses, [ "140.82.112.3" ]) do
+          error = assert_raises(GitRemote::Error) { GitRemote.snapshot("https://github.com/a/b") }
+          assert_match "isn't set up", error.message
+        end
+      end
+    end
+  end
+
   test "links to files on the hosts it knows" do
     assert_equal "https://github.com/a/b/blob/abc/pcb/x.kicad_pcb", GitRemote.file_url("https://github.com/a/b", "abc", "pcb/x.kicad_pcb")
     assert_nil GitRemote.file_url("https://git.example.org/a/b", "abc", "x")
