@@ -4,10 +4,12 @@
 # project does not: onboarding makes one before that, and its thread is posted once it is (PostProjectToSlackJob).
 # Everyone on the team edits the project and invites people; only the owner takes people off or deletes it, and only
 # once nobody else is on it or has journals on it, since deleting takes its journals' XP back. Someone taken off the
-# team keeps theirs.
+# team keeps theirs. Any Faller signed in with Hack Club Auth can look at a project; its design submission, what
+# reviewers said and its journals' timelapses stay with the people on it and staff (show_private?).
 class ProjectPolicy < ApplicationPolicy
   def index? = user.present?
-  def show? = involved? || staff?
+  def show? = involved? || staff? || verified?
+  def show_private? = involved? || staff?
   def create? = user.present?
   def update? = teammate?
   def destroy? = owner? && record.solo? && !record.journals.kept.where.not(user_id: record.user_id).exists?
@@ -29,4 +31,6 @@ class ProjectPolicy < ApplicationPolicy
 
   def teammate? = record.on_team?(user)
   def involved? = teammate? || record.journals.kept.exists?(user: user)
+  # Trial accounts (not yet through Hack Club Auth) only see their own.
+  def verified? = user.present? && !user.trial?
 end

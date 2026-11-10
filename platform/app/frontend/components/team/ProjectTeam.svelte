@@ -147,7 +147,7 @@
 
     <p class="border-t border-white/10 px-5 py-3 font-outfit text-xs text-sky-ice/50 md:px-6">
       {CREDIT_RULE}
-      {#if owner && owner.id !== me}Only {owner.name}, the owner, can take people off it.{/if}
+      {#if can.invite && owner && owner.id !== me}Only {owner.name}, the owner, can take people off it.{/if}
     </p>
   </section>
 {/if}

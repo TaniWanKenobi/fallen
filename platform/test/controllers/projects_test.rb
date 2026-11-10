@@ -10,13 +10,45 @@ class ProjectsTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, projects(:admins).public_id
   end
 
-  test "shows a project with its journals and hides other people's" do
+  test "shows a project with its journals" do
     get project_path(projects(:station))
     assert_response :success
     assert_includes response.body, journals(:first).public_id
     assert_includes response.body, projects(:station).slack_url
+  end
 
-    get project_path(projects(:admins))
+  test "any Faller can look at someone else's project, but not its review, timelapses or anything only the team does" do
+    submit_design(projects(:station))
+    journals(:first).update!(lapse_url: "https://lapse.example/timelapse/1")
+    users(:member).lapse_timelapses.create!(lapse_id: "lapse_secret", journal: journals(:first), duration_seconds: 600, visibility: "PRIVATE",
+                                            playback_url: "https://cdn.lapse.test/secret.mp4", thumbnail_url: "https://cdn.lapse.test/secret.jpg")
+    team = inertia_props(project_path(projects(:station)), "Projects/Show")
+    assert_includes team["journals"].map { it["lapse_url"] }, "https://lapse.example/timelapse/1"
+    assert_equal [ "lapse_secret" ], team["journals"].flat_map { it["lapse_timelapses"] }.map { it["url"].split("/").last }
+
+    sign_in_as users(:admin)
+    staff = load_deferred(project_path(projects(:station)), "Projects/Show", "submission", "journal_review", "journals")
+    assert staff["submission"], "staff still see the review"
+    assert staff["journal_review"]
+    assert_includes staff["journals"].map { it["lapse_url"] }, "https://lapse.example/timelapse/1"
+
+    sign_in_as users(:newcomer)
+    props = inertia_props(project_path(projects(:station)), "Projects/Show")
+    assert_equal projects(:station).public_id, props["project"]["id"]
+    assert_includes props["journals"].map { it["id"] }, journals(:first).public_id
+    assert props["journals"].all? { it["lapse_url"].nil? && it["lapse_timelapses"] == [] }, "timelapses stay with the person, team and staff"
+    %w[lapse.example lapse_secret secret.jpg].each { assert_not_includes response.body, it }
+    assert_nil props["submission"], "the design submission stays with the team"
+    assert_not props["team"].key?("join_url")
+    assert_equal({ "submit" => false, "withdraw" => false, "update" => false, "destroy" => false, "journal" => false,
+                   "invite" => false, "leave" => false, "remove_teammate" => false }, props["can"])
+    assert_nil load_deferred(project_path(projects(:station)), "Projects/Show", "journal_review")["journal_review"]
+  end
+
+  test "a trial account only sees its own projects" do
+    trial = User.start_trial!(email: "trial@example.com")
+    sign_in_as trial
+    get project_path(projects(:station))
     assert_redirected_to root_path
   end
 

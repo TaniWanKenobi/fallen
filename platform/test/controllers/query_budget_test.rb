@@ -28,6 +28,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     # authors taken from the team. One more for the latest design submission.
     assert_query_budget(12) { get project_path(projects(:station)) }
     assert_query_budget(4) { load_deferred(project_path(projects(:station)), "Projects/Show", "lapse") }
+    # Someone else's project: the same, less the design submission, which stays with its team.
+    assert_query_budget(9) { get project_path(projects(:admins)) }
     # Journal review on the project page: reviews, to-dos, held XP and whether the team can ask for one.
     assert_query_budget(6) { load_deferred(project_path(projects(:station)), "Projects/Show", "journal_review") }
     assert_query_budget(2) { get new_project_path }

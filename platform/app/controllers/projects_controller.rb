@@ -25,16 +25,19 @@ class ProjectsController < ApplicationController
     authorize @project
     Project.preload_teams([ @project ], known: [ current_user ])
     totals = Project.journal_totals([ @project ])
-    pagy, journals = pagy(@project.journals.kept.newest_first.includes(:xp_entry, :lapse_timelapses, images_attachments: :blob), limit: JOURNALS_PER_PAGE, count: totals[:counts].fetch(@project.id, 0))
+    policy = policy(@project)
+    # Someone looking at another team's project sees the project and its journals, not its review or timelapses.
+    insider = policy.show_private?
+    preload = [ :xp_entry, *(:lapse_timelapses if insider), { images_attachments: :blob } ]
+    pagy, journals = pagy(@project.journals.kept.newest_first.includes(*preload), limit: JOURNALS_PER_PAGE, count: totals[:counts].fetch(@project.id, 0))
     # Their authors are nearly always on the team, which is loaded already.
     ActiveRecord::Associations::Preloader.new(records: journals.to_a, associations: :user, available_records: @project.teammates).call
-    policy = policy(@project)
-    submission = Submission.latest_for(@project)
+    submission = Submission.latest_for(@project) if insider
     ActiveRecord::Associations::Preloader.new(records: [ submission ], associations: [ :bom_items, :grant_payout, { screenshots_attachments: :blob } ]).call if submission
 
     render inertia: "Projects/Show", props: {
       project: ProjectSerializer.render(@project, covers: Project.journal_covers([ @project ]), **totals),
-      journals: JournalSerializer.render(journals),
+      journals: JournalSerializer.render(journals, timelapses: insider),
       team: team_props(@project, invite: policy.invite?),
       people: InertiaRails.optional { people_to_invite(@project, params[:people_query]) if policy.invite? },
       # Optional: only sent when someone opens "Move" on one of their journals here (Journal#move_to).
@@ -46,7 +49,7 @@ class ProjectsController < ApplicationController
       writing_check: WritingCheck.mode_for(current_user),
       submission: submission && SubmissionSerializer.render(submission),
       # Journal review (ProgressReview): what reviewers said, what's left to fix, XP held back, and asking for one.
-      journal_review: InertiaRails.defer { journal_review_props(@project) },
+      journal_review: InertiaRails.defer { journal_review_props(@project) if insider },
       can: {
         submit: can_submit?(submission), withdraw: submission.present? && policy(submission).destroy?,
         update: policy.update?, destroy: policy.destroy?, journal: policy(@project.journals.build(user: current_user)).create?,
