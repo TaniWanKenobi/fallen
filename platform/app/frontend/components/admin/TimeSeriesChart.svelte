@@ -45,7 +45,10 @@
   // The dots go straight to the point under the cursor rather than springing there.
   const highlight = { lines: true, points: true, motion: 'none' } as const
   const axis = $derived(yAxis ? true : 'x')
-  const padding = $derived(yAxis ? undefined : { top: 4, left: 0, right: 0, bottom: 20 })
+  // layerchart's default 20px left gutter clips labels like "1000h".
+  const padding = $derived(
+    yAxis ? { top: 4, left: 48, right: 4, bottom: 20 } : { top: 4, left: 0, right: 0, bottom: 20 },
+  )
 
   const axisFormat = $derived(
     hourly
