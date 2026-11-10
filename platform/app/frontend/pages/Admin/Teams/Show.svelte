@@ -5,11 +5,14 @@
 <script lang="ts">
   import { router, usePoll } from '@inertiajs/svelte'
   import Link from '@/components/Link.svelte'
+  import ChartColumn from '@lucide/svelte/icons/chart-column'
   import Trophy from '@lucide/svelte/icons/trophy'
   import LinkTabs from '@/components/admin/LinkTabs.svelte'
   import Morph from '@/components/admin/Morph.svelte'
   import TimeSeriesChart from '@/components/admin/TimeSeriesChart.svelte'
   import UserCell from '@/components/admin/UserCell.svelte'
+  import WeeksChart from '@/components/admin/teams/WeeksChart.svelte'
+  import type { WeekdayWeek } from '@/components/admin/teams/WeekdayChart.svelte'
   import * as AlertDialog from '@/components/admin/ui/alert-dialog'
   import { Badge } from '@/components/admin/ui/badge'
   import { Button } from '@/components/admin/ui/button'
@@ -19,6 +22,7 @@
   import Deferred from '@/components/Deferred.svelte'
   import Skeleton from '@/components/Skeleton.svelte'
   import { Switch } from '@/components/admin/ui/switch'
+  import { Toggle } from '@/components/admin/ui/toggle'
   import * as Table from '@/components/admin/ui/table'
   import { formatCount, formatMinutes } from '@/lib/format'
   import { PET_NAMES } from '@/lib/pet.svelte'
@@ -53,6 +57,7 @@
     teams,
     timeline,
     overall_timeline,
+    weekdays,
     leaders,
     projects,
     contributors,
@@ -69,6 +74,7 @@
     teams?: Team[]
     timeline?: Point[]
     overall_timeline?: Point[]
+    weekdays?: WeekdayWeek[]
     leaders?: Leader[]
     projects?: Project[]
     contributors?: { team: string; people: Leader[]; pagy: Pagy } | null
@@ -79,11 +85,30 @@
   // The eggs' colours (components/hatch).
   const PET_COLORS: Record<string, string> = { lulu: '#F9AF3F', sami: '#353b7d' }
 
+  // Every week side by side, in place of the one week's race.
+  let allWeeks = $state(false)
+  // Kept here so it survives the chart unmounting while the transfers switch reloads the weeks.
+  let byTeam = $state(false)
+  let byWeekday = $state(false)
+  let weekdayTeam = $state('total')
   let confirming = $state(false)
   let paying = $state(false)
   // The team whose whole list of contributors is open, a page at a time.
   let listed = $state<string | null>(null)
   let listing = $state(false)
+
+  // Every week by the hour is asked for only while it's on screen: when it opens, again when the transfers switch
+  // drops it, and with the poll's beat while the race is running.
+  const showingWeekdays = $derived(allWeeks && byWeekday)
+  const loadWeekdays = () => router.reload({ only: ['weekdays'] })
+  $effect(() => {
+    if (showingWeekdays && !weekdays) loadWeekdays()
+  })
+  $effect(() => {
+    if (!showingWeekdays || !current) return
+    const timer = setInterval(loadWeekdays, 10_000)
+    return () => clearInterval(timer)
+  })
 
   // The week still running updates as people journal; a past week only changes when someone pays it.
   // svelte-ignore state_referenced_locally
@@ -149,7 +174,25 @@
       .filter((team) => leading.includes(team.pet))
       .reduce((sum, team) => sum + team.contributors, 0),
   )
-  const series = PETS.map((pet) => ({ key: pet, label: teamName(pet), color: PET_COLORS[pet] }))
+  const weekRows = $derived(
+    history?.map((row, i) => {
+      const week = weeks.find((w) => w.start === row.start)
+      return {
+        label: `Week ${i + 1}`,
+        dates: `${day(row.start)} – ${day(week?.finish ?? row.start)}`,
+        running: !week?.over,
+        xp: Object.fromEntries(
+          PETS.map((pet) => [pet, (row.xp[pet] ?? 0) + (transfers ? (row.transferred[pet] ?? 0) : 0)]),
+        ),
+      }
+    }),
+  )
+  const series = PETS.map((pet) => ({
+    key: pet,
+    label: teamName(pet),
+    short: PET_NAMES[pet] ?? pet,
+    color: PET_COLORS[pet],
+  }))
 
   function list(team: string, page = 1) {
     listed = team
@@ -189,12 +232,17 @@
 <svelte:head><title>Team stats · Fallen Admin</title></svelte:head>
 
 <div class="mb-4 flex flex-wrap items-start gap-3">
-  <h1 class="min-w-0 flex-1 text-2xl font-semibold tracking-tight">Team stats</h1>
+  <div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-semibold tracking-tight">Team stats</h1>
+    <Toggle variant="outline" size="sm" bind:pressed={allWeeks}>
+      <ChartColumn data-icon="inline-start" /> All weeks
+    </Toggle>
+  </div>
   <div class="flex items-center gap-2 self-center">
     <Switch id="transfers" checked={transfers} onCheckedChange={showTransfers} />
     <Label for="transfers" class="text-sm text-muted-foreground">Include transfers</Label>
   </div>
-  {#if can.pay && leading.length}
+  {#if can.pay && leading.length && !allWeeks}
     <AlertDialog.Root bind:open={confirming}>
       <AlertDialog.Trigger>
         {#snippet child({ props })}
@@ -220,266 +268,275 @@
   {/if}
 </div>
 
-<LinkTabs {tabs} active={week.start} class="mb-4">
-  {#snippet badge(start)}
-    {@const result =
-      weeks.find((row) => row.start === start)?.over && history?.find((row) => row.start === start)}
-    {#if result}
-      {@const won = result.paid ? result.paid_to : winners(result.xp)}
-      {#if !won.length}
-        <Badge variant="outline" class="text-[10px]">No XP</Badge>
-      {:else}
-        <Badge variant={result.paid ? 'outline' : 'destructive'} class="gap-1 text-[10px]">
-          <Trophy class="size-3" />
-          {won.map((pet) => PET_NAMES[pet]).join(' & ')}{won.length > 1 ? ' tied' : ''}
-          {result.paid ? '· paid' : '· unpaid'}
-        </Badge>
-      {/if}
-    {/if}
-  {/snippet}
-</LinkTabs>
-
-{#snippet versus(
-  title: string,
-  hint: string,
-  xp: Record<string, number> | undefined,
-  points: Point[] | undefined,
-  ahead: string[],
-)}
-  {@const total = xp ? PETS.reduce((sum, pet) => sum + (xp[pet] ?? 0), 0) : 0}
-  <Card.Root>
-    <Card.Header>
-      <Card.Title>{title}</Card.Title>
-      <Card.Description>{hint}</Card.Description>
-    </Card.Header>
-    <Card.Content class="space-y-3">
-      <div class="flex items-end justify-between gap-4">
-        {#each PETS as pet, i (pet)}
-          {@const lead = ahead.includes(pet)}
-          <div class={i ? 'text-right' : ''}>
-            <p class="flex items-center gap-1.5 text-sm font-medium {i ? 'justify-end' : ''}">
-              {#if lead}<Trophy class="size-4 text-emerald-600 dark:text-emerald-400" />{/if}
-              {teamName(pet)}
-            </p>
-            <p
-              class="text-3xl font-semibold tabular-nums {lead
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : ''}"
-            >
-              {#if xp}<Morph text={`${formatCount(xp[pet] ?? 0)} XP`} />{:else}<Skeleton
-                  class="h-9 w-28 rounded-md"
-                />{/if}
-            </p>
-          </div>
-        {/each}
-      </div>
-      <div class="flex h-3 overflow-hidden rounded-full bg-muted">
-        {#if xp && total > 0}
-          {#each PETS as pet (pet)}
-            <div
-              class="h-full transition-[width] duration-700"
-              style:width="{((xp[pet] ?? 0) / total) * 100}%"
-              style:background-color={PET_COLORS[pet]}
-            ></div>
-          {/each}
+{#if allWeeks}
+  {#if weekRows}
+    <WeeksChart weeks={weekRows} {weekdays} {series} bind:byTeam bind:byWeekday bind:weekdayTeam />
+  {:else}
+    <Skeleton class="h-[480px] w-full rounded-xl" />
+  {/if}
+{:else}
+  <LinkTabs {tabs} active={week.start} class="mb-4">
+    {#snippet badge(start)}
+      {@const result =
+        weeks.find((row) => row.start === start)?.over && history?.find((row) => row.start === start)}
+      {#if result}
+        {@const won = result.paid ? result.paid_to : winners(result.xp)}
+        {#if !won.length}
+          <Badge variant="outline" class="text-[10px]">No XP</Badge>
+        {:else}
+          <Badge variant={result.paid ? 'outline' : 'destructive'} class="gap-1 text-[10px]">
+            <Trophy class="size-3" />
+            {won.map((pet) => PET_NAMES[pet]).join(' & ')}{won.length > 1 ? ' tied' : ''}
+            {result.paid ? '· paid' : '· unpaid'}
+          </Badge>
         {/if}
-      </div>
-      {#if points}
-        <TimeSeriesChart
-          yAxis={false}
-          {points}
-          {series}
-          kind="line"
-          format={(value) => `${formatCount(value)} XP`}
-        />
-      {:else}
-        <Skeleton class="h-[220px] w-full rounded-md" />
       {/if}
-    </Card.Content>
-  </Card.Root>
-{/snippet}
+    {/snippet}
+  </LinkTabs>
 
-<div class="grid gap-4 lg:grid-cols-2">
-  {@render versus(
-    current ? 'This week' : `Week ${weeks.findIndex((row) => row.start === week.start) + 1}`,
-    `${day(week.start)} – ${day(week.finish)}${paid ? ', win paid' : ''}`,
-    thisWeek,
-    timeline,
-    leading,
+  {#snippet versus(
+    title: string,
+    hint: string,
+    xp: Record<string, number> | undefined,
+    points: Point[] | undefined,
+    ahead: string[],
   )}
-  {@render versus(
-    'Overall',
-    'Every week so far, added up',
-    overall,
-    overall_timeline,
-    overall ? winners(overall) : [],
-  )}
-</div>
-
-{#snippet people(rows: Leader[], offset: number)}
-  <Table.Root>
-    <Table.Header>
-      <Table.Row>
-        <Table.Head class="w-10">#</Table.Head>
-        <Table.Head>Top contributors</Table.Head>
-        <Table.Head class="text-right">XP</Table.Head>
-        <Table.Head class="text-right">Hours</Table.Head>
-        <Table.Head>Days</Table.Head>
-      </Table.Row>
-    </Table.Header>
-    <Table.Body>
-      {#each rows as leader, rank (leader.user.id)}
-        <Table.Row>
-          <Table.Cell class="text-muted-foreground tabular-nums">{offset + rank + 1}</Table.Cell>
-          <Table.Cell><UserCell user={leader.user} /></Table.Cell>
-          <Table.Cell class="text-right font-medium tabular-nums">{formatCount(leader.xp)}</Table.Cell>
-          <Table.Cell class="text-right tabular-nums">{formatMinutes(leader.minutes)}</Table.Cell>
-          <Table.Cell>
-            <div class="flex gap-1">
-              {#each leader.days as d (d.date)}{@render dot(d)}{/each}
-            </div>
-          </Table.Cell>
-        </Table.Row>
-      {/each}
-    </Table.Body>
-  </Table.Root>
-  <p class="mt-2 text-xs text-muted-foreground">
-    Hours are for this team. A dot per day: the team they were on, filled if they earned XP for it, split on
-    the day they switched.
-  </p>
-{/snippet}
-
-<!-- One team: a circle. Two (the day of a switch): a half for each, the first on the left. -->
-{#snippet dot(d: Day)}
-  <svg viewBox="0 0 12 12" class="size-3 shrink-0" role="img" aria-label={dayTitle(d)}>
-    <title>{dayTitle(d)}</title>
-    {#each d.on.slice(0, 2) as pet, i (pet)}
-      {@const color = PET_COLORS[pet] ?? 'currentColor'}
-      {@const fill = d.earned.includes(pet) ? color : 'none'}
-      {#if d.on.length === 1}
-        <circle cx="6" cy="6" r="5" {fill} stroke={color} stroke-width="1.5" />
-      {:else}
-        <path
-          d={i === 0 ? 'M6 1 A5 5 0 0 0 6 11 Z' : 'M6 1 A5 5 0 0 1 6 11 Z'}
-          {fill}
-          stroke={color}
-          stroke-width="1.5"
-        />
-      {/if}
-    {/each}
-  </svg>
-{/snippet}
-
-{#snippet loading()}
-  <div class="space-y-3">
-    {#each { length: 5 }, i (i)}<Skeleton class="h-9 w-full rounded-md" />{/each}
-  </div>
-{/snippet}
-
-<div class="mt-4 grid gap-4 lg:grid-cols-2">
-  {#each PETS as pet (pet)}
+    {@const total = xp ? PETS.reduce((sum, pet) => sum + (xp[pet] ?? 0), 0) : 0}
     <Card.Root>
       <Card.Header>
-        <Card.Title>{teamName(pet)}</Card.Title>
+        <Card.Title>{title}</Card.Title>
+        <Card.Description>{hint}</Card.Description>
       </Card.Header>
-      <Card.Content class="space-y-6">
-        <Deferred data="leaders">
-          {#snippet fallback()}{@render loading()}{/snippet}
-          {@const rows = leaders?.filter((row) => row.pet === pet) ?? []}
-          {@const count = teams?.find((team) => team.pet === pet)?.contributors ?? 0}
-          {#if rows.length}
-            {@render people(rows, 0)}
-            {#if count > rows.length}
-              <Button variant="outline" size="sm" class="mt-3 w-full" onclick={() => list(pet)}>
-                View all {formatCount(count)} contributors
-              </Button>
-            {/if}
-          {:else}
-            <p class="py-6 text-center text-sm text-muted-foreground">
-              Nobody on this team has earned XP yet.
-            </p>
+      <Card.Content class="space-y-3">
+        <div class="flex items-end justify-between gap-4">
+          {#each PETS as pet, i (pet)}
+            {@const lead = ahead.includes(pet)}
+            <div class={i ? 'text-right' : ''}>
+              <p class="flex items-center gap-1.5 text-sm font-medium {i ? 'justify-end' : ''}">
+                {#if lead}<Trophy class="size-4 text-emerald-600 dark:text-emerald-400" />{/if}
+                {teamName(pet)}
+              </p>
+              <p
+                class="text-3xl font-semibold tabular-nums {lead
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : ''}"
+              >
+                {#if xp}<Morph text={`${formatCount(xp[pet] ?? 0)} XP`} />{:else}<Skeleton
+                    class="h-9 w-28 rounded-md"
+                  />{/if}
+              </p>
+            </div>
+          {/each}
+        </div>
+        <div class="flex h-3 overflow-hidden rounded-full bg-muted">
+          {#if xp && total > 0}
+            {#each PETS as pet (pet)}
+              <div
+                class="h-full transition-[width] duration-700"
+                style:width="{((xp[pet] ?? 0) / total) * 100}%"
+                style:background-color={PET_COLORS[pet]}
+              ></div>
+            {/each}
           {/if}
-        </Deferred>
-
-        <Deferred data="projects">
-          {#snippet fallback()}{@render loading()}{/snippet}
-          {@const rows = projects?.filter((row) => row.pet === pet) ?? []}
-          {#if rows.length}
-            <Table.Root>
-              <Table.Header>
-                <Table.Row>
-                  <Table.Head class="w-10">#</Table.Head>
-                  <Table.Head>Top projects</Table.Head>
-                  <Table.Head class="text-right">People</Table.Head>
-                  <Table.Head class="text-right">XP</Table.Head>
-                  <Table.Head class="text-right">Hours</Table.Head>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {#each rows as project, rank (project.id)}
-                  <Table.Row>
-                    <Table.Cell class="text-muted-foreground tabular-nums">{rank + 1}</Table.Cell>
-                    <Table.Cell>
-                      <Link
-                        href={adminProject(project.id)}
-                        prefetch
-                        cacheFor="30s"
-                        class="block max-w-xs truncate font-medium hover:underline">{project.title}</Link
-                      >
-                    </Table.Cell>
-                    <Table.Cell class="text-right tabular-nums">{formatCount(project.people)}</Table.Cell>
-                    <Table.Cell class="text-right font-medium tabular-nums"
-                      >{formatCount(project.xp)}</Table.Cell
-                    >
-                    <Table.Cell class="text-right tabular-nums">{formatMinutes(project.minutes)}</Table.Cell>
-                  </Table.Row>
-                {/each}
-              </Table.Body>
-            </Table.Root>
-          {:else}
-            <p class="py-6 text-center text-sm text-muted-foreground">No journals on this team yet.</p>
-          {/if}
-        </Deferred>
+        </div>
+        {#if points}
+          <TimeSeriesChart
+            yAxis={false}
+            {points}
+            {series}
+            kind="line"
+            format={(value) => `${formatCount(value)} XP`}
+          />
+        {:else}
+          <Skeleton class="h-[220px] w-full rounded-md" />
+        {/if}
       </Card.Content>
     </Card.Root>
-  {/each}
-</div>
+  {/snippet}
 
-<Dialog.Root open={listed !== null} onOpenChange={(open) => !open && (listed = null)}>
-  <Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-    <Dialog.Header>
-      <Dialog.Title>{listed && teamName(listed)}: every contributor</Dialog.Title>
-      <Dialog.Description>{day(week.start)} – {day(week.finish)}</Dialog.Description>
-    </Dialog.Header>
-    {#if contributors && contributors.team === listed && !listing}
-      {@const pagy = contributors.pagy}
-      {@render people(contributors.people, (pagy.page - 1) * pagy.limit)}
-      {#if pagy.pages > 1}
-        <div class="flex items-center justify-between text-sm">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!pagy.prev}
-            onclick={() => pagy.prev && list(contributors.team, pagy.prev)}
-          >
-            Previous
-          </Button>
-          <Morph
-            text="Page {pagy.page} of {pagy.pages} · {formatCount(pagy.count)} people"
-            class="text-muted-foreground"
+  <div class="grid gap-4 lg:grid-cols-2">
+    {@render versus(
+      current ? 'This week' : `Week ${weeks.findIndex((row) => row.start === week.start) + 1}`,
+      `${day(week.start)} – ${day(week.finish)}${paid ? ', win paid' : ''}`,
+      thisWeek,
+      timeline,
+      leading,
+    )}
+    {@render versus(
+      'Overall',
+      'Every week so far, added up',
+      overall,
+      overall_timeline,
+      overall ? winners(overall) : [],
+    )}
+  </div>
+
+  {#snippet people(rows: Leader[], offset: number)}
+    <Table.Root>
+      <Table.Header>
+        <Table.Row>
+          <Table.Head class="w-10">#</Table.Head>
+          <Table.Head>Top contributors</Table.Head>
+          <Table.Head class="text-right">XP</Table.Head>
+          <Table.Head class="text-right">Hours</Table.Head>
+          <Table.Head>Days</Table.Head>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {#each rows as leader, rank (leader.user.id)}
+          <Table.Row>
+            <Table.Cell class="text-muted-foreground tabular-nums">{offset + rank + 1}</Table.Cell>
+            <Table.Cell><UserCell user={leader.user} /></Table.Cell>
+            <Table.Cell class="text-right font-medium tabular-nums">{formatCount(leader.xp)}</Table.Cell>
+            <Table.Cell class="text-right tabular-nums">{formatMinutes(leader.minutes)}</Table.Cell>
+            <Table.Cell>
+              <div class="flex gap-1">
+                {#each leader.days as d (d.date)}{@render dot(d)}{/each}
+              </div>
+            </Table.Cell>
+          </Table.Row>
+        {/each}
+      </Table.Body>
+    </Table.Root>
+    <p class="mt-2 text-xs text-muted-foreground">
+      Hours are for this team. A dot per day: the team they were on, filled if they earned XP for it, split on
+      the day they switched.
+    </p>
+  {/snippet}
+
+  <!-- One team: a circle. Two (the day of a switch): a half for each, the first on the left. -->
+  {#snippet dot(d: Day)}
+    <svg viewBox="0 0 12 12" class="size-3 shrink-0" role="img" aria-label={dayTitle(d)}>
+      <title>{dayTitle(d)}</title>
+      {#each d.on.slice(0, 2) as pet, i (pet)}
+        {@const color = PET_COLORS[pet] ?? 'currentColor'}
+        {@const fill = d.earned.includes(pet) ? color : 'none'}
+        {#if d.on.length === 1}
+          <circle cx="6" cy="6" r="5" {fill} stroke={color} stroke-width="1.5" />
+        {:else}
+          <path
+            d={i === 0 ? 'M6 1 A5 5 0 0 0 6 11 Z' : 'M6 1 A5 5 0 0 1 6 11 Z'}
+            {fill}
+            stroke={color}
+            stroke-width="1.5"
           />
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!pagy.next}
-            onclick={() => pagy.next && list(contributors.team, pagy.next)}
-          >
-            Next
-          </Button>
-        </div>
+        {/if}
+      {/each}
+    </svg>
+  {/snippet}
+
+  {#snippet loading()}
+    <div class="space-y-3">
+      {#each { length: 5 }, i (i)}<Skeleton class="h-9 w-full rounded-md" />{/each}
+    </div>
+  {/snippet}
+
+  <div class="mt-4 grid gap-4 lg:grid-cols-2">
+    {#each PETS as pet (pet)}
+      <Card.Root>
+        <Card.Header>
+          <Card.Title>{teamName(pet)}</Card.Title>
+        </Card.Header>
+        <Card.Content class="space-y-6">
+          <Deferred data="leaders">
+            {#snippet fallback()}{@render loading()}{/snippet}
+            {@const rows = leaders?.filter((row) => row.pet === pet) ?? []}
+            {@const count = teams?.find((team) => team.pet === pet)?.contributors ?? 0}
+            {#if rows.length}
+              {@render people(rows, 0)}
+              {#if count > rows.length}
+                <Button variant="outline" size="sm" class="mt-3 w-full" onclick={() => list(pet)}>
+                  View all {formatCount(count)} contributors
+                </Button>
+              {/if}
+            {:else}
+              <p class="py-6 text-center text-sm text-muted-foreground">
+                Nobody on this team has earned XP yet.
+              </p>
+            {/if}
+          </Deferred>
+
+          <Deferred data="projects">
+            {#snippet fallback()}{@render loading()}{/snippet}
+            {@const rows = projects?.filter((row) => row.pet === pet) ?? []}
+            {#if rows.length}
+              <Table.Root>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.Head class="w-10">#</Table.Head>
+                    <Table.Head>Top projects</Table.Head>
+                    <Table.Head class="text-right">People</Table.Head>
+                    <Table.Head class="text-right">XP</Table.Head>
+                    <Table.Head class="text-right">Hours</Table.Head>
+                  </Table.Row>
+                </Table.Header>
+                <Table.Body>
+                  {#each rows as project, rank (project.id)}
+                    <Table.Row>
+                      <Table.Cell class="text-muted-foreground tabular-nums">{rank + 1}</Table.Cell>
+                      <Table.Cell>
+                        <Link
+                          href={adminProject(project.id)}
+                          prefetch
+                          cacheFor="30s"
+                          class="block max-w-xs truncate font-medium hover:underline">{project.title}</Link
+                        >
+                      </Table.Cell>
+                      <Table.Cell class="text-right tabular-nums">{formatCount(project.people)}</Table.Cell>
+                      <Table.Cell class="text-right font-medium tabular-nums"
+                        >{formatCount(project.xp)}</Table.Cell
+                      >
+                      <Table.Cell class="text-right tabular-nums">{formatMinutes(project.minutes)}</Table.Cell
+                      >
+                    </Table.Row>
+                  {/each}
+                </Table.Body>
+              </Table.Root>
+            {:else}
+              <p class="py-6 text-center text-sm text-muted-foreground">No journals on this team yet.</p>
+            {/if}
+          </Deferred>
+        </Card.Content>
+      </Card.Root>
+    {/each}
+  </div>
+
+  <Dialog.Root open={listed !== null} onOpenChange={(open) => !open && (listed = null)}>
+    <Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <Dialog.Header>
+        <Dialog.Title>{listed && teamName(listed)}: every contributor</Dialog.Title>
+        <Dialog.Description>{day(week.start)} – {day(week.finish)}</Dialog.Description>
+      </Dialog.Header>
+      {#if contributors && contributors.team === listed && !listing}
+        {@const pagy = contributors.pagy}
+        {@render people(contributors.people, (pagy.page - 1) * pagy.limit)}
+        {#if pagy.pages > 1}
+          <div class="flex items-center justify-between text-sm">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagy.prev}
+              onclick={() => pagy.prev && list(contributors.team, pagy.prev)}
+            >
+              Previous
+            </Button>
+            <Morph
+              text="Page {pagy.page} of {pagy.pages} · {formatCount(pagy.count)} people"
+              class="text-muted-foreground"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagy.next}
+              onclick={() => pagy.next && list(contributors.team, pagy.next)}
+            >
+              Next
+            </Button>
+          </div>
+        {/if}
+      {:else}
+        {@render loading()}
       {/if}
-    {:else}
-      {@render loading()}
-    {/if}
-  </Dialog.Content>
-</Dialog.Root>
+    </Dialog.Content>
+  </Dialog.Root>
+{/if}

@@ -14,8 +14,14 @@
 
 <svelte:head><title>Fallen Admin</title></svelte:head>
 
-<!-- The admin theme lives on this element, so dialogs and menus portal into it instead of <body>. -->
-<div class={['admin min-h-screen bg-background text-foreground antialiased', adminDark.on && 'dark']}>
+<!-- The admin theme lives on this element, so dialogs and menus portal into it instead of <body>, and chart tooltips
+     too (layerchart portals to `.PortalTarget`). -->
+<div
+  class={[
+    'admin PortalTarget min-h-screen bg-background text-foreground antialiased',
+    adminDark.on && 'dark',
+  ]}
+>
   <BitsConfig defaultPortalTo=".admin">
     <AdminSidebar onSearch={() => (paletteOpen = true)} bind:collapsed={sidebarCollapsed} />
     <AdminCommandPalette bind:open={paletteOpen} />

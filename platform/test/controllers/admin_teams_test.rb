@@ -71,6 +71,31 @@ class AdminTeamsTest < ActionDispatch::IntegrationTest
     assert_equal [ projects(:station).public_id, projects(:unlinked).public_id ], with["projects"].map { it["id"] }
   end
 
+  test "every week by the hour lines up by weekday, the one still going up to its last whole hour" do
+    sign_in_as users(:admin)
+    first, second = Week.new(start: TeamRace::START), Week.new(start: TeamRace::START + 7)
+    member = users(:member)
+
+    travel_to(second.starts_at + 1.day + 10.hours + 20.minutes) do
+      member.xp_entries.create!(kind: "journal", amount: 7, day: first.start, created_at: first.starts_at + 5.hours + 30.minutes)
+      member.xp_entries.create!(kind: "transfer", amount: 9, day: first.start, created_at: first.starts_at + 3.days)
+      member.xp_entries.create!(kind: "journal", amount: 5, day: second.start, created_at: second.starts_at + 3.hours + 10.minutes)
+      member.xp_entries.create!(kind: "journal", amount: 4, day: second.start + 1, created_at: 10.minutes.ago)
+
+      weeks = load_deferred(admin_teams_path, "Admin/Teams/Show", "weekdays")["weekdays"]
+      assert_equal [ first, second ].map { it.start.iso8601 }, weeks.map { it["start"] }
+      lulu = weeks.first["xp"]["lulu"]
+      assert_equal [ 7 * 24 + 1, 0, 0, 7, 7 ], [ lulu.size, lulu[0], lulu[5], lulu[6], lulu.last ], "[h] is the XP before hour h"
+      assert_equal 0, weeks.first["xp"]["sami"].last
+      running = weeks.last["xp"]["lulu"]
+      assert_equal [ 35, 5 ], [ running.size, running[4] ], "Tuesday 10:20 is 34 whole hours in"
+      assert_equal 5, running.last, "XP in the hour still going waits for it to end"
+
+      with = load_deferred(admin_teams_path(transfers: "1"), "Admin/Teams/Show", "weekdays")["weekdays"]
+      assert_equal 16, with.first["xp"]["lulu"].last
+    end
+  end
+
   test "a team's whole list of contributors loads a page at a time when asked for" do
     sign_in_as users(:admin)
     assert_nil inertia_props(admin_teams_path, "Admin/Teams/Show")["contributors"]

@@ -22,8 +22,11 @@ class TeamRace
 
   # The race's day and week of each entry, in SQL: in Week::RACE_ZONE, so weeks run Monday to Sunday anywhere on
   # Earth. created_at is UTC.
-  DAY = "((xp_entries.created_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Week::RACE_ZONE}')::date"
+  LOCAL = "((xp_entries.created_at AT TIME ZONE 'UTC') AT TIME ZONE '#{Week::RACE_ZONE}')"
+  DAY = "#{LOCAL}::date"
   WEEK = "date_trunc('week', #{DAY})::date"
+  # The hour of the race's week an entry was made in, 0 (Monday's first) to 167.
+  HOUR_OF_WEEK = "((extract(isodow from #{LOCAL}) - 1) * 24 + extract(hour from #{LOCAL}))::int"
 
   # The race's weeks so far, Monday to Sunday, oldest first, from START.
   def self.weeks = (START..[ Week.racing.start, START ].max).step(7).map { Week.new(start: it) }
@@ -39,6 +42,23 @@ class TeamRace
       { start: week.start.iso8601, xp: User::PETS.to_h { [ it, xp[[ week.start, it, false ]].to_i ] },
         transferred: User::PETS.to_h { [ it, xp[[ week.start, it, true ]].to_i ] }, paid: paid.key?(week.race_finish),
         paid_to: paid.fetch(week.race_finish, []) }
+    end
+  end
+
+  # Each week's XP by team as running totals through its hours, Monday 00:00 to Sunday 24:00 in the race's zone, so
+  # weeks line up by weekday: [{ start:, xp: { lulu: [...], sami: [...] } }], where [h] is the XP logged before hour
+  # h. A week still going stops at its last whole hour, so it compares with whole hours of the others; the race's last
+  # at its early end.
+  def self.weekdays(weeks = self.weeks, transfers: false)
+    xp = teamed(XpEntry.raced(transfers:).where(created_at: weeks.first.starts_at...weeks.last.ends_at))
+      .group(Arel.sql(WEEK), Arel.sql(HOUR_OF_WEEK), "xp_entries.pet").sum(:amount)
+
+    weeks.map do |week|
+      hours = (([ Time.current, week.ends_at ].min - week.starts_at) / 1.hour).floor.clamp(0, 7 * 24)
+      running = User::PETS.to_h do |pet|
+        [ pet, (0...hours).reduce([ 0 ]) { |sums, hour| sums << sums.last + xp[[ week.start, hour, pet ]].to_i } ]
+      end
+      { start: week.start.iso8601, xp: running }
     end
   end
 
