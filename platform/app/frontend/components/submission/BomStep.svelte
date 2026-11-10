@@ -8,6 +8,7 @@
     lineCents,
     MAX_ITEMS,
     money,
+    repoBom,
     requestedCents,
     toCents,
     type BomKind,
@@ -15,8 +16,9 @@
   } from '@/lib/submission'
   import type { RepoSnapshot } from '@/types'
 
-  // The parts list the funding comes from. A bom.csv (from the repo or uploaded) is turned into rows here by the
-  // server (BomImport), then fixed by hand: whatever it couldn't read shows up as a row to finish.
+  // The parts list the funding comes from. It starts filled in from the repo's bom.csv, read on the server after
+  // the repository check (BomExtractionJob); an uploaded CSV goes through BomImport. Either way it's then fixed by
+  // hand: whatever couldn't be read shows up as a row to finish.
   let {
     items = $bindable(),
     bomCsv = $bindable(),
@@ -36,12 +38,12 @@
     ...items.filter((item) => item.kind !== 'part'),
   ])
 
-  async function load(csv: string, source: string) {
+  async function load(csv: string, source: string, fromRepo = false) {
     if (items.length > 0 && !confirm(`Replace the ${items.length} rows you have with ${source}?`)) return
     importing = true
     error = null
     try {
-      const result = await importBom(csv)
+      const result = fromRepo && snapshot ? await repoBom(snapshot) : await importBom(csv)
       if (result.items.length === 0) {
         error = result.warnings[0] ?? `Couldn’t find any parts in ${source}`
         return
@@ -55,6 +57,14 @@
       importing = false
     }
   }
+
+  // An empty list starts from the repo's bom.csv without anyone having to ask.
+  let started = false
+  $effect(() => {
+    if (started || items.length > 0 || !snapshot?.bom_csv) return
+    started = true
+    void load(snapshot.bom_csv, snapshot.bom_path ?? 'bom.csv', true)
+  })
 
   async function upload(file: File | undefined) {
     if (!file) return
@@ -116,7 +126,7 @@
         type="button"
         class="game-btn game-btn-blue min-h-10 px-4 text-base"
         disabled={importing}
-        onclick={() => load(snapshot.bom_csv!, snapshot.bom_path ?? 'bom.csv')}
+        onclick={() => load(snapshot.bom_csv!, snapshot.bom_path ?? 'bom.csv', true)}
       >
         Use {snapshot.bom_path ?? 'bom.csv'} from your repo
       </button>
@@ -145,7 +155,15 @@
     <p class="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-center text-sm text-amber-900">{warning}</p>
   {/each}
 
-  {#if items.length === 0}
+  {#if items.length === 0 && importing}
+    <div
+      class="mt-5 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-paper-rim px-4 py-8 text-sm text-ink-soft"
+    >
+      <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-ink/20 border-t-[#1cb0f6]"
+      ></span>
+      Reading {snapshot?.bom_path ?? 'your bill of materials'}...
+    </div>
+  {:else if items.length === 0}
     <button
       type="button"
       onclick={() => add('part')}
