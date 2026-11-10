@@ -1,28 +1,15 @@
-<script lang="ts">
-  import type { MadeWith } from '@/lib/submission'
-  import { docs } from '@/routes'
-
-  let {
-    ready = $bindable(),
-    madeWith = $bindable(),
-    resubmission,
-  }: { ready: boolean[]; madeWith: MadeWith[]; resubmission: boolean } = $props()
-
-  const PROMISES = [
+<script lang="ts" module>
+  export const PROMISES = [
     'My design is finished, and I’ve done my best to make sure it’ll work.',
-    'My README says what it is, why I made it, and shows the 3D model, PCB and schematic.',
     'My repository has everything someone else would need to build it.',
     'It’s my own design. If I followed a guide, I changed it and made it mine.',
   ]
-  const PARTS: { key: MadeWith; label: string; hint: string }[] = [
-    { key: 'pcb', label: 'A custom PCB', hint: 'We’ll look for its source files and gerbers.' },
-    { key: 'cad', label: '3D-printed or CAD parts', hint: 'We’ll look for STEP files and the CAD source.' },
-    { key: 'firmware', label: 'Firmware', hint: 'We’ll look for its code.' },
-  ]
+</script>
 
-  function toggle(key: MadeWith) {
-    madeWith = madeWith.includes(key) ? madeWith.filter((k) => k !== key) : [...madeWith, key]
-  }
+<script lang="ts">
+  import { docs } from '@/routes'
+
+  let { ready = $bindable(), resubmission }: { ready: boolean[]; resubmission: boolean } = $props()
 </script>
 
 <p class="text-center text-sm text-ink-soft">
@@ -60,26 +47,4 @@
       </li>
     {/each}
   </ul>
-</fieldset>
-
-<fieldset class="mt-6">
-  <legend class="mb-2 text-sm font-semibold text-ink">What does your project have?</legend>
-  <div class="grid gap-2 sm:grid-cols-3">
-    {#each PARTS as part (part.key)}
-      {@const on = madeWith.includes(part.key)}
-      <button
-        type="button"
-        aria-pressed={on}
-        onclick={() => toggle(part.key)}
-        class={[
-          'rounded-xl border-2 px-3 py-2.5 text-left transition-colors',
-          on ? 'border-[#1cb0f6] bg-[#e8f7ff]' : 'border-paper-rim bg-[#fffdf8] hover:border-ink/25',
-        ]}
-      >
-        <span class="block text-sm font-semibold text-ink">{part.label}</span>
-        <span class="mt-0.5 block text-xs text-ink-soft">{part.hint}</span>
-      </button>
-    {/each}
-  </div>
-  <p class="mt-2 text-xs text-ink-soft">Pick all that apply. None of them? That’s fine too.</p>
 </fieldset>
