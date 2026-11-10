@@ -180,6 +180,11 @@ module GitRemote
       status = wait.value
     end
     [ stdout, stderr, status ]
+  rescue SystemCallError => e
+    # git missing or unrunnable is our fault, not the repo's: report it, and still fail the read so nobody waits on
+    # a check that never finishes.
+    Rails.error.report(e, handled: true)
+    raise Error, "We couldn't read repositories just now. Try again in a bit."
   end
 
   def clone_error(stderr)
