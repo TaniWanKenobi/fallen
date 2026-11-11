@@ -173,9 +173,14 @@
       <span class="text-xs text-ink-soft">Drop a CSV here, or start typing them in</span>
     </button>
   {:else}
-    <div class="mt-5 overflow-x-auto rounded-xl border-2 border-paper-rim bg-[#fffdf8]">
+    <!-- Its own scroll area, so the column names stay in view on a long list. -->
+    <div
+      class="mt-5 max-h-[55vh] overflow-auto overscroll-contain rounded-xl border-2 border-paper-rim bg-[#fffdf8]"
+    >
       <table class="w-full min-w-[760px] text-left text-sm">
-        <thead class="border-b-2 border-paper-rim text-xs text-ink-soft">
+        <thead
+          class="sticky top-0 z-10 bg-[#fffdf8] text-xs text-ink-soft shadow-[0_2px_0_var(--color-paper-rim)]"
+        >
           <tr>
             <th class="w-[34%] px-3 py-2 font-semibold">Part, and what it’s for</th>
             <th class="w-16 px-1 py-2 font-semibold">Qty</th>
