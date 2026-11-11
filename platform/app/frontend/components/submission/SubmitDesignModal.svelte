@@ -2,7 +2,7 @@
   import { router } from '@inertiajs/svelte'
   import Modal from '@/components/Modal.svelte'
   import ModalButton from '@/components/ModalButton.svelte'
-  import ReadyStep from '@/components/submission/ReadyStep.svelte'
+  import ReadyStep, { PROMISES } from '@/components/submission/ReadyStep.svelte'
   import RepoStep from '@/components/submission/RepoStep.svelte'
   import ScreenshotsStep from '@/components/submission/ScreenshotsStep.svelte'
   import BomStep from '@/components/submission/BomStep.svelte'
@@ -46,7 +46,7 @@
   const blocker = $derived.by((): string | null => {
     switch (current.key) {
       case 'ready':
-        return draft.ready.filter(Boolean).length < 4 ? 'Tick every box when it’s true' : null
+        return draft.ready.filter(Boolean).length < PROMISES.length ? 'Tick every box when it’s true' : null
       case 'repo':
         if (draft.snapshot?.status !== 'done') return 'Check your repository first'
         return null
@@ -150,7 +150,7 @@
     </ol>
 
     {#if current.key === 'ready'}
-      <ReadyStep bind:ready={draft.ready} bind:madeWith={draft.madeWith} {resubmission} />
+      <ReadyStep bind:ready={draft.ready} {resubmission} />
     {:else if current.key === 'repo'}
       <RepoStep
         projectId={project.id}

@@ -23,6 +23,8 @@ class Admin::TeamsController < Admin::ApplicationController
       timeline: InertiaRails.defer(group: "race") { race.timeline },
       leaders: InertiaRails.defer(group: "race") { serialize_people(race.leaders) },
       projects: InertiaRails.defer(group: "race") { race.projects },
+      # Every week by the hour, asked for when an admin opens "All weeks" by weekday.
+      weekdays: InertiaRails.optional { TeamRace.weekdays(weeks, transfers: race.transfers) },
       # A team's whole list, a page at a time, asked for when an admin opens it.
       contributors: InertiaRails.optional { contributors(race) }
     }

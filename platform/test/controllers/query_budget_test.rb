@@ -28,6 +28,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     # authors taken from the team. One more for the latest design submission.
     assert_query_budget(12) { get project_path(projects(:station)) }
     assert_query_budget(4) { load_deferred(project_path(projects(:station)), "Projects/Show", "lapse") }
+    # Someone else's project: the same, less the design submission, which stays with its team.
+    assert_query_budget(9) { get project_path(projects(:admins)) }
     # Journal review on the project page: reviews, to-dos, held XP and whether the team can ask for one.
     assert_query_budget(6) { load_deferred(project_path(projects(:station)), "Projects/Show", "journal_review") }
     assert_query_budget(2) { get new_project_path }
@@ -152,6 +154,8 @@ class QueryBudgetTest < ActionDispatch::IntegrationTest
     # Every week's XP by team, which were paid and the chart's running totals; then the week's teams, chart, leaders
     # (with their hours, pet changes and days with XP) and projects.
     assert_query_budget(13) { load_deferred(admin_teams_path, "Admin/Teams/Show", "history", "overall_timeline", "teams", "timeline", "leaders", "projects") }
+    # Every week by the hour, when "All weeks" by weekday is open.
+    assert_query_budget(1) { load_deferred(admin_teams_path, "Admin/Teams/Show", "weekdays") }
     assert_query_budget(3) { get admin_jobs_path }
     # A count per status tab, the queue names, then the page of jobs with the execution its status shows.
     assert_query_budget(11) { load_deferred(admin_jobs_path, "Admin/Jobs/Index", "jobs", "pagy", "counts", "queue_names") }

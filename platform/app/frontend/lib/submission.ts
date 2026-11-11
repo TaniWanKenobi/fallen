@@ -197,21 +197,10 @@ export async function checkRepository(
   return snapshot
 }
 
-interface ImportedItem {
-  kind: BomKind
-  name: string
-  purpose: string | null
-  quantity: number
-  unit_cents: number | null
-  total_cents: number | null
-  link: string | null
-  vendor: string | null
-  owned: boolean
-}
+type ImportedItem = RepoSnapshot['bom_items'][number]
 
-export async function importBom(csv: string): Promise<{ items: DraftItem[]; warnings: string[] }> {
-  const data = await postJson<{ items: ImportedItem[]; warnings: string[] }>(bomImports.create().url, { csv })
-  const items = data.items.map((item) => ({
+const toDraftItems = (items: ImportedItem[]): DraftItem[] =>
+  items.map((item) => ({
     key: newKey(),
     kind: item.kind,
     name: item.name,
@@ -223,7 +212,29 @@ export async function importBom(csv: string): Promise<{ items: DraftItem[]; warn
     vendor: item.vendor ?? '',
     owned: item.owned,
   }))
-  return { items, warnings: data.warnings }
+
+export async function importBom(csv: string): Promise<{ items: DraftItem[]; warnings: string[] }> {
+  const data = await postJson<{ items: ImportedItem[]; warnings: string[] }>(bomImports.create().url, { csv })
+  return { items: toDraftItems(data.items), warnings: data.warnings }
+}
+
+// The repository's bom.csv as parts rows. They're read in the background after the repository check
+// (BomExtractionJob), so this waits for that; if it takes too long the file is read the quick way instead.
+export async function repoBom(snapshot: RepoSnapshot): Promise<{ items: DraftItem[]; warnings: string[] }> {
+  const started = Date.now()
+  let current = snapshot
+  while (current.bom_state === 'pending' && Date.now() - started < 120_000) {
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const response = await fetch(repoSnapshot(snapshot.id).url, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    if (!response.ok) break
+    current = await response.json()
+  }
+  if (current.bom_state === 'done' && current.bom_items.length > 0)
+    return { items: toDraftItems(current.bom_items), warnings: current.bom_warnings }
+  return importBom(snapshot.bom_csv ?? '')
 }
 
 export async function runChecks(projectId: string, draft: SubmissionDraft): Promise<Check[]> {

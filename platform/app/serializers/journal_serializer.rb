@@ -40,13 +40,19 @@
 class JournalSerializer < ApplicationSerializer
   typelize_from Journal
   typelize id: :string, slack_url: [ :string, nullable: true ], duration_text: [ :string, nullable: true ], xp: [ :number, nullable: true ],
-           images: "Array<{ id: string; url: string; filename: string }>"
-  attributes :body, :duration_minutes, :reviewed_minutes, :lapse_url, :source, :created_at, :updated_at
+           images: "Array<{ id: string; url: string; filename: string }>",
+           lapse_url: [ :string, nullable: true ], lapse_timelapses: [ "LapseTimelapse", multi: true ]
+  attributes :body, :duration_minutes, :reviewed_minutes, :source, :created_at, :updated_at
   attribute(:id) { |journal| journal.public_id }
   attribute(:slack_url, &:slack_url)
   attribute(:duration_text, &:duration_text)
   attribute(:xp, &:xp)
-  many :lapse_timelapses, resource: LapseTimelapseSerializer
+  # Timelapses are only for the person, their team and staff (LapseTimelapse). `timelapses: false` leaves them out for
+  # anyone else, without loading them.
+  attribute(:lapse_url) { |journal| journal.lapse_url if params.fetch(:timelapses, true) }
+  attribute(:lapse_timelapses) do |journal|
+    params.fetch(:timelapses, true) ? LapseTimelapseSerializer.render(journal.lapse_timelapses) : []
+  end
   # Whoever wrote it, which on a team project is not always the owner. Lists preload `user`.
   one :user, key: :author, resource: PersonSerializer
   attribute(:images) do |journal|

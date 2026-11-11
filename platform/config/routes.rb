@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   # The workshop sign-up (WorkshopRsvp), linked only from the invite email.
   get "workshops/rsvp" => "workshop_rsvps#new", as: :workshop_rsvp
   post "workshops/rsvp" => "workshop_rsvps#create"
+  get "rsvp", as: nil, to: redirect { |_params, req| "/workshops/rsvp#{"?#{req.query_string}" if req.query_string.present?}" }
 
   # Hack Club Auth (OAuth)
   get "auth/hca/start" => "auth#new", as: :sign_in

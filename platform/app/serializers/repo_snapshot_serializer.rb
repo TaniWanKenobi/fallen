@@ -7,6 +7,7 @@
 #
 #  id             :bigint           not null, primary key
 #  bom_csv        :text
+#  bom_import     :jsonb
 #  bom_path       :string
 #  branch         :string
 #  commit_sha     :string
@@ -41,4 +42,12 @@ class RepoSnapshotSerializer < ApplicationSerializer
   attribute(:id) { |snapshot| snapshot.public_id }
   attribute(:file_count) { |snapshot| snapshot.paths.size }
   attribute(:bom_csv) { |snapshot| snapshot.done? ? snapshot.bom_csv : nil }
+
+  # The bom.csv read into parts rows (BomExtractionJob), for the parts list to start from.
+  typelize bom_state: "'none' | 'pending' | 'done'", bom_warnings: "string[]",
+    bom_items: "Array<{ kind: 'part' | 'shipping' | 'tax'; name: string; purpose: string | null; quantity: number; unit_cents: number | null; " \
+      "total_cents: number | null; link: string | null; vendor: string | null; owned: boolean }>"
+  attribute(:bom_state, &:bom_state)
+  attribute(:bom_items) { |snapshot| snapshot.bom_state == "done" ? snapshot.bom_import["items"] : [] }
+  attribute(:bom_warnings) { |snapshot| snapshot.bom_state == "done" ? snapshot.bom_import["warnings"] : [] }
 end

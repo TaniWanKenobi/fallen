@@ -15,6 +15,12 @@ class WorkshopRsvpsTest < ActionDispatch::IntegrationTest
     assert_equal "nov12", inertia_props(workshop_rsvp_path, "WorkshopRsvps/New")["signed_up"]
   end
 
+  test "/rsvp is a short link to the sign-up page that keeps the query string" do
+    get "/rsvp?ref=slack"
+    assert_redirected_to "http://www.example.com/workshops/rsvp?ref=slack"
+    assert_equal 301, response.status
+  end
+
   test "a bad email comes back as a form error" do
     post workshop_rsvp_path, params: { workshop_rsvp: { email: "nope", slot: "nov8" } }, headers: { "HTTP_REFERER" => workshop_rsvp_url }
     assert_redirected_to workshop_rsvp_url

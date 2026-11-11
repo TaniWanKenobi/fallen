@@ -83,7 +83,8 @@ class SubmissionChecks
   def repo_bom_check
     return unless @snapshot&.bom_csv.present? && @items.any?
 
-    theirs = BomImport.parse(@snapshot.bom_csv).items.reject(&:owned).sum { |item| item.total_cents.to_i }
+    rows = @snapshot.bom_state == "done" ? @snapshot.bom_items : BomImport.parse(@snapshot.bom_csv).items
+    theirs = rows.reject(&:owned).sum { |item| item.total_cents.to_i }
     ours = @items.reject(&:owned).sum { |item| item.total_cents.to_i }
     check("bom_matches_repo", "Matches the repo's bom.csv", (theirs - ours).abs <= [ ours / 20, 100 ].max,
       "The repo's bom.csv adds up to #{Money.format(theirs)} but this one is #{Money.format(ours)}. Update the one in your repo.", level: "warn")

@@ -10,7 +10,12 @@
 
 <svelte:head><title>Fallen Review</title></svelte:head>
 
-<div class={['admin min-h-screen bg-background text-foreground antialiased', adminDark.on && 'dark']}>
+<div
+  class={[
+    'admin PortalTarget min-h-screen bg-background text-foreground antialiased',
+    adminDark.on && 'dark',
+  ]}
+>
   <BitsConfig defaultPortalTo=".admin">
     <AdminToaster />
     {@render children?.()}

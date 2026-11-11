@@ -5,7 +5,11 @@ class ProjectPolicyTest < ActiveSupport::TestCase
     member = users(:member)
     assert ProjectPolicy.new(member, projects(:station)).show?
     assert ProjectPolicy.new(member, projects(:station)).update?
-    assert_not ProjectPolicy.new(member, projects(:admins)).show?
+    assert ProjectPolicy.new(member, projects(:admins)).show?, "any Faller can look"
+    assert_not ProjectPolicy.new(member, projects(:admins)).show_private?
+    assert ProjectPolicy.new(member, projects(:station)).show_private?
+    assert ProjectPolicy.new(users(:admin), projects(:station)).show_private?
+    assert_not ProjectPolicy.new(User.new(email: "trial@example.com"), projects(:admins)).show?, "trial accounts only see their own"
     assert ProjectPolicy.new(users(:admin), projects(:station)).show?
     assert_not ProjectPolicy.new(users(:admin), projects(:station)).update?
     assert_equal [ projects(:station), projects(:unlinked) ].sort, ProjectPolicy::Scope.new(member, Project).resolve.sort

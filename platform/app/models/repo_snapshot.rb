@@ -7,6 +7,7 @@
 #
 #  id             :bigint           not null, primary key
 #  bom_csv        :text
+#  bom_import     :jsonb
 #  bom_path       :string
 #  branch         :string
 #  commit_sha     :string
@@ -38,7 +39,7 @@ class RepoSnapshot < ApplicationRecord
   include PublicIdentifiable
 
   set_public_id_prefix :rps
-  has_paper_trail skip: %i[tree readme bom_csv]
+  has_paper_trail skip: %i[tree readme bom_csv bom_import]
 
   STATUSES = %w[pending done failed].freeze
   # A submission has to use a check this recent, so what's reviewed is what's in the repo.
@@ -70,9 +71,34 @@ class RepoSnapshot < ApplicationRecord
   def fetch!
     data = GitRemote.snapshot(url)
     update!(status: "done", fetched_at: Time.current, error: nil, **data.to_h.except(:url))
+    BomExtractionJob.perform_later(self) if bom_csv.present?
   rescue GitRemote::Error => e
     update!(status: "failed", fetched_at: Time.current, error: e.message)
   end
+
+  # Whether its bom.csv has been read into parts rows yet: "none" when the repo has no bom.csv.
+  def bom_state
+    return "none" unless done? && bom_csv.present?
+
+    bom_import ? "done" : "pending"
+  end
+
+  # Queues the read again for a check whose read never happened (one made before reads existed, or a job that was
+  # lost). The popup polls every couple of seconds while it waits, so this queues at most one every few minutes.
+  def read_bom_later
+    return unless bom_state == "pending" && fetched_at && fetched_at < 2.minutes.ago
+    return unless Rails.cache.write("repo_snapshot_bom:#{id}", true, unless_exist: true, expires_in: 5.minutes)
+
+    BomExtractionJob.perform_later(self)
+  end
+
+  def read_bom!
+    result = BomExtraction.read(bom_csv)
+    update!(bom_import: { "items" => result.items.map(&:to_h), "warnings" => result.warnings, "stated_total_cents" => result.stated_total_cents, "source" => result.source })
+  end
+
+  # The parts its bom.csv was read into, as BomImport::Items (empty until it has been read).
+  def bom_items = bom_import.to_h.fetch("items", []).map { |item| BomImport::Item.new(**item.symbolize_keys) }
 
   def paths = tree.filter_map { |entry| entry["path"] if entry["type"] == "blob" }
   def file_url(path) = GitRemote.file_url(url, commit_sha, path)

@@ -2,6 +2,7 @@
   import { scaleUtc } from 'd3-scale'
   import { curveMonotoneX } from 'd3-shape'
   import { AreaChart, LineChart } from 'layerchart'
+  import ChartTooltipRow from '@/components/admin/ChartTooltipRow.svelte'
   import * as Chart from '@/components/admin/ui/chart'
 
   type Point = { at: string } & Record<string, number | string | null>
@@ -14,6 +15,8 @@
     hourly = false,
     format = (value: number) => String(value),
     yAxis = true,
+    xFormat,
+    labelFormat: labelFormatProp,
     class: className = 'h-[220px]',
   }: {
     points: Point[]
@@ -25,6 +28,9 @@
     // Without the y axis's labels the plot runs edge to edge, lined up with what sits above it; hovering still
     // shows the numbers.
     yAxis?: boolean
+    // The x axis's labels and the tooltip's heading, in place of dates or times of day.
+    xFormat?: (date: Date) => string
+    labelFormat?: (date: Date) => string
     class?: string
   } = $props()
 
@@ -45,15 +51,27 @@
   // The dots go straight to the point under the cursor rather than springing there.
   const highlight = { lines: true, points: true, motion: 'none' } as const
   const axis = $derived(yAxis ? true : 'x')
-  const padding = $derived(yAxis ? undefined : { top: 4, left: 0, right: 0, bottom: 20 })
+  // layerchart's default 20px left gutter clips labels like "1000h".
+  const padding = $derived(
+    yAxis ? { top: 4, left: 48, right: 4, bottom: 20 } : { top: 4, left: 0, right: 0, bottom: 20 },
+  )
 
   const axisFormat = $derived(
-    hourly
-      ? (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-      : (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    xFormat ??
+      (hourly
+        ? (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+        : (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
   )
-  const labelFormat = (date: Date) =>
-    date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  const labelFormat = $derived(
+    labelFormatProp ??
+      ((date: Date) =>
+        date.toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })),
+  )
   const chartProps = $derived({
     xAxis: { format: axisFormat, ticks: 6 },
     yAxis: { format: (value: number) => format(value), ticks: 4 },
@@ -78,12 +96,7 @@
       {#snippet tooltip()}
         <Chart.Tooltip labelFormatter={labelFormat} indicator="line">
           {#snippet formatter({ value, name, item })}
-            <div class="flex w-full items-center justify-between gap-4">
-              <span class="flex items-center gap-1.5 text-muted-foreground">
-                <span class="size-2 rounded-[2px]" style="background: {item.color}"></span>{name}
-              </span>
-              <span class="font-mono font-medium tabular-nums">{format(Number(value))}</span>
-            </div>
+            <ChartTooltipRow {name} color={item.color} {value} {format} />
           {/snippet}
         </Chart.Tooltip>
       {/snippet}
@@ -93,14 +106,7 @@
       {#snippet tooltip()}
         <Chart.Tooltip labelFormatter={labelFormat} indicator="line">
           {#snippet formatter({ value, name, item })}
-            <div class="flex w-full items-center justify-between gap-4">
-              <span class="flex items-center gap-1.5 text-muted-foreground">
-                <span class="size-2 rounded-[2px]" style="background: {item.color}"></span>{name}
-              </span>
-              <span class="font-mono font-medium tabular-nums">
-                {value == null ? '—' : format(Number(value))}
-              </span>
-            </div>
+            <ChartTooltipRow {name} color={item.color} {value} {format} />
           {/snippet}
         </Chart.Tooltip>
       {/snippet}
