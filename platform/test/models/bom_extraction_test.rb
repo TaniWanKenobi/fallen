@@ -81,6 +81,18 @@ class BomExtractionTest < ActiveSupport::TestCase
     assert_equal "model", snapshot.reload.bom_import["source"]
   end
 
+  test "a check whose read never happened has it queued again, but not while it's fresh or already read" do
+    project = projects(:station)
+    snapshot = RepoSnapshot.create!(project:, user: project.user, url: "https://github.com/someone/thing", status: "done", bom_csv: CSV_TEXT, fetched_at: 1.minute.ago)
+    assert_no_enqueued_jobs(only: BomExtractionJob) { snapshot.read_bom_later }
+
+    snapshot.update!(fetched_at: 10.minutes.ago)
+    assert_enqueued_with(job: BomExtractionJob, args: [ snapshot ]) { snapshot.read_bom_later }
+
+    snapshot.update!(bom_import: { "items" => [] })
+    assert_no_enqueued_jobs(only: BomExtractionJob) { snapshot.read_bom_later }
+  end
+
   private
 
   # Answers OpenRouter.json with `reply`, or raises it when it's an error.

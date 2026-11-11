@@ -83,6 +83,15 @@ class RepoSnapshot < ApplicationRecord
     bom_import ? "done" : "pending"
   end
 
+  # Queues the read again for a check whose read never happened (one made before reads existed, or a job that was
+  # lost). The popup polls every couple of seconds while it waits, so this queues at most one every few minutes.
+  def read_bom_later
+    return unless bom_state == "pending" && fetched_at && fetched_at < 2.minutes.ago
+    return unless Rails.cache.write("repo_snapshot_bom:#{id}", true, unless_exist: true, expires_in: 5.minutes)
+
+    BomExtractionJob.perform_later(self)
+  end
+
   def read_bom!
     result = BomExtraction.read(bom_csv)
     update!(bom_import: { "items" => result.items.map(&:to_h), "warnings" => result.warnings, "stated_total_cents" => result.stated_total_cents, "source" => result.source })

@@ -20,6 +20,7 @@ class RepoSnapshotsController < ApplicationController
   def show
     snapshot = RepoSnapshot.find_by_public_id!(params[:id])
     authorize snapshot
+    snapshot.read_bom_later
     render json: RepoSnapshotSerializer.render(snapshot)
   end
 end
