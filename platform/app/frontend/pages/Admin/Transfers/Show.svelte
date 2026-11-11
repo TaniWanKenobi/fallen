@@ -43,7 +43,7 @@
     transfer: AdminProjectTransferDetail
     xp_per_hour: number
     direct_upload_url: string
-    can: { approve: boolean; reject: boolean; refetch: boolean }
+    can: { approve: boolean; reject: boolean; refetch: boolean; reach_out: boolean }
   } = $props()
 
   const hoursText = (minutes: number | null) =>
@@ -594,7 +594,7 @@
               </AlertDialog.Content>
             </AlertDialog.Root>
           {/if}
-          <TransferReachOut {transfer} size="default" />
+          {#if can.reach_out}<TransferReachOut {transfer} size="default" />{/if}
         </div>
       </form>
     </Card.Content>

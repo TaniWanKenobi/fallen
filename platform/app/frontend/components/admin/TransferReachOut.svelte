@@ -8,8 +8,8 @@
   import { adminTransfers } from '@/routes'
   import type { AdminProjectTransfer } from '@/types'
 
-  // Marks that someone on staff contacted the person about a transfer (ProjectTransfer#reach_out); the server records
-  // who from the session. The x on the mark takes it back off.
+  // Marks that someone on staff already contacted the person about a transfer (ProjectTransfer#reach_out); it sends
+  // nothing. The server records who from the session. The x on the mark takes it back off.
   let { transfer, size = 'sm' }: { transfer: AdminProjectTransfer; size?: 'sm' | 'default' } = $props()
 
   let sending = $state(false)
@@ -40,7 +40,7 @@
       class="grid size-5 place-items-center rounded hover:bg-yellow-400 disabled:opacity-50"
       onclick={undo}
       disabled={sending}
-      aria-label="Undo reached out"
+      aria-label="Unmark reached out"
       title="Undo"
     >
       {#if sending}<LoaderCircle class="size-3.5 animate-spin" />{:else}<X class="size-3.5" />{/if}
@@ -49,9 +49,9 @@
 {:else}
   <Button type="button" variant="outline" {size} onclick={reachOut} disabled={sending}>
     {#if sending}
-      <LoaderCircle data-icon="inline-start" class="animate-spin" /> Reaching out…
+      <LoaderCircle data-icon="inline-start" class="animate-spin" /> Marking…
     {:else}
-      <MessageCircle data-icon="inline-start" /> Reach out
+      <MessageCircle data-icon="inline-start" /> Mark reached out
     {/if}
   </Button>
 {/if}

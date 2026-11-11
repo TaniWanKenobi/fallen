@@ -95,7 +95,7 @@
     },
     {
       id: 'reach_out',
-      header: 'Reach out',
+      header: 'Reached out',
       cell: ({ row }) => renderComponent(TransferReachOut, { transfer: row.original }),
     },
     ...(status === 'pending'
@@ -162,7 +162,7 @@
         'Claimed',
         'Logged there',
         'Owner',
-        'Reach out',
+        'Reached out',
         ...(status === 'pending' ? ['Submitted'] : ['Decision', 'Reviewer']),
       ]}
     />

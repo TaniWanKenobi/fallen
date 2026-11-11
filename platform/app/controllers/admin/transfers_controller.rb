@@ -29,7 +29,7 @@ class Admin::TransfersController < Admin::ApplicationController
       transfer: AdminProjectTransferDetailSerializer.render(transfer),
       xp_per_hour: XpEntry::PER_HOUR,
       direct_upload_url: uploads_path,
-      can: { approve: policy.approve?, reject: policy.reject?, refetch: policy.refetch? }
+      can: { approve: policy.approve?, reject: policy.reject?, refetch: policy.refetch?, reach_out: policy.reach_out? }
     }
   end
 

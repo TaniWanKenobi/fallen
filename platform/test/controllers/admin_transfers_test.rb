@@ -185,6 +185,20 @@ class AdminTransfersTest < ActionDispatch::IntegrationTest
     assert_equal "Admin Person", inertia_props(admin_transfer_path(transfer), "Admin/Transfers/Show").dig("transfer", "reached_out_by", "name")
   end
 
+  test "marking reached out isn't versioned, and a discarded transfer offers no button and refuses it" do
+    transfer = project_transfers(:stardance)
+    assert inertia_props(admin_transfer_path(transfer), "Admin/Transfers/Show")["can"]["reach_out"]
+    assert_no_difference -> { transfer.versions.count } do
+      post reach_out_admin_transfer_path(transfer)
+      delete reach_out_admin_transfer_path(transfer)
+    end
+
+    transfer.discard
+    assert_not inertia_props(admin_transfer_path(transfer), "Admin/Transfers/Show")["can"]["reach_out"]
+    post reach_out_admin_transfer_path(transfer)
+    assert_nil transfer.reload.reached_out_by
+  end
+
   test "reaching out from a transfer's page goes back to it" do
     transfer = project_transfers(:stardance)
     post reach_out_admin_transfer_path(transfer), headers: { "HTTP_REFERER" => admin_transfer_url(transfer) }

@@ -244,15 +244,16 @@ class ProjectTransfer < ApplicationRecord
     end
   end
 
-  # Marks that a staff member has contacted the person about this transfer. The first one to do it keeps it, until
-  # someone takes it back off.
+  # Marks that a staff member has contacted the person about this transfer; it sends nothing itself. The first one to
+  # mark it keeps it, until someone takes it back off. Not versioned, like save_draft: each version would copy the
+  # whole row, snapshot and all, for a flag.
   def reach_out(by:)
-    with_lock { reached_out_by_id || update!(reached_out_by: by, reached_out_at: Time.current) }
+    with_lock { reached_out_by_id || PaperTrail.request(enabled: false) { update!(reached_out_by: by, reached_out_at: Time.current) } }
     true
   end
 
   def undo_reach_out
-    update!(reached_out_by: nil, reached_out_at: nil)
+    PaperTrail.request(enabled: false) { update!(reached_out_by: nil, reached_out_at: nil) }
   end
 
   def reject(reviewer:, note: nil, message: nil)
